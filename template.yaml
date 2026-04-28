@@ -1,0 +1,1062 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: |
+  dynatrace-aws-s3-log-forwarder
+
+  SAM Template to deploy the dynatrace-aws-s3-log-forwarder
+  https://github.com/dynatrace-oss/dynatrace-aws-s3-log-forwarder
+
+Metadata:
+  License:
+    Description: |
+      Copyright 2022 Dynatrace LLC
+
+      Licensed under the Apache License, Version 2.0 (the "License");
+      you may not use this file except in compliance with the License.
+      You may obtain a copy of the License at
+
+           https://www.apache.org/licenses/LICENSE-2.0
+
+      Unless required by applicable law or agreed to in writing, software
+      distributed under the License is distributed on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+      See the License for the specific language governing permissions and
+      limitations under the License.
+
+  Version:
+    Description: dev
+
+Parameters:
+  DynatraceEnvironment1URL:
+    Description: URL of your Dynatrace environment. If you're deploying to Dynatrace Managed tenant, enter here the URL of your tenant AG without the trailing API endpoint, e.g. https://{your-activegate-domain}:9999/e/{your-environment-id}
+    Type: String
+    AllowedPattern: "^https:\\/\\/[a-zA-Z0-9-]{2,}(\\.[a-zA-Z0-9-]{2,})(\\.[a-zA-Z0-9-]{2,})*(:9999\\/e\\/.[a-z0-9-]*)?$"
+  DynatraceEnvironment1ApiKeyParameter:
+    Description: Name of the SecureString Parameter in AWS Parameter Store storing the Dynatrace API Key.
+    Type: String
+    Default: /dynatrace/s3-log-forwarder/dynatrace-aws-s3-log-forwarder/tenant/api-key
+  DynatraceEnvironment2URL:
+    Description: "[Optional]: URL of an additional Dynatrace environment you want to forward logs to. If none, leave this empy. [This feature is experimental and may change in the future]"
+    Type: String
+    Default: ""
+    AllowedPattern: "(^https:\\/\\/[a-zA-Z0-9-]{2,}(\\.[a-zA-Z0-9-]{2,})(\\.[a-zA-Z0-9-]{2,})*(:9999\\/e\\/.[a-z0-9-]*)?$)?"
+  DynatraceEnvironment2ApiKeyParameter:
+    Description: "[Optional]: Name of the SecureString Parameter in AWS Parameter Store storing the Dynatrace Environment 2 API Key.[This feature is experimental and may change in the future]"
+    Type: String
+    Default: ""
+  DynatraceLogIngestContentMaxLength:
+    Description: Log content maximum byte size, longer logs will be trimmed
+    Type: Number
+    Default: 65536
+    MinValue: 8192
+    MaxValue: 1048576
+  VerifyLogEndpointSSLCerts:
+    Description: Leave the default value unless you're ingesting logs via an Environment Active Gate with a self-signed SSL certificate, then set this to false to disable SSL certificate verification
+    Type: String
+    AllowedValues: 
+      - "true"
+      - "false"
+    Default: "true"
+  NotificationsEmail:
+    Description: E-mail address to send alarm notifications to.
+    Type: String
+    Default: ""
+  DeploymentPackageType:
+    Description: "Deployment package type for the Lambda function."
+    Type: String
+    Default: layer
+    AllowedValues:
+      - layer
+      - zip
+  DynatraceS3LogForwarderLayerArn:
+    Type: String
+    Description: ARN of the Lambda Layer Version containing the dynatrace-aws-s3-log-forwarder application code and dependencies (required when DeploymentPackageType is 'layer').
+    Default: ""
+    AllowedPattern: "(arn:(aws[a-zA-Z-]*)?:lambda:[a-z]{2}(-gov)?(-iso([a-z])?)?-[a-z]+-\\d{1}:\\d{12}:layer:[a-zA-Z0-9-_]+:[0-9]+)?"
+  LambdaFunctionMemorySize:
+    Description: Memory size of the queue processing Lambda function
+    Type: Number
+    Default: 256
+    MinValue: 128
+    MaxValue: 10240
+  LambdaSubnetIds:
+    Description: "If you're ingesting logs into a Dynatrace Managed cluster with no internet-facing Active Gates, specify a list of Subnet Ids of a VPC with network connectivity to the AGs where the AWS Lambda function needs to be deployed (for HA purposes select at least 2 subnets on different Availability Zones)."
+    Type: CommaDelimitedList
+    Default: ""
+  LambdaSecurityGroupId:
+    Description: "If you're ingesting logs into a Dynatrace Managed cluster with no internet-facing Active Gates, specify a security group id to assign to your Lambda function. This security group should allow network access to the Environment Active Gates. This parameter is required if Lambda is deployed on a VPC (LambdaSubnetIds is specified)."
+    Type: String
+    Default: ""
+  LambdaLoggingLevel:
+    Description: Logging verbosity of the Lambda function
+    Type: String
+    Default: "INFO"
+    AllowedValues:
+      - "DEBUG"
+      - "INFO"
+      - "WARNING"
+      - "ERROR"
+      - "CRITICAL"
+  LogForwarderConfigurationLocation:
+    Description: Location from which to pull log forwarding and log processing rules (aws-appconfig or local)
+    Type: String
+    Default: aws-appconfig
+    AllowedValues:
+      - aws-appconfig
+      - local
+  DeployCloudWatchMonitoringDashboard:
+    Description: Deploy a CloudWatch monitoring dashboard
+    Type: String
+    AllowedValues:
+      - "true"
+      - "false"
+    Default: "true"
+  CreateS3NotificationsSNSTopic:
+    Type: String
+    Description: Create an SNS topic for receiving S3 Object Created notifications (useful for fan-out architectures where multiple consumers need to process S3 events)
+    Default: "false"
+    AllowedValues:
+      - "true"
+      - "false"
+  EnableCrossRegionCrossAccountForwarding:
+    Type: String
+    Description: Create a dedicated event bus to receive and manage cross-region and cross-account S3 Object Created notifications
+    Default: "false"
+    AllowedValues:
+      - "true"
+      - "false"
+  AwsAccountsToReceiveLogsFrom:
+    Type: CommaDelimitedList
+    Description: List of AWS Accounts to allow to send cross-account S3 Object created Notifications
+    Default: ""
+    AllowedPattern: "($^|\\d{12})"
+  MaximumLambdaConcurrency:
+    Description: Maximum number of Lambda functions running concurrently. The concurrency is reserved for the queue processing function, so it's guaranteed. 
+    Type: Number
+    Default: 30
+  LambdaSQSMessageBatchSize:
+    Type: Number
+    Description: Maximum number of messages to batch per each Queue Processing Lambda function execution
+    Default: 4
+    MaxValue: 10
+  LambdaMaximumExecutionTime:
+    Type: Number
+    Description: Maximum execution time in seconds for the Lambda processing function (configure a value that allows enough time to process the number of messages configured on LambdaSQSMessageBatchSize)
+    Default: 300
+    MaxValue: 900
+  SQSVisibilityTimeout:
+    Type: Number
+    Description: "Visibility timeout. This value must be greater than the Lambda Execution timeout: https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-visibility-timeout.html"
+    Default: 420
+  SQSLongPollingMaxSeconds:
+    Type: Number
+    Description: Maximum seconds to wait for messages during ReceiveMessage long polling requests to receive up to SQSMessageBatchSize number of messages.
+    Default: 20
+    MaxValue: 20
+  MaximumSQSMessageRetries:
+    Type: Number
+    Description: Maximum number of retries for failed processing of S3 Object Created notification messages
+    Default: 2
+
+Rules:
+  LayerArnRequiredForLayerDeployment:
+    RuleCondition: !Equals [!Ref DeploymentPackageType, "layer"]
+    Assertions:
+      - Assert: !Not [!Equals [!Ref DynatraceS3LogForwarderLayerArn, ""]]
+        AssertDescription: "DynatraceS3LogForwarderLayerArn must be provided when DeploymentPackageType is 'layer'. Specify a valid Lambda Layer Version ARN (e.g. arn:aws:lambda:us-east-1:123456789012:layer:dynatrace-aws-s3-log-forwarder:1)."
+
+Conditions:
+  SecondDTEnvironmentSpecified: !Not [!Equals [!Ref DynatraceEnvironment2URL, "" ]]
+
+  CrossRegionCrossAccountForwardingIsEnabled: !Equals [ !Ref EnableCrossRegionCrossAccountForwarding, "true" ]
+  AwsAccountListIsNotEmpty: !Not [ !Equals [!Join ["", !Ref AwsAccountsToReceiveLogsFrom ], ""] ]
+  CreateEventBridgePolicy: !And [ !Condition AwsAccountListIsNotEmpty , !Condition CrossRegionCrossAccountForwardingIsEnabled ]
+  DeployMonitoringDashboard: !Equals [ !Ref DeployCloudWatchMonitoringDashboard, "true" ]
+  IsEmailConfigured: !Not [!Equals [ !Ref NotificationsEmail, "" ]]
+  IsLayerDeployment: !Equals [ !Ref DeploymentPackageType, "layer" ]
+  CreateSNSTopicForS3Notifications: !Equals [ !Ref CreateS3NotificationsSNSTopic, "true" ]
+  LambdaVpcConfigSpecified: !Not [!Equals [ !Join [ "", !Ref LambdaSubnetIds ], "" ]]
+  LambdaVpcSecurityGroupSpecified: !Not [!Equals [!Ref LambdaSecurityGroupId, ""]]
+
+Globals:
+  Function:
+    Timeout: !Ref LambdaMaximumExecutionTime
+    Environment:
+      Variables:
+        POWERTOOLS_METRICS_NAMESPACE: dynatrace-aws-s3-log-forwarder
+        DEPLOYMENT_NAME: !Ref AWS::StackName
+
+
+Resources:
+  QueueProcessingFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      PackageType: Zip
+      InlineCode: !If
+        - IsLayerDeployment
+        - |
+          from app import lambda_handler as handler
+        - |
+          def lambda_handler(event, context):
+              raise NotImplementedError("Placeholder function. Update the function code with the Lambda ZIP package.")
+      Handler: !If [IsLayerDeployment, "index.handler", "app.lambda_handler"]
+      Runtime: python3.14
+      Layers: !If
+        - IsLayerDeployment
+        - - !Ref DynatraceS3LogForwarderLayerArn
+        - !Ref "AWS::NoValue"
+      MemorySize: !Ref LambdaFunctionMemorySize
+      Architectures:
+        - x86_64
+      Environment:
+        Variables:
+          LD_LIBRARY_PATH: !If [IsLayerDeployment, !Ref "AWS::NoValue", "/var/task/lib"]
+          DYNATRACE_1_ENV_URL: !Ref DynatraceEnvironment1URL
+          DYNATRACE_1_API_KEY_PARAM: !Ref DynatraceEnvironment1ApiKeyParameter
+          DYNATRACE_2_ENV_URL: !If [ SecondDTEnvironmentSpecified, !Ref DynatraceEnvironment2URL, !Ref "AWS::NoValue"]
+          DYNATRACE_2_API_KEY_PARAM: !If [ SecondDTEnvironmentSpecified, !Ref DynatraceEnvironment2ApiKeyParameter, !Ref "AWS::NoValue"]
+          QueueName: !GetAtt S3NotificationsQueue.QueueName
+          LOGGING_LEVEL: !Ref LambdaLoggingLevel
+          LOG_FORWARDER_CONFIGURATION_LOCATION: !Ref LogForwarderConfigurationLocation
+          VERIFY_DT_SSL_CERT: !Ref VerifyLogEndpointSSLCerts
+          DYNATRACE_LOG_INGEST_CONTENT_MAX_LENGTH: !Ref DynatraceLogIngestContentMaxLength
+      Events:
+        SQSMessages:
+          Type: SQS
+          Properties:
+            BatchSize: !Ref LambdaSQSMessageBatchSize
+            Enabled: True
+            MaximumBatchingWindowInSeconds: !Ref SQSLongPollingMaxSeconds
+            Queue: !GetAtt S3NotificationsQueue.Arn
+            FunctionResponseTypes:
+              - ReportBatchItemFailures
+            ScalingConfig:
+               MaximumConcurrency: !Ref MaximumLambdaConcurrency
+      Policies:
+        - SQSPollerPolicy:
+            QueueName: !GetAtt S3NotificationsQueue.QueueName
+        - SSMParameterReadPolicy:
+            ParameterName: !Sub dynatrace/s3-log-forwarder/${AWS::StackName}/*
+        - Statement:
+          - Effect: Allow
+            Resource:
+              - !Sub 'arn:aws:appconfig:${AWS::Region}:${AWS::AccountId}:application/${AppConfigApplication}'
+              - !Sub 'arn:aws:appconfig:${AWS::Region}:${AWS::AccountId}:application/${AppConfigApplication}/environment/${AppConfigEnvironment}/*'
+            Action:
+              - appconfig:StartConfigurationSession
+              - appconfig:GetLatestConfiguration
+      ReservedConcurrentExecutions: !Ref MaximumLambdaConcurrency
+      VpcConfig:
+        SecurityGroupIds:
+          - !If [ LambdaVpcSecurityGroupSpecified, !Ref LambdaSecurityGroupId, !Ref "AWS::NoValue" ]
+        SubnetIds: !If [ LambdaVpcConfigSpecified, !Ref LambdaSubnetIds, !Ref "AWS::NoValue" ]
+
+  S3NotificationsQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      # Use crafted queue name to avoid circular dependency with RedriveAllowPolicy
+      QueueName: !Sub ${AWS::StackName}-S3NotificationsQueue
+      ReceiveMessageWaitTimeSeconds: !Ref SQSLongPollingMaxSeconds
+      VisibilityTimeout: !Ref SQSVisibilityTimeout
+      MessageRetentionPeriod: 43200
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt SQSDeadLetterQueue.Arn
+        maxReceiveCount: !Ref MaximumSQSMessageRetries
+
+  # Allow EventBridge rules, SNS topics, and S3 buckets to send messages to SQS
+  S3NotificationsQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      PolicyDocument:
+        Version: "2012-10-17"
+        Id: "S3NotificationsSQSPolicy"
+        Statement:
+          - Sid: "Allow EventBridge rules to Send Messages"
+            Effect: "Allow"
+            Principal:
+              Service: "events.amazonaws.com"
+            Action: "sqs:SendMessage"
+            Resource: !GetAtt S3NotificationsQueue.Arn
+            Condition:
+              ArnEquals:
+                "aws:SourceArn": !Sub "arn:aws:events:${AWS::Region}:${AWS::AccountId}:rule/${AWS::StackName}-*"
+          - Sid: "Allow SNS topics to Send Messages"
+            Effect: "Allow"
+            Principal:
+              Service: "sns.amazonaws.com"
+            Action: "sqs:SendMessage"
+            Resource: !GetAtt S3NotificationsQueue.Arn
+            Condition:
+              StringEquals:
+                "aws:SourceAccount": !Ref AWS::AccountId
+          - Sid: "Allow S3 buckets to Send Messages"
+            Effect: "Allow"
+            Principal:
+              Service: "s3.amazonaws.com"
+            Action: "sqs:SendMessage"
+            Resource: !GetAtt S3NotificationsQueue.Arn
+            Condition:
+              StringEquals:
+                "aws:SourceAccount": !Ref AWS::AccountId
+      Queues:
+        - !Ref S3NotificationsQueue
+
+  SQSDeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub ${AWS::StackName}-S3NotificationsDLQ
+      # Keep messages during 1 day for troubleshooting purposes and redrive.
+      MessageRetentionPeriod: 86400
+      RedriveAllowPolicy:
+        redrivePermission: byQueue
+        # Hand-crafted ARN to avoid circular dependency
+        sourceQueueArns:
+          - !Join
+            - ":"
+            - - arn
+              - !Ref AWS::Partition
+              - sqs
+              - !Ref AWS::Region
+              - !Ref AWS::AccountId
+              - !Sub ${AWS::StackName}-S3NotificationsQueue
+
+  S3NotificationsSNSTopic:
+    Type: AWS::SNS::Topic
+    Condition: CreateSNSTopicForS3Notifications
+    Properties:
+      TopicName: !Sub ${AWS::StackName}-S3Notifications
+
+  S3NotificationsSNSSubscription:
+    Type: AWS::SNS::Subscription
+    Condition: CreateSNSTopicForS3Notifications
+    Properties:
+      TopicArn: !Ref S3NotificationsSNSTopic
+      Protocol: sqs
+      Endpoint: !GetAtt S3NotificationsQueue.Arn
+      RawMessageDelivery: "false"
+
+  S3NotificationsSNSTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Condition: CreateSNSTopicForS3Notifications
+    Properties:
+      PolicyDocument:
+        Id: "S3NotificationsSNSTopicPolicy"
+        Version: "2012-10-17"
+        Statement:
+          - Sid: "Allow_S3_to_publish"
+            Effect: Allow
+            Principal:
+              Service: "s3.amazonaws.com"
+            Action: "sns:Publish"
+            Resource: !Ref S3NotificationsSNSTopic
+            Condition:
+              StringEquals:
+                "aws:SourceAccount": !Ref AWS::AccountId
+      Topics:
+        - !Ref S3NotificationsSNSTopic
+
+  AlarmsSNSTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub ${AWS::StackName}-Alarms
+  
+  AlarmsEmailSubscription:
+    Type: AWS::SNS::Subscription
+    Condition: IsEmailConfigured
+    Properties:
+      TopicArn: !Ref AlarmsSNSTopic
+      Endpoint: !Ref NotificationsEmail
+      Protocol: "email"
+
+  AlarmsSNSTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      PolicyDocument:
+        Id: "AlarmsSNSTopicPolicy"
+        Version: "2012-10-17"
+        Statement:
+          - Sid: "Allow_CW_Alarms_to_publish"
+            Effect: Allow
+            Principal:
+              Service:
+                - "cloudwatch.amazonaws.com"
+            Action: "sns:Publish"
+            Resource: !Ref AlarmsSNSTopic
+      Topics:
+        - !Ref AlarmsSNSTopic
+
+  # Alarm if DLQ gets messages
+  SQSDLQAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: "Messages landed on the Dead Letter Queue"
+      AlarmName: !Sub "${AWS::StackName}-MessagesInDLQ"
+      Metrics:
+        - Id: "m1"
+          Label: "MessagesVisibleMin"
+          MetricStat:
+            Metric:
+              Dimensions:
+                - Name: QueueName
+                  Value: !GetAtt SQSDeadLetterQueue.QueueName
+              MetricName: ApproximateNumberOfMessagesVisible
+              Namespace: "AWS/SQS"
+            Period: 300 # evaluate maximum over period of 5 min
+            Stat: Minimum
+            Unit: Count
+          ReturnData: false
+        - Id: "m2"
+          Label: "MessagesVisibleMax"
+          MetricStat:
+            Metric:
+              Dimensions:
+                - Name: QueueName
+                  Value: !GetAtt SQSDeadLetterQueue.QueueName
+              MetricName: ApproximateNumberOfMessagesVisible
+              Namespace: "AWS/SQS"
+            Period: 300 # evaluate maximum over period of 5 min
+            Stat: Maximum
+            Unit: Count
+          ReturnData: false
+        - Expression: "m2-m1"
+          Id: "e1"
+          Label: "ChangeInAmountVisible"
+          ReturnData: true
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Threshold: 1
+      DatapointsToAlarm: 1
+      EvaluationPeriods: 1
+      AlarmActions:
+        - !Ref AlarmsSNSTopic
+
+  CrossRegionCrossAccountEventBus:
+    Condition: CrossRegionCrossAccountForwardingIsEnabled
+    Type: AWS::Events::EventBus
+    Properties:
+      Name: 
+        !Join
+          - "-"
+          - - !Sub ${AWS::StackName}
+            - cross-region-cross-account-s3-events
+  
+  CrossAccountEventBusPolicy:
+    Condition: CreateEventBridgePolicy
+    Type: AWS::Events::EventBusPolicy
+    Properties:
+      EventBusName: !Ref CrossRegionCrossAccountEventBus
+      StatementId: AllowCrossAccountS3Notifications
+      Statement:
+        Effect: Allow
+        Principal: 
+          AWS: !Split 
+            - ","
+            - !Sub 
+              - arn:aws:iam::${ACCOUNTS}:root
+              - ACCOUNTS: !Join
+                - ':root,arn:aws:iam::'
+                - !Ref AwsAccountsToReceiveLogsFrom
+        Action: "events:PutEvents"
+        Resource: !GetAtt CrossRegionCrossAccountEventBus.Arn
+        Condition:
+          StringEquals:
+            "events:detail-type": "Object Created"
+            "events:source": "aws.s3"
+          ArnEquals:
+            "aws:SourceArn": 
+              - !Sub arn:aws:events:*:*:rule/dt-s3-log-fwd-to-${AWS::AccountId}-*
+
+  AppConfigApplication:
+    Type: AWS::AppConfig::Application
+    Properties:
+      Description: "dynatrace-aws-s3-log-forwarder application configuration"
+      Name: !Sub ${AWS::StackName}-app-config
+  
+  LogForwardingConfigurationProfile:
+    Type: AWS::AppConfig::ConfigurationProfile
+    Properties:
+      ApplicationId: !Ref AppConfigApplication
+      Description: "dynatrace-aws-s3-log-forwarding forwarding rules configuration profile"
+      LocationUri: hosted
+      Name: log-forwarding-rules
+      Type: AWS.Freeform
+  
+  LogProcessingConfigurationProfile:
+    Type: AWS::AppConfig::ConfigurationProfile
+    Properties:
+      ApplicationId: !Ref AppConfigApplication
+      Description: "dynatrace-aws-s3-log-forwarding processing rules configuration profile"
+      LocationUri: hosted
+      Name: log-processing-rules
+      Type: AWS.Freeform
+
+  AppConfigDeploymentStrategy:
+    Type: AWS::AppConfig::DeploymentStrategy
+    Properties:
+      Name: !Sub ${AWS::StackName}-AllAtOnce
+      DeploymentDurationInMinutes: 0
+      FinalBakeTimeInMinutes: 0
+      GrowthFactor: 100
+      ReplicateTo: NONE
+  
+  AppConfigEnvironment:
+    Type: AWS::AppConfig::Environment
+    Properties:
+      Name: !Sub ${AWS::StackName}
+      ApplicationId: !Ref AppConfigApplication
+  
+  CloudWatchDashboard:
+    Condition: DeployMonitoringDashboard
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: !Sub ${AWS::StackName}-monitoring-dashboard
+      DashboardBody: 
+        !Sub >
+          {
+            "widgets": [
+              {
+                "height": 6,
+                "width": 6,
+                "y": 6,
+                "x": 0,
+                "type": "metric",
+                "properties": {
+                  "metrics": [
+                    [
+                      "dynatrace-aws-s3-log-forwarder",
+                      "LogProcessingFailures",
+                      "deployment",
+                      "${AWS::StackName}"
+                    ],
+                    [
+                      ".",
+                      "LogFilesProcessed",
+                      ".",
+                      "."
+                    ],
+                    [
+                      ".",
+                      "DroppedObjectsDecodingErrors",
+                      ".",
+                      ".",
+                      {
+                        "yAxis": "right"
+                      }
+                    ],
+                    [
+                      ".",
+                      "DroppedObjectsNotMatchingFwdRules",
+                      ".",
+                      ".",
+                      {
+                        "yAxis": "right"
+                      }
+                    ],
+                    [
+                      ".",
+                      "LogMessagesTrimmed",
+                      ".",
+                      ".",
+                      {
+                        "yAxis": "right"
+                      }
+                    ]
+                  ],
+                  "view": "timeSeries",
+                  "stacked": false,
+                  "region": "${AWS::Region}",
+                  "stat": "Sum",
+                  "period": 60,
+                  "title": "Log file processing"
+                }
+              },
+              {
+                "height": 6,
+                "width": 6,
+                "y": 0,
+                "x": 6,
+                "type": "metric",
+                "properties": {
+                  "metrics": [
+                    [
+                      "dynatrace-aws-s3-log-forwarder",
+                      "DynatraceHTTPErrors",
+                      "deployment",
+                      "${AWS::StackName}",
+                      {
+                        "yAxis": "right"
+                      }
+                    ],
+                    [
+                      ".",
+                      "DynatraceHTTP503SpaceLimitReached",
+                      ".",
+                      ".",
+                      {
+                        "yAxis": "right"
+                      }
+                    ],
+                    [
+                      ".",
+                      "DynatraceHTTP429Throttled",
+                      ".",
+                      ".",
+                      {
+                        "yAxis": "right"
+                      }
+                    ],
+                    [
+                      ".",
+                      "DynatraceHTTP400InvalidLogEntries",
+                      ".",
+                      ".",
+                      {
+                        "yAxis": "right"
+                      }
+                    ],
+                    [
+                      ".",
+                      "DynatraceHTTP200PartialSuccess",
+                      ".",
+                      ".",
+                      {
+                        "yAxis": "right"
+                      }
+                    ],
+                    [
+                      ".",
+                      "DynatraceHTTP204Success",
+                      ".",
+                      ".",
+                      {
+                        "yAxis": "left"
+                      }
+                    ]
+                  ],
+                  "view": "timeSeries",
+                  "stacked": false,
+                  "region": "${AWS::Region}",
+                  "stat": "Sum",
+                  "period": 60,
+                  "title": "Dynatrace API Responses"
+                }
+              },
+              {
+                "height": 6,
+                "width": 6,
+                "y": 0,
+                "x": 18,
+                "type": "metric",
+                "properties": {
+                  "metrics": [
+                    [
+                      "dynatrace-aws-s3-log-forwarder",
+                      "LogProcessingTime",
+                      "deployment",
+                      "${AWS::StackName}",
+                      {
+                        "label": "LogProcessingTime Avg",
+                        "stat": "Average"
+                      }
+                    ],
+                    [
+                      ".",
+                      "DTIngestionTime",
+                      ".",
+                      ".",
+                      {
+                        "yAxis": "right",
+                        "label": "DTIngestionTime Minimum"
+                      }
+                    ],
+                    [
+                      ".",
+                      "LogProcessingTime",
+                      ".",
+                      ".",
+                      {
+                        "stat": "Maximum"
+                      }
+                    ],
+                    [
+                      "..."
+                    ],
+                    [
+                      ".",
+                      "DTIngestionTime",
+                      ".",
+                      ".",
+                      {
+                        "yAxis": "right",
+                        "stat": "Average"
+                      }
+                    ],
+                    [
+                      "...",
+                      {
+                        "yAxis": "right",
+                        "stat": "Maximum"
+                      }
+                    ],
+                    [
+                      "...",
+                      {
+                        "yAxis": "right",
+                        "stat": "p90"
+                      }
+                    ],
+                    [
+                      ".",
+                      "LogProcessingTime",
+                      ".",
+                      ".",
+                      {
+                        "stat": "p90"
+                      }
+                    ]
+                  ],
+                  "view": "timeSeries",
+                  "stacked": false,
+                  "region": "${AWS::Region}",
+                  "title": "QueueProcessing Lambda Function Log processing & Ingestion times",
+                  "period": 60,
+                  "stat": "Minimum"
+                }
+              },
+              {
+                "height": 6,
+                "width": 6,
+                "y": 12,
+                "x": 0,
+                "type": "metric",
+                "properties": {
+                  "metrics": [
+                    [
+                      "dynatrace-aws-s3-log-forwarder",
+                      "UncompressedLogDTPayloadSize",
+                      "deployment",
+                      "${AWS::StackName}",
+                      {
+                        "yAxis": "left"
+                      }
+                    ],
+                    [
+                      ".",
+                      "ReceivedUncompressedLogFileSize",
+                      ".",
+                      ".",
+                      {
+                        "yAxis": "left"
+                      }
+                    ]
+                  ],
+                  "view": "timeSeries",
+                  "stacked": false,
+                  "region": "${AWS::Region}",
+                  "stat": "Sum",
+                  "period": 60,
+                  "title": "Log Data throughput"
+                }
+              },
+              {
+                "height": 6,
+                "width": 6,
+                "y": 6,
+                "x": 6,
+                "type": "metric",
+                "properties": {
+                  "metrics": [
+                    [
+                      "AWS/Lambda",
+                      "Invocations",
+                      "FunctionName",
+                      "${QueueProcessingFunction}"
+                    ],
+                    [
+                      ".",
+                      "ConcurrentExecutions",
+                      ".",
+                      ".",
+                      {
+                        "stat": "Maximum"
+                      }
+                    ],
+                    [
+                      ".",
+                      "Throttles",
+                      ".",
+                      "."
+                    ],
+                    [
+                      ".",
+                      "Errors",
+                      ".",
+                      "."
+                    ],
+                    [
+                      "dynatrace-aws-s3-log-forwarder",
+                      "NotEnoughExecutionTimeRemainingErrors",
+                      "deployment",
+                      "${AWS::StackName}",
+                      {
+                        "label": "NotEnoughExecutionTimeRemainingErrors"
+                      }
+                    ]
+                  ],
+                  "view": "timeSeries",
+                  "stacked": false,
+                  "region": "${AWS::Region}",
+                  "stat": "Sum",
+                  "period": 60,
+                  "title": "QueueProcessingFunction Executions"
+                }
+              },
+              {
+                "height": 6,
+                "width": 6,
+                "y": 6,
+                "x": 12,
+                "type": "metric",
+                "properties": {
+                  "metrics": [
+                    [
+                      "AWS/SQS",
+                      "ApproximateNumberOfMessagesVisible",
+                      "QueueName",
+                      "${AWS::StackName}-S3NotificationsQueue",
+                      {
+                        "stat": "Average"
+                      }
+                    ],
+                    [
+                      ".",
+                      "ApproximateNumberOfMessagesNotVisible",
+                      ".",
+                      "."
+                    ],
+                    [
+                      ".",
+                      "ApproximateAgeOfOldestMessage",
+                      ".",
+                      ".",
+                      {
+                        "yAxis": "right",
+                        "stat": "Average"
+                      }
+                    ],
+                    [
+                      ".",
+                      "NumberOfMessagesSent",
+                      ".",
+                      "."
+                    ],
+                    [
+                      ".",
+                      "NumberOfMessagesDeleted",
+                      ".",
+                      "."
+                    ]
+                  ],
+                  "view": "timeSeries",
+                  "stacked": false,
+                  "region": "${AWS::Region}",
+                  "stat": "Sum",
+                  "period": 60,
+                  "title": "Processing SQS Queue Messages"
+                }
+              },
+              {
+                "height": 6,
+                "width": 6,
+                "y": 6,
+                "x": 18,
+                "type": "metric",
+                "properties": {
+                  "metrics": [
+                    [
+                      "AWS/SQS",
+                      "ApproximateAgeOfOldestMessage",
+                      "QueueName",
+                      "${AWS::StackName}-S3NotificationsDLQ",
+                      {
+                        "label": "DLQ ApproximateAgeOfOldestMessage"
+                      }
+                    ],
+                    [
+                      ".",
+                      "ApproximateNumberOfMessagesVisible",
+                      ".",
+                      ".",
+                      {
+                        "label": "DLQ ApproximateNumberOfMessagesVisible",
+                        "yAxis": "right"
+                      }
+                    ]
+                  ],
+                  "view": "timeSeries",
+                  "stacked": false,
+                  "region": "${AWS::Region}",
+                  "stat": "Average",
+                  "period": 60,
+                  "title": "DLQ Metrics"
+                }
+              },
+              {
+                "height": 7,
+                "width": 18,
+                "y": 12,
+                "x": 6,
+                "type": "log",
+                "properties": {
+                  "query": "SOURCE '/aws/lambda/${QueueProcessingFunction}' | fields @timestamp, @logStream, @message \n| sort @timestamp desc \n| limit 500",
+                  "region": "${AWS::Region}",
+                  "stacked": false,
+                  "view": "table",
+                  "title": "Lambda queue processing function logs"
+                }
+              },
+              {
+                "height": 6,
+                "width": 6,
+                "y": 0,
+                "x": 12,
+                "type": "metric",
+                "properties": {
+                  "metrics": [
+                    [
+                      "AWS/Lambda",
+                      "Duration",
+                      "FunctionName",
+                      "${QueueProcessingFunction}",
+                      {
+                        "stat": "Minimum"
+                      }
+                    ],
+                    [
+                      "...",
+                      {
+                        "stat": "Average"
+                      }
+                    ],
+                    [
+                      "..."
+                    ],
+                    [
+                      "...",
+                      {
+                        "stat": "p90"
+                      }
+                    ]
+                  ],
+                  "view": "timeSeries",
+                  "stacked": false,
+                  "title": "QueueProcessing Lambda Function Execution time",
+                  "region": "${AWS::Region}",
+                  "stat": "Maximum",
+                  "period": 60
+                }
+              },
+              {
+                "height": 6,
+                "width": 6,
+                "y": 0,
+                "x": 0,
+                "type": "metric",
+                "properties": {
+                  "metrics": [
+                    [
+                      "dynatrace-aws-s3-log-forwarder",
+                      "ReceivedUncompressedLogFileSize",
+                      "deployment",
+                      "${AWS::StackName}"
+                    ],
+                    [
+                      ".",
+                      "UncompressedLogDTPayloadSize",
+                      ".",
+                      ".",
+                      {
+                        "id": "m1"
+                      }
+                    ]
+                  ],
+                  "view": "singleValue",
+                  "region": "${AWS::Region}",
+                  "stat": "Sum",
+                  "period": 60,
+                  "yAxis": {
+                    "left": {
+                      "min": 0,
+                      "max": 500000000000
+                    }
+                  },
+                  "setPeriodToTimeRange": true,
+                  "sparkline": false,
+                  "trend": false,
+                  "title": "Total log data processed over timeframe"
+                }
+              }
+            ]
+          }
+
+Outputs:
+  QueueProcessingFunction:
+    Description: "Queue Processing Lambda Function ARN"
+    Value: !GetAtt QueueProcessingFunction.Arn
+  QueueProcessingFunctionIamRole:
+    Description: "Implicit IAM Role created for QueueProcessingFunction"
+    Value: !Ref QueueProcessingFunctionRole
+    Export: 
+      Name: !Sub "${AWS::StackName}:QueueProcessingFunctionIamRole"
+  SQSProcessingQueue:
+    Description: "SQS Queue for Lambda to consume notifications from."
+    Value: !GetAtt S3NotificationsQueue.Arn
+    Export: 
+      Name: !Sub "${AWS::StackName}:S3NotificationsQueueArn"
+  SQSDeadLetterQueue:
+    Description: "Dead letter queue for failed messages."
+    Value: !GetAtt SQSDeadLetterQueue.Arn
+  SNSAlertsTopic:
+    Description: "SNS Topic receiving monitoring alerts"
+    Value: !Ref AlarmsSNSTopic
+  S3NotificationsSNSTopic:
+    Condition: CreateSNSTopicForS3Notifications
+    Description: "SNS Topic for receiving S3 Object Created notifications (subscribe your S3 buckets to this topic)"
+    Value: !Ref S3NotificationsSNSTopic
+    Export:
+      Name: !Sub ${AWS::StackName}:S3NotificationsSNSTopicArn
+  CrossRegionCrossAccountEventBus:
+    Condition: CrossRegionCrossAccountForwardingIsEnabled
+    Description: "Amazon EventBridge event bus to receive cross-region and cross-account S3 object created notifications"
+    Value: !GetAtt CrossRegionCrossAccountEventBus.Arn
+    Export:
+      Name: !Sub ${AWS::StackName}:CrossRegionCrossAccountEventBusArn
+  CloudWatchDashboardURL:
+    Condition: DeployMonitoringDashboard
+    Description: "URL for the CloudWatch Dashboard to monitor the dynatrace-aws-s3-log-forwarder"
+    Value: !Sub |
+              https://${AWS::Region}.console.aws.amazon.com/cloudwatch/home#dashboards:name=${CloudWatchDashboard}
+  AppConfigApplicationId:
+    Description: AppConfig configuration application id
+    Value: !Ref AppConfigApplication
+    Export:
+      Name: !Sub ${AWS::StackName}:AppConfigApplicationId
+  AppConfigEnvironmentId:
+    Description: AppConfig configuration environment id
+    Value: !Ref AppConfigEnvironment
+    Export:
+      Name: !Sub ${AWS::StackName}:AppConfigEnvironmentId
+  LogForwardingConfigurationProfile:
+    Description: AppConfig Configuration Profile for log forwarding rules
+    Value: !Ref LogForwardingConfigurationProfile
+    Export:
+      Name: !Sub ${AWS::StackName}:LogForwardingConfigurationProfileId
+  LogProcessingConfigurationProfile: 
+    Description: AppConfig Configuration Profile for log forwarding rules
+    Value: !Ref LogProcessingConfigurationProfile
+    Export:
+      Name: !Sub ${AWS::StackName}:LogProcessingConfigurationProfileId
+  AppConfigAllAtOnceDeploymentStrategy:
+    Description: Deployment strategy for AWS AppConfig to deploy the log forwarding and processing configuration
+    Value: !Ref AppConfigDeploymentStrategy
+    Export: 
+      Name: !Sub ${AWS::StackName}:AppConfigDeploymentStrategyId

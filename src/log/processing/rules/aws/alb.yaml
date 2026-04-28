@@ -1,0 +1,35 @@
+# Copyright 2022 Dynatrace LLC
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#      https://www.apache.org/licenses/LICENSE-2.0
+
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+name: ALB
+
+ # https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-access-logs.html
+ # Prefix:[/prefix]/AWSLogs/aws-account-id/elasticloadbalancing/region/yyyy/mm/dd/aws-account-id_elasticloadbalancing_region
+ # File Name: aws-account-id_elasticloadbalancing_region_app.load-balancer-id_end-time_ip-address_random-string.log.gz
+ # Random string is 8 chars?
+known_key_path_pattern: '^.*?{aws_logs_prefix}/{aws_account_id_pattern}/(elasticloadbalancing)/{aws_region_pattern}/{year_pattern}/{month_pattern}/{day_pattern}/{aws_account_id_pattern}_(elasticloadbalancing)_{aws_region_pattern}_(app.){elbv2_id_pattern}_{year_pattern}{month_pattern}{day_pattern}T{hour_pattern}{minutes_pattern}Z_{ipv4_address_pattern}_[a-zA-Z0-9]{{8}}(\.log\.gz)$'
+source: aws
+log_format: text
+
+# Attribute extractions
+annotations:
+  aws.resource.type: "AWS::ElasticLoadBalancingV2::LoadBalancer"
+  aws.arn.pattern: "arn:aws:elasticloadbalancing:{aws.region}:{aws.account.id}:loadbalancer/{elbv2_id}"
+
+attribute_extraction_from_key_name:
+  # needed for arn calculation
+  aws.region: "{aws_region_pattern}"
+  aws.account.id: "{aws_account_id_pattern}"
+
+attribute_extraction_grok_expression: '%{NOTSPACE} %{TIMESTAMP_ISO8601:timestamp} %{NOTSPACE:elbv2_id} %{GREEDYDATA}'
