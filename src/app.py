@@ -97,7 +97,7 @@ def reload_rules(rules_type: str):
 @metrics.log_metrics
 def lambda_handler(event, context):
 
-    logging.info("dynatrace-aws-s3-log-forwarder version: %s", get_version())
+    logging.info("dynatrace-aws-platform-monitoring-s3-log-forwarder version: %s", get_version())
 
     # If we're using AWS AppConfig and there's a new config version available, reload
     reload_rules('forwarding')

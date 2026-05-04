@@ -1,6 +1,6 @@
 # Build
 
-If you're contributing to the project or if you want to build and deploy from source, the following sections cover how to build and deploy the `dynatrace-aws-s3-log-forwarder`.
+If you're contributing to the project or if you want to build and deploy from source, the following sections cover how to build and deploy the `dynatrace-aws-platform-monitoring-s3-log-forwarder`.
 
 There are two build options:
 
@@ -28,16 +28,16 @@ You'll also need:
 
 Before deploying either option, complete the following steps.
 
-1. Clone the `dynatrace-aws-s3-log-forwarder` repository and checkout the latest version tag:
+1. Clone the `dynatrace-aws-platform-monitoring-s3-log-forwarder` repository and checkout the latest version tag:
 
     ```bash
-    export VERSION_TAG=$(curl -s https://api.github.com/repos/dynatrace-oss/dynatrace-aws-s3-log-forwarder/releases/latest | grep tag_name | cut -d'"' -f4)
-    git clone https://github.com/dynatrace-oss/dynatrace-aws-s3-log-forwarder.git
-    cd dynatrace-aws-s3-log-forwarder
+    export VERSION_TAG=$(curl -s https://api.github.com/repos/dynatrace/dynatrace-aws-platform-monitoring-s3-log-forwarder/releases/latest | grep tag_name | cut -d'"' -f4)
+    git clone https://github.com/dynatrace/dynatrace-aws-platform-monitoring-s3-log-forwarder.git
+    cd dynatrace-aws-platform-monitoring-s3-log-forwarder
     git checkout $VERSION_TAG
     ```
 
-1. Define a name for your `dynatrace-aws-s3-log-forwarder` deployment (e.g. mycompany-dynatrace-s3-log-forwarder) and your Dynatrace tenant UUID (e.g. `abc12345` if your Dynatrace environment url is `https://abc12345.live.dynatrace.com`) in environment variables that will be used along the deployment process.
+1. Define a name for your `dynatrace-aws-platform-monitoring-s3-log-forwarder` deployment (e.g. mycompany-dynatrace-s3-log-forwarder) and your Dynatrace tenant UUID (e.g. `abc12345` if your Dynatrace environment url is `https://abc12345.live.dynatrace.com`) in environment variables that will be used along the deployment process.
 
     ```bash
     export STACK_NAME=replace_with_your_log_forwarder_stack_name
@@ -88,7 +88,7 @@ This will:
     ```bash
     # Note: template assumes that the layer.zip is available in `dist/layer.zip`
     sam deploy \
-        --template-file dynatrace-aws-s3-log-forwarder-layer.yaml \
+        --template-file dynatrace-aws-platform-monitoring-s3-log-forwarder-layer.yaml \
         --stack-name "${STACK_NAME}-layer" \
         --resolve-s3 \
         --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND
@@ -176,7 +176,7 @@ This will:
     * The e-mail address is set to receive alerts when log files can't be processed and messages are arriving to the Dead Letter Queue. If you don't want to receive those, just leave the parameter empty.
     * An Amazon SNS topic is created to receive monitoring alerts where you can subscribe HTTP endpoints to send the notification to your tools (e.g. PagerDuty, Service Now...).
 
-1. The log forwarding Lambda function pulls configuration data from AWS AppConfig that contains the rules that defines how to forward and process log files. The `dynatrace-aws-s3-log-forwarder-configuration.yaml` CloudFormation template is designed to help get you started deploying the log forwarding configuration. It deploys a default "catch all" log forwarding rule that makes the log forwarding Lambda function process any S3 Object it receives an S3 Object Created notification for, and attempts to identify the source of the log, matching the object against supported AWS log sources. The log forwarder logic falls back to generic text log ingestion if it's unable to identify the log source:
+1. The log forwarding Lambda function pulls configuration data from AWS AppConfig that contains the rules that defines how to forward and process log files. The `dynatrace-aws-platform-monitoring-s3-log-forwarder-configuration.yaml` CloudFormation template is designed to help get you started deploying the log forwarding configuration. It deploys a default "catch all" log forwarding rule that makes the log forwarding Lambda function process any S3 Object it receives an S3 Object Created notification for, and attempts to identify the source of the log, matching the object against supported AWS log sources. The log forwarder logic falls back to generic text log ingestion if it's unable to identify the log source:
 
     ```yaml
     ---
@@ -204,7 +204,7 @@ This will:
     * You can deploy updated configurations at any point in time, the log forwarding function will load them in ~1 minute after they've been deployed.
     * The log forwarder adds context attributes to all forwarded logs, including: `log.source.aws.s3.bucket.name`, `log.source.aws.s3.key.name` and `cloud.forwarder`. Additional attributes are extracted from log contents for supported AWS-vended logs.
 
-1. At this point, you have successfully deployed the `dynatrace-aws-s3-log-forwarder` with your desired configuration. Now, you need to configure specific Amazon S3 buckets to send "S3 Object created" notifications to the log forwarder; as well as grant permissions to the log forwarder to read files from your bucket. For each bucket that you want to send logs from to Dynatrace, perform the below steps:
+1. At this point, you have successfully deployed the `dynatrace-aws-platform-monitoring-s3-log-forwarder` with your desired configuration. Now, you need to configure specific Amazon S3 buckets to send "S3 Object created" notifications to the log forwarder; as well as grant permissions to the log forwarder to read files from your bucket. For each bucket that you want to send logs from to Dynatrace, perform the below steps:
 
     * Go to your S3 bucket(s) configuration and enable S3 notifications via EventBridge following instructions [here](https://docs.aws.amazon.com/AmazonS3/latest/userguide/enable-event-notifications-eventbridge.html).
     * Create Amazon EventBridge rules to send Object created notifications to the log forwarder. To do so, deploy the `dynatrace-aws-s3-log-forwarder-s3-bucket-configuration.yaml` CloudFormation template:

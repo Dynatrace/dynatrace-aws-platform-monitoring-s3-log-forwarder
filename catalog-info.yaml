@@ -1,7 +1,7 @@
 apiVersion: backstage.io/v1alpha1
 kind: Component
 metadata:
-  name: dynatrace-aws-s3-log-forwarder
+  name: dynatrace-aws-platform-monitoring-s3-log-forwarder
   description: |
     Serverless architecture that forwards logs from Amazon S3 to Dynatrace.
     Supports out-of-the-box parsing for ALB/NLB/ELB, CloudFront, CloudTrail,

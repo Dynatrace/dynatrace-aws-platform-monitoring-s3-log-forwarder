@@ -1,10 +1,10 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: |
-  dynatrace-aws-s3-log-forwarder
+  dynatrace-aws-platform-monitoring-s3-log-forwarder
 
-  SAM Template to deploy the dynatrace-aws-s3-log-forwarder
-  https://github.com/dynatrace-oss/dynatrace-aws-s3-log-forwarder
+  SAM Template to deploy the dynatrace-aws-platform-monitoring-s3-log-forwarder
+  https://github.com/Dynatrace/dynatrace-aws-platform-monitoring-s3-log-forwarder
 
 Metadata:
   License:
@@ -70,7 +70,7 @@ Parameters:
       - zip
   DynatraceS3LogForwarderLayerArn:
     Type: String
-    Description: ARN of the Lambda Layer Version containing the dynatrace-aws-s3-log-forwarder application code and dependencies (required when DeploymentPackageType is 'layer').
+    Description: ARN of the Lambda Layer Version containing the dynatrace-aws-platform-monitoring-s3-log-forwarder application code and dependencies (required when DeploymentPackageType is 'layer').
     Default: ""
     AllowedPattern: "(arn:(aws[a-zA-Z-]*)?:lambda:[a-z]{2}(-gov)?(-iso([a-z])?)?-[a-z]+-\\d{1}:\\d{12}:layer:[a-zA-Z0-9-_]+:[0-9]+)?"
   LambdaFunctionMemorySize:
@@ -183,7 +183,7 @@ Globals:
     Timeout: !Ref LambdaMaximumExecutionTime
     Environment:
       Variables:
-        POWERTOOLS_METRICS_NAMESPACE: dynatrace-aws-s3-log-forwarder
+        POWERTOOLS_METRICS_NAMESPACE: dynatrace-aws-platform-monitoring-s3-log-forwarder
         DEPLOYMENT_NAME: !Ref AWS::StackName
 
 
@@ -468,7 +468,7 @@ Resources:
   AppConfigApplication:
     Type: AWS::AppConfig::Application
     Properties:
-      Description: "dynatrace-aws-s3-log-forwarder application configuration"
+      Description: "dynatrace-aws-platform-monitoring-s3-log-forwarder application configuration"
       Name: !Sub ${AWS::StackName}-app-config
   
   LogForwardingConfigurationProfile:
@@ -522,7 +522,7 @@ Resources:
                 "properties": {
                   "metrics": [
                     [
-                      "dynatrace-aws-s3-log-forwarder",
+                      "dynatrace-aws-platform-monitoring-s3-log-forwarder",
                       "LogProcessingFailures",
                       "deployment",
                       "${AWS::StackName}"
@@ -578,7 +578,7 @@ Resources:
                 "properties": {
                   "metrics": [
                     [
-                      "dynatrace-aws-s3-log-forwarder",
+                      "dynatrace-aws-platform-monitoring-s3-log-forwarder",
                       "DynatraceHTTPErrors",
                       "deployment",
                       "${AWS::StackName}",

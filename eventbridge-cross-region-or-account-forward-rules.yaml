@@ -6,7 +6,7 @@ Description: |
   to the AWS EventBridge event bus in the AWS account and/or region region where the dynatrace-aws-s3-log-forwader 
   is deployed.
   
-  For more information: https://github.com/dynatrace-oss/dynatrace-aws-s3-log-forwarder
+  For more information: https://github.com/Dynatrace/dynatrace-aws-platform-monitoring-s3-log-forwarder
 
 Metadata:
   License:
@@ -31,12 +31,12 @@ Metadata:
   Instructions:
     Description: |
       Deploy this template on the AWS Account and/or region where your S3 bucket is (different than 
-      where the dynatrace-aws-s3-log-forwarder is deployed).  LogBucketPrefix# parameters
+      where the dynatrace-aws-platform-monitoring-s3-log-forwarder is deployed).  LogBucketPrefix# parameters
       are optional, only use them if you want to narrow down forwarding Object Created events for
       specific prefixes in your S3 bucket.
       
       You can find the CrossRegionCrossAccountEventBusArn on the Cloudformation outputs 
-      of your dynatrace-aws-s3-log-forwarder stack.
+      of your dynatrace-aws-platform-monitoring-s3-log-forwarder stack.
 
       Example AWS CLI command:
 
@@ -51,7 +51,7 @@ Metadata:
           --capabilities CAPABILITY_IAM \
           --region {region_of_your_s3-bucket}
       
-      If your bucket is on a different AWS account than where the dynatrace-aws-s3-log-forwarder is deployed, you can use the
+      If your bucket is on a different AWS account than where the dynatrace-aws-platform-monitoring-s3-log-forwarder is deployed, you can use the
       --profile {aws_credentials_profile_of_the_account_where_the_bucket_is} parameter on the above command to
       deploy the stack on the right AWS account. For further information, check the AWS CLI docs:
       https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html#cli-configure-files-using-profiles
@@ -60,15 +60,15 @@ Metadata:
       https://docs.aws.amazon.com/AmazonS3/latest/userguide/enable-event-notifications-eventbridge.html
 
       Then, deploy the dynatrace-aws-s3-log-forwarder-s3-bucket-configuration.yaml template for this S3 bucket on the AWS account
-      and/or region where the dynatrace-aws-s3-log-forwarder is deployed.
+      and/or region where the dynatrace-aws-platform-monitoring-s3-log-forwarder is deployed.
 
 Parameters:
   CrossRegionCrossAccountEventBusArn:
     Type: String
-    Description: "ARN of the dynatrace-aws-s3-log-forwarder Event Bus for cross-account and cross-region events, e.g. arn:aws:events:us-east-1:0123456789:event-bus/dynatrace-aws-s3-log-forwarder-{your_forwarder_stack_name}-cross-region-cross-account-s3-events"
+    Description: "ARN of the dynatrace-aws-platform-monitoring-s3-log-forwarder Event Bus for cross-account and cross-region events, e.g. arn:aws:events:us-east-1:0123456789:event-bus/dynatrace-aws-s3-log-forwarder-{your_forwarder_stack_name}-cross-region-cross-account-s3-events"
   LogsBucketName:
     Type: String
-    Description: Name of the S3 bucket to send "New Object Created" notifications to the dynatrace-aws-s3-log-forwarder
+    Description: Name of the S3 bucket to send "New Object Created" notifications to the dynatrace-aws-platform-monitoring-s3-log-forwarder
     AllowedPattern: "^[0-9a-z]+([0-9a-z-.]{1,61}[0-9a-z])$"
   LogsBucketPrefix1:
     Type: String

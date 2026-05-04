@@ -2,7 +2,7 @@
 
 Once a log S3 Object is marked to be forwarded to Dynatrace, its content is then pulled and processed before sending it to Dynatrace according to the defined log processing rules. Log processing rules, define attribute extraction and log enrichment directives.
 
-The `dynatrace-aws-s3-log-forwarder` supports processing plain text and JSON logs (stream of JSON objects). It's possible to process gzipped logs, but the log file extension must be `.gz` or the S3 object needs to have `Content-Encoding` metadata set to `gzip`.
+The `dynatrace-aws-platform-monitoring-s3-log-forwarder` supports processing plain text and JSON logs (stream of JSON objects). It's possible to process gzipped logs, but the log file extension must be `.gz` or the S3 object needs to have `Content-Encoding` metadata set to `gzip`.
 
 For all processed logs, the forwarder enriches the entries with the following contextual attributes:
 
@@ -17,9 +17,9 @@ The processing rules are grouped into 3 main blocks (aka sources):
 * `aws`: Allows you to ingest supported AWS-vended logs and extract relevant attributes for them. To determine the service vending the log and exact rule to apply, the S3 Key of the log object is matched against the known format that AWS uses to deliver the logs. You can find the processing rules on the `src/processing/rules` folder with the details.
 * `custom`: Allows you to ingest logs and apply user-defined processing rules. When using these rules, you also need to define the `source_name` attribute with the name that identifies your custom processing rule on the log_forwarding_rule.
 
-If `aws` or `custom` is defined as source on the log_forwarding_rule and there're no matches against the processed log object, the dynatrace-aws-s3-log-forwarder falls back to the `generic` processing rule.
+If `aws` or `custom` is defined as source on the log_forwarding_rule and there're no matches against the processed log object, the dynatrace-aws-platform-monitoring-s3-log-forwarder falls back to the `generic` processing rule.
 
-It's possible to define your own log-processing-rules by adding them to the log-processing-rules AWS AppConfig configuration profile. You can update the `dynatrace-aws-s3-log-forwarder` CloudFormation [template](../dynatrace-aws-s3-log-forwarder-configuration.yaml#L81) with your own log processing rules.
+It's possible to define your own log-processing-rules by adding them to the log-processing-rules AWS AppConfig configuration profile. You can update the `dynatrace-aws-platform-monitoring-s3-log-forwarder` CloudFormation [template](../dynatrace-aws-s3-log-forwarder-configuration.yaml#L81) with your own log processing rules.
 
 ## Built-in log processing rules
 
@@ -133,5 +133,5 @@ You can find an example custom processing rule under `config/log-processing-rule
 
 ## Alternate IJSON parsing backend
 
-The `dynatrace-aws-s3-log-forwarder` uses the [ijson](https://pypi.org/project/ijson/) library to parse JSON logs.
+The `dynatrace-aws-platform-monitoring-s3-log-forwarder` uses the [ijson](https://pypi.org/project/ijson/) library to parse JSON logs.
 By default, it uses the fastest backend (yajl2_c). To switch to other backend for testing purposes set the environment variable `IJSON_BACKEND` to available [ijson backend](https://github.com/ICRAR/ijson?tab=readme-ov-file#backends) on the Lambda function configuration.

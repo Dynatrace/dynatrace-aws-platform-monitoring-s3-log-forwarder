@@ -1,4 +1,4 @@
-# dynatrace-aws-s3-log-forwarder
+# dynatrace-aws-platform-monitoring-s3-log-forwarder
 
 This project deploys a Serverless architecture to forward logs from Amazon S3 to Dynatrace.
 
@@ -10,7 +10,7 @@ This project is officially supported by Dynatrace. Before you create a ticket, c
 
 ## Supported AWS Services
 
-The `dynatrace-aws-s3-log-forwarder` supports out-of-the-box parsing and forwarding of logs for the following AWS Services:
+The `dynatrace-aws-platform-monitoring-s3-log-forwarder` supports out-of-the-box parsing and forwarding of logs for the following AWS Services:
 
 * AWS Elastic Load Balancing access logs (ALB, NLB and Classic ELB)
 * Amazon CloudFront access logs

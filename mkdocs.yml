@@ -1,4 +1,4 @@
-site_name: dynatrace-aws-s3-log-forwarder
+site_name: dynatrace-aws-platform-monitoring-s3-log-forwarder
 site_description: Serverless architecture that forwards logs from Amazon S3 to Dynatrace
 docs_dir: docs
 
