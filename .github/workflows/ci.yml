@@ -103,7 +103,7 @@ jobs:
         with:
           python-version: '3.14'
       - name: Install dependencies
-        run: pip install argparse requests
+        run: pip install requests
       - name: Update version and deploy forwarder (ZIP)
         env:
           GIT_COMMIT: ${{ github.sha }}
@@ -150,7 +150,7 @@ jobs:
         with:
           python-version: '3.14'
       - name: Install dependencies
-        run: pip install argparse requests aws-sam-cli
+        run: pip install requests
       - name: Update version and deploy forwarder (Lambda Layer)
         env:
           GIT_COMMIT: ${{ github.sha }}
