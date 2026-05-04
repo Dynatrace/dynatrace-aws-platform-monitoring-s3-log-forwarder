@@ -21,3 +21,7 @@ nav:
 
 plugins:
   - techdocs-core
+
+markdown_extensions:
+  - admonition
+  - markdown_callouts
