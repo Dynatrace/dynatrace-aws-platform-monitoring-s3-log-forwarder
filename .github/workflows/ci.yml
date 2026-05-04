@@ -1,0 +1,169 @@
+# Required GitHub Actions secrets:
+#   AWS_ACCESS_KEY_ID            - AWS access key with permissions for CloudFormation, S3, Lambda, SSM
+#   AWS_SECRET_ACCESS_KEY        - Corresponding AWS secret key
+#   CFN_ROLE_ARN                 - IAM role ARN passed to CloudFormation deploy for E2E tests
+#   DT_TENANT_URL                - Dynatrace tenant URL for the log forwarder (e.g. https://abc1234.live.dynatrace.com)
+#   DT_TENANT_API_KEY            - Dynatrace API key used to create the SSM parameter during E2E deployment
+#   DT_TENANT_PLATFORM_URL       - Dynatrace platform URL for log validation queries
+#   DT_SSO_URL                   - Dynatrace SSO URL for OAuth token exchange
+#   DT_OAUTH_CLIENT_ID           - OAuth client ID for log validation
+#   DT_OAUTH_CLIENT_SECRET       - OAuth client secret for log validation
+---
+name: CI
+
+on:
+  push:
+    branches:
+      - '**'
+    tags-ignore:
+      - 'v*'
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  validate-cfn-templates:
+    name: Validate CloudFormation Templates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+      - name: Validate CloudFormation templates
+        run: |
+          aws cloudformation validate-template --template-body file://template.yaml
+          aws cloudformation validate-template --template-body file://dynatrace-aws-s3-log-forwarder-layer.yaml
+          aws cloudformation validate-template --template-body file://dynatrace-aws-s3-log-forwarder-configuration.yaml
+          aws cloudformation validate-template --template-body file://dynatrace-aws-s3-log-forwarder-s3-bucket-configuration.yaml
+          aws cloudformation validate-template --template-body file://eventbridge-cross-region-or-account-forward-rules.yaml
+
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.14'
+      - name: Install dependencies
+        run: pip install -r src/requirements.txt -r src/requirements-dev.txt
+      - name: Run unit tests
+        run: |
+          cd src && env $(grep -v '^#' ../tests/unit/unit_test.env | xargs) \
+            python -m unittest discover -s ../tests -b
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: unit-tests
+    steps:
+      - uses: actions/checkout@v6
+      - name: Update version
+        env:
+          GIT_COMMIT: ${{ github.sha }}
+        run: ./scripts/update_version.sh
+      - name: Build Lambda ZIP
+        run: ./scripts/build_docker.sh zip dist/lambda.zip
+      - name: Upload Lambda ZIP artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: lambda-zip
+          path: dist/lambda.zip
+          retention-days: 7
+
+  e2e-test-zip:
+    name: End-to-end deployment test (ZIP)
+    runs-on: ubuntu-latest
+    needs: unit-tests
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
+    env:
+      STACK_NAME: e2e-dt-aws-s3-log-forwarder-zip-${{ github.run_id }}
+      E2E_TEST_PREFIX: test/${{ github.run_id }}/zip/validation
+      E2E_TESTING_BUCKET_NAME: dynatrace-aws-s3-log-forwarder-e2e-testing
+      CI_RUN_ID: ${{ github.run_id }}
+      DT_TENANT_URL: ${{ secrets.DT_TENANT_URL }}
+      DT_TENANT_API_KEY: ${{ secrets.DT_TENANT_API_KEY }}
+      CFN_ROLE_ARN: ${{ secrets.CFN_ROLE_ARN }}
+      DT_TENANT_PLATFORM_URL: ${{ secrets.DT_TENANT_PLATFORM_URL }}
+      DT_SSO_URL: ${{ secrets.DT_SSO_URL }}
+      DT_OAUTH_CLIENT_ID: ${{ secrets.DT_OAUTH_CLIENT_ID }}
+      DT_OAUTH_CLIENT_SECRET: ${{ secrets.DT_OAUTH_CLIENT_SECRET }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.14'
+      - name: Install dependencies
+        run: pip install argparse requests
+      - name: Update version and deploy forwarder (ZIP)
+        env:
+          GIT_COMMIT: ${{ github.sha }}
+        run: |
+          ./scripts/update_version.sh
+          ./tests/e2e/deploy_forwarder.sh zip
+      - name: Write test log to S3 and wait for ingestion
+        run: |
+          echo "[$(date -u '+%Y-%m-%dT%H:%M:%SZ')] E2E testing validation log entry" > ${{ github.run_id }}.log
+          aws s3 cp ${{ github.run_id }}.log s3://${E2E_TESTING_BUCKET_NAME}/${E2E_TEST_PREFIX}/test_log.log
+          sleep 120
+      - name: Validate log entry exists in Dynatrace
+        run: ./tests/e2e/validate_logs_exist.py --bucket ${E2E_TESTING_BUCKET_NAME} --key ${E2E_TEST_PREFIX}/test_log.log
+      - name: Clean up resources
+        if: always()
+        run: ./tests/e2e/clean_up_resources.sh
+
+  e2e-test-layer:
+    name: End-to-end deployment test (Lambda Layer)
+    runs-on: ubuntu-latest
+    needs: unit-tests
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
+    env:
+      STACK_NAME: e2e-dt-aws-s3-log-forwarder-layer-${{ github.run_id }}
+      E2E_TEST_PREFIX: test/${{ github.run_id }}/layer/validation
+      E2E_TESTING_BUCKET_NAME: dynatrace-aws-s3-log-forwarder-e2e-testing
+      CI_RUN_ID: ${{ github.run_id }}
+      DT_TENANT_URL: ${{ secrets.DT_TENANT_URL }}
+      DT_TENANT_API_KEY: ${{ secrets.DT_TENANT_API_KEY }}
+      CFN_ROLE_ARN: ${{ secrets.CFN_ROLE_ARN }}
+      DT_TENANT_PLATFORM_URL: ${{ secrets.DT_TENANT_PLATFORM_URL }}
+      DT_SSO_URL: ${{ secrets.DT_SSO_URL }}
+      DT_OAUTH_CLIENT_ID: ${{ secrets.DT_OAUTH_CLIENT_ID }}
+      DT_OAUTH_CLIENT_SECRET: ${{ secrets.DT_OAUTH_CLIENT_SECRET }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-region: us-east-1
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.14'
+      - name: Install dependencies
+        run: pip install argparse requests aws-sam-cli
+      - name: Update version and deploy forwarder (Lambda Layer)
+        env:
+          GIT_COMMIT: ${{ github.sha }}
+        run: |
+          ./scripts/update_version.sh
+          ./tests/e2e/deploy_forwarder.sh layer
+      - name: Write test log to S3 and wait for ingestion
+        run: |
+          echo "[$(date -u '+%Y-%m-%dT%H:%M:%SZ')] E2E testing validation log entry" > ${{ github.run_id }}.log
+          aws s3 cp ${{ github.run_id }}.log s3://${E2E_TESTING_BUCKET_NAME}/${E2E_TEST_PREFIX}/test_log.log
+          sleep 120
+      - name: Validate log entry exists in Dynatrace
+        run: ./tests/e2e/validate_logs_exist.py --bucket ${E2E_TESTING_BUCKET_NAME} --key ${E2E_TEST_PREFIX}/test_log.log
+      - name: Clean up resources
+        if: always()
+        run: ./tests/e2e/clean_up_resources.sh

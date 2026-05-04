@@ -2,18 +2,18 @@
 
 set -e
 
-echo  "Travis tag:     ${TRAVIS_TAG}"
-echo  "Travis commit:  ${TRAVIS_COMMIT}"
+echo  "Git tag:     ${GIT_TAG}"
+echo  "Git commit:  ${GIT_COMMIT}"
 
-if [ -n $TRAVIS_TAG ]
+if [ -n "$GIT_TAG" ]
 then
     # remove "v from vx.y.z in the tag"
-    export VERSION="${TRAVIS_TAG:1}"
-elif [ -n $TRAVIS_COMMIT ]
+    export VERSION="${GIT_TAG:1}"
+elif [ -n "$GIT_COMMIT" ]
 then
-    export VERSION="${TRAVIS_COMMIT:0:7}"
+    export VERSION="${GIT_COMMIT:0:7}"
 else
-    echo "This is not a travis build. Defaulting to VERSION=dev"
+    echo "No GIT_TAG or GIT_COMMIT set. Defaulting to VERSION=dev"
     export VERSION="dev"
 fi
 

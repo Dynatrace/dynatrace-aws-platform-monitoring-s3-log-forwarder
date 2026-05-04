@@ -1,0 +1,52 @@
+# Required GitHub Actions secrets:
+#   AWS_ACCESS_KEY_ID      - AWS access key with permissions for S3, Lambda, EC2 (describe regions)
+#   AWS_SECRET_ACCESS_KEY  - Corresponding AWS secret key
+---
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_BUCKET: dynatrace-aws-s3-log-forwarder-assets
+    steps:
+      - uses: actions/checkout@v6
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+      - name: Update version in templates and source
+        env:
+          GIT_TAG: ${{ github.ref_name }}
+          GIT_COMMIT: ${{ github.sha }}
+        run: ./scripts/update_version.sh
+      - name: Build Lambda ZIP
+        run: ./scripts/build_docker.sh zip dist/lambda.zip
+      - name: Upload Lambda ZIP to S3
+        run: aws s3 cp dist/lambda.zip s3://${RELEASE_BUCKET}/${{ github.ref_name }}/lambda.zip
+      - name: Upload CloudFormation templates to S3
+        run: |
+          aws s3 cp template.yaml s3://${RELEASE_BUCKET}/${{ github.ref_name }}/
+          aws s3 cp dynatrace-aws-s3-log-forwarder-configuration.yaml s3://${RELEASE_BUCKET}/${{ github.ref_name }}/
+          aws s3 cp dynatrace-aws-s3-log-forwarder-s3-bucket-configuration.yaml s3://${RELEASE_BUCKET}/${{ github.ref_name }}/
+          aws s3 cp eventbridge-cross-region-or-account-forward-rules.yaml s3://${RELEASE_BUCKET}/${{ github.ref_name }}/
+      - name: Create and upload templates archive
+        run: |
+          zip templates.zip -j template.yaml \
+            dynatrace-aws-s3-log-forwarder-configuration.yaml \
+            dynatrace-aws-s3-log-forwarder-s3-bucket-configuration.yaml \
+            eventbridge-cross-region-or-account-forward-rules.yaml \
+            dist/lambda.zip
+          aws s3 cp templates.zip s3://${RELEASE_BUCKET}/${{ github.ref_name }}/
+      - name: Build Lambda Layer
+        run: ./scripts/build_docker.sh layer dist/layer.zip
+      - name: Publish Lambda Layer to all commercial regions
+        run: ./scripts/publish_layer.sh dist/layer.zip
