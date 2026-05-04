@@ -1,0 +1,25 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: dynatrace-aws-s3-log-forwarder
+  description: |
+    Serverless architecture that forwards logs from Amazon S3 to Dynatrace.
+    Supports out-of-the-box parsing for ALB/NLB/ELB, CloudFront, CloudTrail,
+    Global Accelerator, MSK, Network Firewall, Redshift, S3 access logs,
+    VPC DNS/Flow logs, WAF, and AppFabric, as well as generic text and JSON logs.
+  links:
+    - title: Documentation
+      url: https://github.com/Dynatrace/dynatrace-aws-platform-monitoring-s3-log-forwarder/tree/main/docs
+    - title: Deployment Guide
+      url: https://github.com/Dynatrace/dynatrace-aws-platform-monitoring-s3-log-forwarder/blob/main/docs/deployment_guide.md
+  tags:
+    - aws
+    - logs
+    - data-acquisition
+  annotations:
+    backstage.io/techdocs-ref: dir:.
+spec:
+  type: service
+  owner: team-piranhas
+  lifecycle: production
+  system: aws-platform-monitoring
