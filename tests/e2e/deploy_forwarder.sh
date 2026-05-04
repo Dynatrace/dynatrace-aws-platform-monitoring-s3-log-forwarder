@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Deploy the dynatrace-aws-s3-log-forwarder for e2e validation.
+# Deploy the dynatrace-aws-platform-monitoring-s3-log-forwarder for e2e validation.
 # Usage: ./tests/e2e/deploy_forwarder.sh <layer|zip>
 
 set -e

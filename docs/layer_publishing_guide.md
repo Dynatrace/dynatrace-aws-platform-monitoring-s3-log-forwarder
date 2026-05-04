@@ -1,6 +1,6 @@
 # Publishing the Lambda Layer
 
-This guide covers how to build and publish the `dynatrace-aws-s3-log-forwarder` Lambda Layer, making it available for customers to use directly via a Layer ARN.
+This guide covers how to build and publish the `dynatrace-aws-platform-monitoring-s3-log-forwarder` Lambda Layer, making it available for customers to use directly via a Layer ARN.
 
 ## Prerequisites
 

@@ -3,8 +3,8 @@ Transform: AWS::Serverless-2016-10-31
 Description: >
   dynatrace-aws-s3-log-forwarder-layer
 
-  Lambda Layer containing the dynatrace-aws-s3-log-forwarder application code and dependencies.
-  https://github.com/dynatrace-oss/dynatrace-aws-s3-log-forwarder
+  Lambda Layer containing the dynatrace-aws-platform-monitoring-s3-log-forwarder application code and dependencies.
+  https://github.com/Dynatrace/dynatrace-aws-platform-monitoring-s3-log-forwarder
 
 Parameters:
   LayerName:

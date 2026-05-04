@@ -2,7 +2,7 @@
 
 > [!IMPORTANT]
 >
-> Update of `dynatrace-aws-s3-log-forwarder` deployments to the latest version is supported from version `v0.4.4` and later.
+> Update of `dynatrace-aws-platform-monitoring-s3-log-forwarder` deployments to the latest version is supported from version `v0.4.4` and later.
 
 ## Prerequisites
 
@@ -12,7 +12,7 @@ You'll need the following software installed (already available in AWS CloudShel
 
 * [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
 
-## Update the dynatrace-aws-s3-log-forwarder
+## Update the dynatrace-aws-platform-monitoring-s3-log-forwarder
 
 ### Step 1. Review the GitHub release notes
 
@@ -20,7 +20,7 @@ Review the GitHub release notes for any additional required steps specific to th
 
 ### Step 2. Find your deployment stack name
 
-Find a name for your `dynatrace-aws-s3-log-forwarder` deployment and store in the `STACK_NAME` environment variable. The deployment contains several CloudFormation stacks.
+Find a name for your `dynatrace-aws-platform-monitoring-s3-log-forwarder` deployment and store in the `STACK_NAME` environment variable. The deployment contains several CloudFormation stacks.
 Find name of the stack that do not start with `dynatrace-aws-s3-log-forwarder` prefix and has text `SAM Template to deploy the dynatrace-aws-s3-log-forwarder` in the description.
 
 ```bash
@@ -33,7 +33,7 @@ Set the `VERSION_TAG` environment variable to the latest release version tag of 
 
 ```bash
 # Get the latest version
-export VERSION_TAG=$(curl -s https://api.github.com/repos/dynatrace-oss/dynatrace-aws-s3-log-forwarder/releases/latest | grep tag_name | cut -d'"' -f4)
+export VERSION_TAG=$(curl -s https://api.github.com/repos/dynatrace/dynatrace-aws-s3-log-forwarder/releases/latest | grep tag_name | cut -d'"' -f4)
 ```
 
 > [!Note]

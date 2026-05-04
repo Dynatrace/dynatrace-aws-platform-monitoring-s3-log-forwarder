@@ -14,22 +14,22 @@ You'll also need:
 
 ## Deployment options
 
-The `dynatrace-aws-s3-log-forwarder` supports two deployment package types:
+The `dynatrace-aws-platform-monitoring-s3-log-forwarder` supports two deployment package types:
 
 | Option | Description |
 |--------|-------------|
 | **Lambda Layer** (default) | Use a Layer ARN provided by a maintainer (no build required) |
 | **ZIP** | Lambda function code and dependencies packaged as a ZIP file |
 
-## Deploy the dynatrace-aws-s3-log-forwarder
+## Deploy the dynatrace-aws-platform-monitoring-s3-log-forwarder
 
 The deployment of the log forwarder is split into multiple CloudFormation templates. To get a high level view of what's deployed by which template, look at the diagram below:
 
 ![single-region-deployment](images/single-region-deployment.jpg)
 
-### Step 1. Define a name for your `dynatrace-aws-s3-log-forwarder` deployment.
+### Step 1. Define a name for your `dynatrace-aws-platform-monitoring-s3-log-forwarder` deployment.
 
-Define a name for your `dynatrace-aws-s3-log-forwarder` deployment (e.g. mycompany-dynatrace-s3-log-forwarder) and your Dynatrace tenant UUID (e.g. `abc12345` if your Dynatrace environment url is `https://abc12345.live.dynatrace.com`) in environment variables that will be used along the deployment process.
+Define a name for your `dynatrace-aws-platform-monitoring-s3-log-forwarder` deployment (e.g. mycompany-dynatrace-s3-log-forwarder) and your Dynatrace tenant UUID (e.g. `abc12345` if your Dynatrace environment url is `https://abc12345.live.dynatrace.com`) in environment variables that will be used along the deployment process.
 
 ```bash
 export STACK_NAME=<replace-with-your-log-forwarder-stack-name>
@@ -63,8 +63,8 @@ export HISTCONTROL=ignorespace
 Download the templates and pre-built Lambda ZIP for the latest release:
 
 ```bash
-export VERSION_TAG=$(curl -s https://api.github.com/repos/dynatrace-oss/dynatrace-aws-s3-log-forwarder/releases/latest | grep tag_name | cut -d'"' -f4)
-mkdir dynatrace-aws-s3-log-forwarder && cd "$_"
+export VERSION_TAG=$(curl -s https://api.github.com/repos/dynatrace/dynatrace-aws-platform-monitoring-s3-log-forwarder/releases/latest | grep tag_name | cut -d'"' -f4)
+mkdir dynatrace-aws-platform-monitoring-s3-log-forwarder && cd "$_"
 wget https://dynatrace-aws-s3-log-forwarder-assets.s3.amazonaws.com/${VERSION_TAG}/templates.zip
 unzip templates.zip
 ```
@@ -186,7 +186,7 @@ aws cloudformation deploy \
 
 ### Step 6. Configure S3 buckets to send "S3 Object created" notifications to the log forwarder.
 
-At this point, you have successfully deployed the `dynatrace-aws-s3-log-forwarder` with your desired configuration. Now, you need to configure specific Amazon S3 buckets to send "S3 Object created" notifications to the log forwarder; as well as grant permissions to the log forwarder to read files from your bucket.
+At this point, you have successfully deployed the `dynatrace-aws-platform-monitoring-s3-log-forwarder` with your desired configuration. Now, you need to configure specific Amazon S3 buckets to send "S3 Object created" notifications to the log forwarder; as well as grant permissions to the log forwarder to read files from your bucket.
 
 The log forwarder supports three notification methods. Choose the one that best fits your architecture (see [S3 notification source options](log_forwarding.md#s3-notification-source-options) for details):
 
@@ -291,4 +291,4 @@ fetch logs
 
 To learn more, check our [DQL documentation](https://docs.dynatrace.com/docs/platform/grail/dynatrace-query-language/dql-guide). You can also find a set of provided patterns to extract attributes for common logs in the [DPL Architect](https://docs.dynatrace.com/docs/platform/grail/dynatrace-pattern-language/dpl-architect). If you use Dynatrace Managed Cluster or a Dynatrace tenant without Grail enabled, check the [Log Monitoring Classic docs](https://docs.dynatrace.com/docs/observe-and-explore/logs/log-monitoring/analyze-log-data).
 
-For more detailed information and advanced configuration details of the `dynatrace-aws-s3-log-forwarder`, visit the documentation in the `docs` folder.
+For more detailed information and advanced configuration details of the `dynatrace-aws-platform-monitoring-s3-log-forwarder`, visit the documentation in the `docs` folder.

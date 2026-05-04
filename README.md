@@ -1,4 +1,4 @@
-# dynatrace-aws-s3-log-forwarder
+# dynatrace-aws-platform-monitoring-s3-log-forwarder
 
 This project deploys a Serverless architecture to forward logs from Amazon S3 to Dynatrace.
 
@@ -10,7 +10,7 @@ This project is officially supported by Dynatrace. Before you create a ticket ch
 
 ## Supported AWS Services
 
-The `dynatrace-aws-s3-log-forwarder` supports out-of-the-box parsing and forwarding of logs for the following AWS Services:
+The `dynatrace-aws-platform-monitoring-s3-log-forwarder` supports out-of-the-box parsing and forwarding of logs for the following AWS Services:
 
 * AWS Elastic Load Balancing access logs ([ALB](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-access-logs.html), [NLB](https://docs.aws.amazon.com/elasticloadbalancing/latest/network/load-balancer-access-logs.html) and [Classic ELB](https://docs.aws.amazon.com/elasticloadbalancing/latest/classic/access-log-collection.html))
 * [Amazon CloudFront](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/AccessLogs.html) access logs
@@ -32,8 +32,8 @@ Additionally, you can ingest any generic text and JSON logs. For more informatio
 
 ## Deployment
 
-To deploy `dynatrace-aws-s3-log-forwarder` in your AWS account, follow the [deployment guide](docs/deployment_guide.md).
+To deploy `dynatrace-aws-platform-monitoring-s3-log-forwarder` in your AWS account, follow the [deployment guide](docs/deployment_guide.md).
 
 ## Update
 
-To update existing deployment of `dynatrace-aws-s3-log-forwarder` to latest version, follow the [update guide](docs/update_guide.md).
+To update existing deployment of `dynatrace-aws-platform-monitoring-s3-log-forwarder` to latest version, follow the [update guide](docs/update_guide.md).

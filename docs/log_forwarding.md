@@ -1,6 +1,6 @@
 # Log Forwarding rules
 
-The `dynatrace-aws-s3-log-forwarder` uses log forwarding rules to determine how to process log files. Log forwarding rules are stored in [AWS AppConfig](https://docs.aws.amazon.com/appconfig/latest/userguide/what-is-appconfig.html), a configuration management service from where the log processing AWS Lambda function pulls the configuration. This allows you to update your configuration at any point in time without requiring you to re-deploy the AWS Lambda function. Once a new configuration version is available, the log processing function will load it within ~1 minute.
+The `dynatrace-aws-platform-monitoring-s3-log-forwarder` uses log forwarding rules to determine how to process log files. Log forwarding rules are stored in [AWS AppConfig](https://docs.aws.amazon.com/appconfig/latest/userguide/what-is-appconfig.html), a configuration management service from where the log processing AWS Lambda function pulls the configuration. This allows you to update your configuration at any point in time without requiring you to re-deploy the AWS Lambda function. Once a new configuration version is available, the log processing function will load it within ~1 minute.
 
 You can use the `dynatrace-aws-s3-log-forwarder-configuration.yaml` CloudFormation template,to deploy and manage your configuration. The provided template defines an initial catch-all default log forwarding rule. If you go to the AWS AppConfig [console](https://console.aws.amazon.com/systems-manager/appconfig/) you will find an `Application` named `<your_stack_name>-app-config` with two configuration profiles within it:
 
@@ -57,7 +57,7 @@ Log forwarding rules allow you to add custom annotations to your logs (e.g team:
 * log.source.aws.s3.key.name: key name of the S3 object that the log entry belongs to
 * cloud.log_forwarder: the ARN of the AWS Lambda function that forwarded the log entry (this helps if you have multiple log forwarding instances running)
 
-The `dynatrace-aws-s3-log-forwarder` automatically annotates logs and extracts relevant attributes for [supported AWS services](../README.md#supported-aws-services) with fields like `aws.account.id`, `aws.region`...
+The `dynatrace-aws-platform-monitoring-s3-log-forwarder` automatically annotates logs and extracts relevant attributes for [supported AWS services](../README.md#supported-aws-services) with fields like `aws.account.id`, `aws.region`...
 
 For any other logs you may want to ingest from S3, you can just ingest any text-based logs as `generic` logs (source: generic) and stream of JSON entries logs as `generic_json_stream` (source: generic, source_name: generic_json_stream). Then, you can [configure Dynatrace to process the logs at ingestion time](https://www.dynatrace.com/support/help/how-to-use-dynatrace/log-monitoring/acquire-log-data/log-processing) to enrich them or parse them at query time with [DQL](https://www.dynatrace.com/support/help/how-to-use-dynatrace/log-monitoring/acquire-log-data/log-processing/log-processing-commands). Optionally, you can do custom processing on the Lambda function (e.g. extract log entries from a list in a JSON key) defining your own log processing rules. For more information, visit the [log_processing](log_processing.md) documentation.
 
@@ -90,7 +90,7 @@ With the above configuration, any Cloudtrail and ELB logs will be shipped to Dyn
 
 ## Forwarding large log files to Dynatrace
 
-The `dynatrace-aws-s3-log-forwarder` solution is able to handle large log files as data is streamed in chunks from Amazon S3 and then processed and forwarded to Dynatrace. Even if the solution is able to do this with very low memory footprint, allocating low memory to the function means also low CPU and bandwidth resources and your Lambda function. Depending on the size and volume of logs you're forwarding, Lambda execution may timeout while processing (the default configured Lambda execution timeout configuration is 300 seconds). For more information on how AWS Lambda allocates compute power, refer to the AWS Lambda [documentation](https://docs.aws.amazon.com/lambda/latest/operatorguide/computing-power.html).
+The `dynatrace-aws-platform-monitoring-s3-log-forwarder` solution is able to handle large log files as data is streamed in chunks from Amazon S3 and then processed and forwarded to Dynatrace. Even if the solution is able to do this with very low memory footprint, allocating low memory to the function means also low CPU and bandwidth resources and your Lambda function. Depending on the size and volume of logs you're forwarding, Lambda execution may timeout while processing (the default configured Lambda execution timeout configuration is 300 seconds). For more information on how AWS Lambda allocates compute power, refer to the AWS Lambda [documentation](https://docs.aws.amazon.com/lambda/latest/operatorguide/computing-power.html).
 
 The SAM template deploys the forwarder with the following default parameters that you can modify to suit your needs:
 
@@ -105,7 +105,7 @@ The SAM template deploys the forwarder with the following default parameters tha
 
 ## S3 notification source options
 
-The `dynatrace-aws-s3-log-forwarder` supports three methods of receiving S3 Object Created notifications. You can use any combination of these depending on your architecture:
+The `dynatrace-aws-platform-monitoring-s3-log-forwarder` supports three methods of receiving S3 Object Created notifications. You can use any combination of these depending on your architecture:
 
 ### Amazon EventBridge (default)
 

@@ -1,4 +1,4 @@
-# dynatrace-aws-s3-log-forwarder function metrics
+# dynatrace-aws-platform-monitoring-s3-log-forwarder function metrics
 
 The function publishes the following metrics to CloudWatch under a metric namespace named as your SAM StackName:
 
