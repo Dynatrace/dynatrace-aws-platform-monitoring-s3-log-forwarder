@@ -24,4 +24,3 @@ plugins:
 
 markdown_extensions:
   - admonition
-  - markdown_callouts
