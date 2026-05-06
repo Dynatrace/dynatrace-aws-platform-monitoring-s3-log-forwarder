@@ -23,7 +23,7 @@ The `dynatrace-aws-platform-monitoring-s3-log-forwarder` supports two deployment
 
 ## Deploy the dynatrace-aws-platform-monitoring-s3-log-forwarder
 
-The deployment of the log forwarder is split into multiple CloudFormation templates. To get a high level view of what's deployed by which template, look at the diagram below:
+The deployment of the log forwarder uses two CloudFormation templates: `template.yaml` for the core infrastructure and log forwarding configuration, and `dynatrace-aws-s3-log-forwarder-s3-bucket-configuration.yaml` deployed once per source S3 bucket. To get a high level view of what's deployed by which template, look at the diagram below:
 
 ![single-region-deployment](images/single-region-deployment.jpg)
 
@@ -103,7 +103,7 @@ aws cloudformation deploy \
 ---
 
 > [!IMPORTANT]
-> If you deployed using the default Lambda Layer option above, continue directly to [Step 5. Deploy the log forwarding configuration](#step-5-deploy-the-log-forwarding-configuration).
+> If you deployed using the default Lambda Layer option above, continue directly to [Step 5. Configure S3 buckets](#step-5-configure-s3-buckets-to-send-s3-object-created-notifications-to-the-log-forwarder).
 
 ---
 
@@ -153,38 +153,7 @@ If successfull, you'll see a message similar to the below at the end of the exec
 > * To ingest logs into a Dynatrace Managed environment, the `DynatraceEnvironment1URL` parameter should be formatted like this: `https://{your-activegate-domain}:9999/e/{your-environment-id}`. Unless your environment Active Gate is public-facing, you'll need to configure Lambda to run on an Amazon VPC from where your Active Gate can be reached adding the parameters `LambdaSubnetIds` with the list of subnets where Lambda can run (for high availability, select at least 2 in different Availability Zones) and `LambdaSecurityGroupId` with the security group assigned to your Lambda function. The subnets where the Lambda function runs should allow outbound connectivity to the Internet. For more details, check the [AWS Lambda documentation](https://docs.aws.amazon.com/lambda/latest/dg/configuration-vpc.htm). If your Active Gate uses a self-signed SSL certificate, set the parameter `VerifyLogEndpointSSLCerts` to `false`.
 > * If ingesting logs into Dynatrace Managed environment, add the parameter `DynatraceLogIngestContentMaxLength`=`8192`, as it is default content length in Managed Dynatrace.
 
-### Step 5. Deploy the log forwarding configuration.
-
-The log forwarding Lambda function pulls configuration data from AWS AppConfig that contains the rules that defines how to forward and process log files. The `dynatrace-aws-s3-log-forwarder-configuration.yaml` CloudFormation template is designed to help get you started deploying the log forwarding configuration. It deploys a default "catch all" log forwarding rule that makes the log forwarding Lambda function process any S3 Object it receives an S3 Object Created notification for, and attempts to identify the source of the log, matching the object against supported AWS log sources. The log forwarder logic falls back to generic text log ingestion if it's unable to identify the log source:
-
-```yaml
----
-bucket_name: default
-log_forwarding_rules:
-  - name: default_forward_all
-    # Match any file in your buckets
-    prefix: ".*"
-    # Process as AWS-vended log (automatic fallback to generic text log    ingestion if log is not
-    source: aws
-```
-
-You'll find this rule defined in-line on the CloudFormation template [here](../dynatrace-aws-s3-log-forwarder-configuration.yaml#L60-L67), which you can modify and tailor it to your needs. To configure explicit log forwarding rules, visit  the [docs/log_forwarding.md](log_forwarding.md) documentation.
-
-To deploy the configuration, execute the following command:
-
-```bash
-aws cloudformation deploy \
-    --template-file dynatrace-aws-s3-log-forwarder-configuration.yaml \
-    --stack-name dynatrace-aws-s3-log-forwarder-configuration-$STACK_NAME \
-    --parameter-overrides DynatraceAwsS3LogForwarderStackName=$STACK_NAME
-```
-
-> [!NOTE]
->
-> * You can deploy updated configurations at any point in time, the log forwarding function will load them in ~1 minute after they've been deployed.
-> * The log forwarder adds context attributes to all forwarded logs, including: `log.source.aws.s3.bucket.name`, `log.source.aws.s3.key.name` and `cloud.forwarder`. Additional attributes are extracted from log contents for supported AWS-vended logs.
-
-### Step 6. Configure S3 buckets to send "S3 Object created" notifications to the log forwarder.
+### Step 5. Configure S3 buckets to send "S3 Object created" notifications to the log forwarder.
 
 At this point, you have successfully deployed the `dynatrace-aws-platform-monitoring-s3-log-forwarder` with your desired configuration. Now, you need to configure specific Amazon S3 buckets to send "S3 Object created" notifications to the log forwarder; as well as grant permissions to the log forwarder to read files from your bucket.
 

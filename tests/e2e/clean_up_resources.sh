@@ -51,9 +51,6 @@ export_cloudwatch_logs () {
 log "Deleting Cloudformation Stack ${STACK_NAME}-s3-bucket-configutation"
 aws cloudformation delete-stack --stack-name ${STACK_NAME}-s3-bucket-configuration
 aws cloudformation wait stack-delete-complete --stack-name ${STACK_NAME}-s3-bucket-configuration
-log "Deleting Cloudformation Stack ${STACK_NAME}-configutation"
-aws cloudformation delete-stack --stack-name ${STACK_NAME}-configuration
-aws cloudformation wait stack-delete-complete --stack-name ${STACK_NAME}-configuration
 log "Deleting Cloudformation Stack ${STACK_NAME}"
 aws cloudformation delete-stack --stack-name ${STACK_NAME}
 aws cloudformation wait stack-delete-complete --stack-name ${STACK_NAME}
