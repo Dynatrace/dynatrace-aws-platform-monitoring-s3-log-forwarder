@@ -94,14 +94,6 @@ case "${DEPLOY_TYPE}" in
         ;;
 esac
 
-log "Deploying the forwarder configuration template"
-aws cloudformation deploy --stack-name ${STACK_NAME}-configuration --parameter-overrides \
-                DynatraceAwsS3LogForwarderStackName=${STACK_NAME} \
-                --template-file dynatrace-aws-s3-log-forwarder-configuration.yaml \
-                --role-arn ${CFN_ROLE_ARN}
-
-aws cloudformation wait stack-create-complete --stack-name ${STACK_NAME}-configuration
-
 log "Deploying the S3 bucket configuration template"
 aws cloudformation deploy --stack-name ${STACK_NAME}-s3-bucket-configuration --parameter-overrides \
                 DynatraceAwsS3LogForwarderStackName=${STACK_NAME} \

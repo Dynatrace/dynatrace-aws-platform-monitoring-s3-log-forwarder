@@ -35,15 +35,6 @@ Parameters:
     Description: Name of the SecureString Parameter in AWS Parameter Store storing the Dynatrace API Key.
     Type: String
     Default: /dynatrace/s3-log-forwarder/dynatrace-aws-s3-log-forwarder/tenant/api-key
-  DynatraceEnvironment2URL:
-    Description: "[Optional]: URL of an additional Dynatrace environment you want to forward logs to. If none, leave this empy. [This feature is experimental and may change in the future]"
-    Type: String
-    Default: ""
-    AllowedPattern: "(^https:\\/\\/[a-zA-Z0-9-]{2,}(\\.[a-zA-Z0-9-]{2,})(\\.[a-zA-Z0-9-]{2,})*(:9999\\/e\\/.[a-z0-9-]*)?$)?"
-  DynatraceEnvironment2ApiKeyParameter:
-    Description: "[Optional]: Name of the SecureString Parameter in AWS Parameter Store storing the Dynatrace Environment 2 API Key.[This feature is experimental and may change in the future]"
-    Type: String
-    Default: ""
   DynatraceLogIngestContentMaxLength:
     Description: Log content maximum byte size, longer logs will be trimmed
     Type: Number
@@ -166,8 +157,6 @@ Rules:
         AssertDescription: "DynatraceS3LogForwarderLayerArn must be provided when DeploymentPackageType is 'layer'. Specify a valid Lambda Layer Version ARN (e.g. arn:aws:lambda:us-east-1:123456789012:layer:dynatrace-aws-s3-log-forwarder:1)."
 
 Conditions:
-  SecondDTEnvironmentSpecified: !Not [!Equals [!Ref DynatraceEnvironment2URL, "" ]]
-
   CrossRegionCrossAccountForwardingIsEnabled: !Equals [ !Ref EnableCrossRegionCrossAccountForwarding, "true" ]
   AwsAccountListIsNotEmpty: !Not [ !Equals [!Join ["", !Ref AwsAccountsToReceiveLogsFrom ], ""] ]
   CreateEventBridgePolicy: !And [ !Condition AwsAccountListIsNotEmpty , !Condition CrossRegionCrossAccountForwardingIsEnabled ]
@@ -213,8 +202,6 @@ Resources:
           LD_LIBRARY_PATH: !If [IsLayerDeployment, !Ref "AWS::NoValue", "/var/task/lib"]
           DYNATRACE_1_ENV_URL: !Ref DynatraceEnvironment1URL
           DYNATRACE_1_API_KEY_PARAM: !Ref DynatraceEnvironment1ApiKeyParameter
-          DYNATRACE_2_ENV_URL: !If [ SecondDTEnvironmentSpecified, !Ref DynatraceEnvironment2URL, !Ref "AWS::NoValue"]
-          DYNATRACE_2_API_KEY_PARAM: !If [ SecondDTEnvironmentSpecified, !Ref DynatraceEnvironment2ApiKeyParameter, !Ref "AWS::NoValue"]
           QueueName: !GetAtt S3NotificationsQueue.QueueName
           LOGGING_LEVEL: !Ref LambdaLoggingLevel
           LOG_FORWARDER_CONFIGURATION_LOCATION: !Ref LogForwarderConfigurationLocation
@@ -503,7 +490,51 @@ Resources:
     Properties:
       Name: !Sub ${AWS::StackName}
       ApplicationId: !Ref AppConfigApplication
-  
+
+  LogForwardingRulesHostedConfiguration:
+    Type: AWS::AppConfig::HostedConfigurationVersion
+    Properties:
+      Description: dynatrace-aws-s3-log-forwarder log forwarding rules
+      ApplicationId: !Ref AppConfigApplication
+      ConfigurationProfileId: !Ref LogForwardingConfigurationProfile
+      ContentType: application/x-yaml
+      Content: |
+        ---
+        bucket_name: default
+        log_forwarding_rules:
+          - name: default_forward_all
+            prefix: ".*"
+            source: aws
+
+  LogProcessingRulesHostedConfiguration:
+    Type: AWS::AppConfig::HostedConfigurationVersion
+    Properties:
+      Description: dynatrace-aws-s3-log-forwarder log processing rules
+      ApplicationId: !Ref AppConfigApplication
+      ConfigurationProfileId: !Ref LogProcessingConfigurationProfile
+      ContentType: application/x-yaml
+      Content: |
+        ---
+
+  LogForwardingRulesDeployment:
+    Type: AWS::AppConfig::Deployment
+    Properties:
+      ApplicationId: !Ref AppConfigApplication
+      ConfigurationProfileId: !Ref LogForwardingConfigurationProfile
+      DeploymentStrategyId: !Ref AppConfigDeploymentStrategy
+      EnvironmentId: !Ref AppConfigEnvironment
+      ConfigurationVersion: !Ref LogForwardingRulesHostedConfiguration
+
+  LogProcessingRulesDeployment:
+    Type: AWS::AppConfig::Deployment
+    DependsOn: LogForwardingRulesDeployment
+    Properties:
+      ApplicationId: !Ref AppConfigApplication
+      ConfigurationProfileId: !Ref LogProcessingConfigurationProfile
+      DeploymentStrategyId: !Ref AppConfigDeploymentStrategy
+      EnvironmentId: !Ref AppConfigEnvironment
+      ConfigurationVersion: !Ref LogProcessingRulesHostedConfiguration
+
   CloudWatchDashboard:
     Condition: DeployMonitoringDashboard
     Type: AWS::CloudWatch::Dashboard
