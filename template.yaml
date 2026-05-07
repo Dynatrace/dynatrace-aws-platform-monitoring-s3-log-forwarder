@@ -37,6 +37,8 @@ Parameters:
     Description: Name of the SecureString Parameter in AWS Parameter Store storing the Dynatrace API Key.
     Type: String
     Default: /dynatrace/s3-log-forwarder/dynatrace-aws-s3-log-forwarder/tenant/api-key
+    AllowedPattern: "^\\/[a-zA-Z0-9._\\-\\/]+$"
+    ConstraintDescription: "Must be a valid SSM parameter path starting with '/' (e.g. /dynatrace/s3-log-forwarder/my-stack/api-key)."
   DynatraceLogIngestContentMaxLength:
     Description: Log content maximum byte size, longer logs will be trimmed
     Type: Number
@@ -54,6 +56,8 @@ Parameters:
     Description: E-mail address to send alarm notifications to.
     Type: String
     Default: ""
+    AllowedPattern: "(^$|^[a-zA-Z0-9._%+\\-]+@[a-zA-Z0-9.\\-]+\\.[a-zA-Z]{2,}$)"
+    ConstraintDescription: "Must be a valid e-mail address or left empty."
   DeploymentPackageType:
     Description: "Deployment package type for the Lambda function."
     Type: String
@@ -80,6 +84,8 @@ Parameters:
     Description: "If you're ingesting logs into a Dynatrace Managed cluster with no internet-facing Active Gates, specify a security group id to assign to your Lambda function. This security group should allow network access to the Environment Active Gates. This parameter is required if Lambda is deployed on a VPC (LambdaSubnetIds is specified)."
     Type: String
     Default: ""
+    AllowedPattern: "(^$|^sg-[0-9a-f]+$)"
+    ConstraintDescription: "Must be a valid security group ID (e.g. sg-0123456789abcdef0) or left empty."
   LambdaLoggingLevel:
     Description: Logging verbosity of the Lambda function
     Type: String
@@ -124,7 +130,7 @@ Parameters:
     Default: ""
     AllowedPattern: "($^|\\d{12})"
   MaximumLambdaConcurrency:
-    Description: Maximum number of Lambda functions running concurrently. The concurrency is reserved for the queue processing function, so it's guaranteed. 
+    Description: Maximum number of Lambda functions running concurrently. The concurrency is reserved for the queue processing function, so it's guaranteed.
     Type: Number
     Default: 30
   LambdaSQSMessageBatchSize:
