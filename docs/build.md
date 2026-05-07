@@ -154,7 +154,7 @@ This will:
                --parameter-overrides \
                     DynatraceEnvironmentURL="https://$DYNATRACE_TENANT_UUID.live.dynatrace.com" \
                     DynatraceApiKeyParameter=$PARAMETER_NAME \
-               --capabilities CAPABILITY_IAM
+               --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND
     ```
 
     If you want to customize deployment values, you can find the parameter descriptions on the [template.yaml](../template.yaml) file.

@@ -28,7 +28,7 @@ case "${DEPLOY_TYPE}" in
                         DynatraceApiKeyParameter="/dynatrace/s3-log-forwarder/${STACK_NAME}/api-key" \
                         EnableCrossRegionCrossAccountForwarding=true \
                         DeploymentPackageType=zip \
-                        --template-file template.yaml --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
+                        --template-file template.yaml --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
                         --role-arn ${CFN_ROLE_ARN}
 
         aws cloudformation wait stack-create-complete --stack-name ${STACK_NAME}
@@ -82,7 +82,7 @@ case "${DEPLOY_TYPE}" in
                         EnableCrossRegionCrossAccountForwarding=true \
                         DeploymentPackageType=layer \
                         DynatraceS3LogForwarderLayerArn="${LAYER_ARN}" \
-                        --template-file template.yaml --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
+                        --template-file template.yaml --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
                         --role-arn ${CFN_ROLE_ARN}
 
         aws cloudformation wait stack-create-complete --stack-name ${STACK_NAME}

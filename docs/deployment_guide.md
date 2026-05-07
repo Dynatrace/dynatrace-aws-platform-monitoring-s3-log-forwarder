@@ -91,7 +91,7 @@ export LAYER_ARN=<layer-version-arn-provided-by-publisher>
 aws cloudformation deploy \
     --stack-name ${STACK_NAME} \
     --template-file template.yaml \
-    --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
+    --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
     --parameter-overrides \
         DynatraceEnvironmentURL="https://$DYNATRACE_TENANT_UUID.live.dynatrace.com" \
         DynatraceApiKeyParameter=$PARAMETER_NAME \
@@ -116,7 +116,7 @@ aws cloudformation deploy \
 aws cloudformation deploy \
     --stack-name ${STACK_NAME} \
     --template-file template.yaml \
-    --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
+    --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
     --parameter-overrides \
         DynatraceEnvironmentURL="https://$DYNATRACE_TENANT_UUID.live.dynatrace.com" \
         DynatraceApiKeyParameter=$PARAMETER_NAME \
