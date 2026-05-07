@@ -52,8 +52,8 @@ defined_log_processing_rules, current_log_processing_rules_version = log_process
 logger.info("Loaded log-processing-rules version %s from %s",
             current_log_forwarding_rules_version, os.environ.get('LOG_FORWARDER_CONFIGURATION_LOCATION'))
 
-# load sinks
-dynatrace_sinks = dynatrace.load_sinks()
+# load sink
+dynatrace_sink = dynatrace.load_sink()
 
 
 def generate_execution_timeout_batch_item_failures(index: int, batch_item_failures: dict, messages: list):
@@ -120,9 +120,9 @@ def lambda_handler(event, context):
         event_records = []
 
     for index, message in enumerate(event_records):
-        # Empty the sinks in case some content was left due to errors and initialize
+        # Empty the sink in case some content was left due to errors and initialize
         # num_batch to 1.
-        dynatrace.empty_sinks(dynatrace_sinks)
+        dynatrace_sink.empty_sink()
 
         try:
             s3_notifications = parse_sqs_message_body(message.get('body', ''))
@@ -172,33 +172,14 @@ def lambda_handler(event, context):
                     key_name)
 
                 if matched_log_processing_rule is not None:
-                    log_object_destination_sinks = []
-
-                    for sink_id in matched_log_forwarding_rule.sinks:
-                        try:
-                            log_object_destination_sinks.append(
-                                dynatrace_sinks[sink_id])
-                        except KeyError:
-                            logger.warning('Invalid sink id %s defined on log forwarding rule %s in bucket %s.',
-                                           sink_id, matched_log_forwarding_rule.name, bucket_name)
-
-                    if not log_object_destination_sinks:
-                        logger.error('There are no valid sinks defined in log forwarding rule %s in bucket %s.',
-                                     matched_log_forwarding_rule.name, bucket_name)
-                        metrics.add_metric(name="LogFilesSkipped",
-                                           unit=MetricUnit.Count, value=1)
-                        continue
-
                     processing.process_log_object(
                         matched_log_processing_rule, bucket_name, key_name, s3_notification.region,
-                        log_object_destination_sinks, context,
+                        [dynatrace_sink], context,
                         user_defined_annotations=user_defined_log_annotations,
                         session=boto3_session
                     )
 
-                    # Iterate through all sinks and flush
-                    for dynatrace_sink in log_object_destination_sinks:
-                        dynatrace_sink.flush()
+                    dynatrace_sink.flush()
 
                     metrics.add_metric(name='LogFilesProcessed',
                                        unit=MetricUnit.Count, value=1)

@@ -17,7 +17,6 @@ import logging
 import os
 import sys
 import json
-import re
 import gzip
 import time
 import requests
@@ -253,38 +252,13 @@ class DynatraceSink():
                            unit=MetricUnit.Seconds, value=(end_time - start_time))
 
 
-def load_sinks():
+def load_sink() -> 'DynatraceSink':
     '''
-    Loads all configured sinks on environment variables. Returns a dict of sinks:
-    {
-        'sink1': DynatraceSink,
-        'sink2': DynatraceSink
-    }
+    Loads the configured Dynatrace sink from environment variables DYNATRACE_ENV_URL
+    and DYNATRACE_API_KEY_PARAM.
     '''
-
-    regex = r'^DYNATRACE_[A-Z0-9][A-Z0-9]*_ENV_URL$'
-    sinks = {}
-
     verify_ssl = False if os.environ['VERIFY_DT_SSL_CERT'] == "false" else True
-
-    for k, v in os.environ.items():
-        if re.match(regex, k):
-            sink_id = k.split('_')[1]
-            if os.environ.get(f'DYNATRACE_{sink_id}_API_KEY_PARAM'):
-                dt_url = v
-                dt_api_key_parameter = os.environ[f'DYNATRACE_{sink_id}_API_KEY_PARAM']
-                sinks[sink_id] = DynatraceSink(dt_url, dt_api_key_parameter, verify_ssl)
-            else:
-                logging.warning("No API key configured for sink id %s", sink_id)
-
-    return sinks
-
-def empty_sinks(sinks:list):
-    '''
-    Gets a list of DynatraceSink objects and empties its contents
-    '''
-    for _ , sink in sinks.items():
-        sink.empty_sink()
+    return DynatraceSink(os.environ['DYNATRACE_ENV_URL'], os.environ['DYNATRACE_API_KEY_PARAM'], verify_ssl)
 
 
 def extract_tenant_id_from_url(environment_url: str):

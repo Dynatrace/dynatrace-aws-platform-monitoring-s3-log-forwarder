@@ -22,19 +22,17 @@ class TestForwardingRules(unittest.TestCase):
         Test that valid log forwarding rules are correctly created.
         '''
 
-        valid_rules = [ 
-            {   
+        valid_rules = [
+            {
                 'name': 'Send CloudTrail and ELB logs',
                 'prefix': '^AWSLogs/.*/(CloudTrail|elasticloadbalancing)/.*',
                 'source': 'aws',
                 'annotations': {'test':'true'},
-                'sinks': ['1']
             },
             {
                 'name': 'Send Jenkins Logs',
                 'prefix': '^jenkins/.*(\\.log)',
                 'source': 'generic',
-                'sinks': ['1','2']
             }
         ]
 
@@ -55,7 +53,6 @@ class TestForwardingRules(unittest.TestCase):
                 'prefix': '^AWSLogs/.*/(CloudTrail|elasticloadbalancing)/.*',
                 'source': 'random',
                 'annotations': {'test':'true'},
-                'sinks': ['1']
             }
         ]
 

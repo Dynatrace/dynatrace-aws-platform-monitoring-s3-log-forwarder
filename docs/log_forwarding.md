@@ -333,29 +333,3 @@ For each S3 bucket located in a different AWS account that you want to forward l
 
 1. Define an explicit log-forwarding-rule for this S3 bucket on the log-forwarding-rules AWS AppConfig configuration profile and deploy it. Unless you have a default rule defined, logs from this bucket won't be forwarded until you deploy an explicit rule updating and deploying the `dynatrace-aws-s3-log-forwarder-configuration.yaml` CloudFormation stack.
 
-## Forward logs to multiple Dynatrace tenants
-
-**NOTE:** This feature is experimental and functionality might change in the future.
-
-It is possible to send logs matching a single forwarding rule to multiple Dynatrace instances with the `sinks` attribute.
-
-```yaml
-- rule_name: fwd_ctral_and_elb_logs
-  # Match any CloudTrail and ELB logs for any AWS account in this bucket
-  prefix: "^AWSLogs/.*/(CloudTrail|elasticloadbalancing)/.*"
-  source: aws
-  sinks: 
-    - '1'
-    - '2'
-  annotations: 
-    environment: dev
-```
-
-The sink attribute contains a list of sink ids to forward logs to, each representing a Dynatrace instance. The template allows you to configure forwarding to up to 2 Dynatrace instances, although you can extend it for more (visit the [extending_sam_template](extending_sam_template.md) docs). The configuration for each Dynatrace instance is passed to the log forwarding Lambda function with 2 environment variables:
-
-* DYNATRACE_{sink_id}_ENV_URL
-* DYNATRACE_{sink_id}_API_KEY_PARAM
-
-Please ensure that the SSM parameter identified by DYNATRACE_{sink_id}_API_KEY_PARAM exists (refer to section Deploy the solution).
-
-For simplicity, the SAM template uses numeric {sink_id} identifiers (i.e. `DYNATRACE_1_ENV_URL`/`DYNATRACE_1_API_KEY_PARAM` and `DYNATRACE_2_ENV_URL`/`DYNATRACE_2_API_KEY_PARAM`), but you can use a string too to provide more meaningful identifiers. If you decide to use string identifiers though, you'll have to specify the `sinks` attribute on all the forwarding rules, since the default value when the attribute is not present is `1`.

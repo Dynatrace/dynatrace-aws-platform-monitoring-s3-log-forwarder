@@ -152,8 +152,8 @@ This will:
     aws cloudformation deploy --stack-name $STACK_NAME \
                --template-file template.yaml \
                --parameter-overrides \
-                    DynatraceEnvironment1URL="https://$DYNATRACE_TENANT_UUID.live.dynatrace.com" \
-                    DynatraceEnvironment1ApiKeyParameter=$PARAMETER_NAME \
+                    DynatraceEnvironmentURL="https://$DYNATRACE_TENANT_UUID.live.dynatrace.com" \
+                    DynatraceApiKeyParameter=$PARAMETER_NAME \
                --capabilities CAPABILITY_IAM
     ```
 
