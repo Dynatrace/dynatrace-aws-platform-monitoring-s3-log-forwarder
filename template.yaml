@@ -1029,6 +1029,30 @@ Resources:
             ]
           }
 
+  SSMParameterSQSQueueArn:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /dynatrace/aws-s3-log-forwarder/${AWS::StackName}/sqs-queue-arn
+      Type: String
+      Value: !GetAtt S3NotificationsQueue.Arn
+      Description: !Sub "ARN of the S3 notifications SQS queue for deployment ${AWS::StackName}"
+
+  SSMParameterLambdaRoleArn:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /dynatrace/aws-s3-log-forwarder/${AWS::StackName}/lambda-role-arn
+      Type: String
+      Value: !GetAtt QueueProcessingFunctionRole.Arn
+      Description: !Sub "ARN of the Lambda IAM role for deployment ${AWS::StackName}"
+
+  SSMParameterAppConfigApplicationId:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /dynatrace/aws-s3-log-forwarder/${AWS::StackName}/appconfig-application-id
+      Type: String
+      Value: !Ref AppConfigApplication
+      Description: !Sub "AppConfig application ID for deployment ${AWS::StackName}"
+
 Outputs:
   QueueProcessingFunction:
     Description: "Queue Processing Lambda Function ARN"
@@ -1089,5 +1113,14 @@ Outputs:
   AppConfigAllAtOnceDeploymentStrategy:
     Description: Deployment strategy for AWS AppConfig to deploy the log forwarding and processing configuration
     Value: !Ref AppConfigDeploymentStrategy
-    Export: 
+    Export:
       Name: !Sub ${AWS::StackName}:AppConfigDeploymentStrategyId
+  SSMParameterPathSQSQueueArn:
+    Description: "SSM Parameter path storing the SQS queue ARN"
+    Value: !Sub /dynatrace/aws-s3-log-forwarder/${AWS::StackName}/sqs-queue-arn
+  SSMParameterPathLambdaRoleArn:
+    Description: "SSM Parameter path storing the Lambda IAM role ARN"
+    Value: !Sub /dynatrace/aws-s3-log-forwarder/${AWS::StackName}/lambda-role-arn
+  SSMParameterPathAppConfigApplicationId:
+    Description: "SSM Parameter path storing the AppConfig application ID"
+    Value: !Sub /dynatrace/aws-s3-log-forwarder/${AWS::StackName}/appconfig-application-id
