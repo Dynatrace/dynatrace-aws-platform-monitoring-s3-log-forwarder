@@ -332,4 +332,3 @@ For each S3 bucket located in a different AWS account that you want to forward l
     ```
 
 1. Define an explicit log-forwarding-rule for this S3 bucket on the log-forwarding-rules AWS AppConfig configuration profile and deploy it. Unless you have a default rule defined, logs from this bucket won't be forwarded until you deploy an explicit rule updating and deploying the `dynatrace-aws-s3-log-forwarder-configuration.yaml` CloudFormation stack.
-
