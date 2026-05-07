@@ -1,7 +1,5 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Transform:
-  - AWS::LanguageExtensions
-  - AWS::Serverless-2016-10-31
+Transform: AWS::Serverless-2016-10-31
 Description: |
   dynatrace-aws-platform-monitoring-s3-log-forwarder
 
@@ -158,7 +156,7 @@ Parameters:
     Default: 2
   S3BucketNames:
     Type: CommaDelimitedList
-    Description: "Optional list of S3 bucket names (e.g. my-bucket,another-bucket) to grant the Lambda function s3:GetObject access and allow direct S3 notifications to the SQS queue. Leave empty for no bucket-specific permissions (use the per-bucket CloudFormation template for fine-grained control)."
+    Description: "Optional list of S3 bucket names (e.g. my-bucket,another-bucket) to grant the Lambda function s3:GetObject access and create EventBridge routing rules for. Use the per-bucket CloudFormation template for prefix filtering or cross-account/region buckets."
     Default: ""
   KmsKeyArns:
     Type: CommaDelimitedList
@@ -250,24 +248,6 @@ Resources:
             Action:
               - appconfig:StartConfigurationSession
               - appconfig:GetLatestConfiguration
-        - !If
-          - S3BucketNamesProvided
-          - Statement:
-            - Effect: Allow
-              Action: s3:GetObject
-              Resource:
-                Fn::ForEach::S3BucketName:
-                  - BucketName
-                  - !Ref S3BucketNames
-                  - - !Sub "arn:aws:s3:::${BucketName}/*"
-          - !Ref AWS::NoValue
-        - !If
-          - KmsKeyArnsProvided
-          - Statement:
-            - Effect: Allow
-              Action: kms:Decrypt
-              Resource: !Ref KmsKeyArns
-          - !Ref AWS::NoValue
       ReservedConcurrentExecutions: !Ref MaximumLambdaConcurrency
       VpcConfig:
         SecurityGroupIds:
@@ -312,32 +292,15 @@ Resources:
             Condition:
               StringEquals:
                 "aws:SourceAccount": !Ref AWS::AccountId
-          - !If
-            - S3BucketNamesProvided
-            - Sid: "Allow S3 buckets to Send Messages"
-              Effect: "Allow"
-              Principal:
-                Service: "s3.amazonaws.com"
-              Action: "sqs:SendMessage"
-              Resource: !GetAtt S3NotificationsQueue.Arn
-              Condition:
-                StringEquals:
-                  "aws:SourceAccount": !Ref AWS::AccountId
-                ArnLike:
-                  "aws:SourceArn":
-                    Fn::ForEach::S3BucketNameSQS:
-                      - BucketName
-                      - !Ref S3BucketNames
-                      - - !Sub "arn:aws:s3:::${BucketName}"
-            - Sid: "Allow S3 buckets to Send Messages"
-              Effect: "Allow"
-              Principal:
-                Service: "s3.amazonaws.com"
-              Action: "sqs:SendMessage"
-              Resource: !GetAtt S3NotificationsQueue.Arn
-              Condition:
-                StringEquals:
-                  "aws:SourceAccount": !Ref AWS::AccountId
+          - Sid: "Allow S3 buckets to Send Messages"
+            Effect: "Allow"
+            Principal:
+              Service: "s3.amazonaws.com"
+            Action: "sqs:SendMessage"
+            Resource: !GetAtt S3NotificationsQueue.Arn
+            Condition:
+              StringEquals:
+                "aws:SourceAccount": !Ref AWS::AccountId
       Queues:
         - !Ref S3NotificationsQueue
 
@@ -1082,27 +1045,57 @@ Resources:
             ]
           }
 
-  Fn::ForEach::S3BucketEventBridgeRule:
-    - BucketName
-    - !Ref S3BucketNames
-    - S3EventBridgeRule${BucketName}:
-        Type: AWS::Events::Rule
-        Condition: S3BucketNamesProvided
-        Properties:
-          Name: !Sub "${AWS::StackName}-s3-fwd-${BucketName}"
-          State: ENABLED
-          EventPattern:
-            source:
-              - "aws.s3"
-            detail-type:
-              - "Object Created"
-            detail:
-              bucket:
-                name:
-                  - !Ref BucketName
-          Targets:
-            - Id: "SQSQueue"
-              Arn: !GetAtt S3NotificationsQueue.Arn
+  S3BucketNamesEventBridgeRule:
+    Type: AWS::Events::Rule
+    Condition: S3BucketNamesProvided
+    Properties:
+      Name: !Sub "${AWS::StackName}-s3-notifications"
+      State: ENABLED
+      EventPattern:
+        source:
+          - "aws.s3"
+        detail-type:
+          - "Object Created"
+        detail:
+          bucket:
+            name: !Ref S3BucketNames
+      Targets:
+        - Id: "SQSQueue"
+          Arn: !GetAtt S3NotificationsQueue.Arn
+
+  S3GetObjectPolicy:
+    Type: AWS::IAM::Policy
+    Condition: S3BucketNamesProvided
+    Properties:
+      PolicyName: !Sub ${AWS::StackName}-s3-get-object
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action: s3:GetObject
+            Resource: !Split
+              - ","
+              - !Sub
+                - "arn:aws:s3:::${BucketList}/*"
+                - BucketList: !Join
+                    - "/*,arn:aws:s3:::"
+                    - !Ref S3BucketNames
+      Roles:
+        - !Ref QueueProcessingFunctionRole
+
+  KmsDecryptPolicy:
+    Type: AWS::IAM::Policy
+    Condition: KmsKeyArnsProvided
+    Properties:
+      PolicyName: !Sub ${AWS::StackName}-kms-decrypt
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action: kms:Decrypt
+            Resource: !Ref KmsKeyArns
+      Roles:
+        - !Ref QueueProcessingFunctionRole
 
   SSMParameterSQSQueueArn:
     Type: AWS::SSM::Parameter

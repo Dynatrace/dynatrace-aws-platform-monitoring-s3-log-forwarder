@@ -88,7 +88,7 @@ This will:
     ```bash
     # Note: template assumes that the layer.zip is available in `dist/layer.zip`
     sam deploy \
-        --template-file dynatrace-aws-platform-monitoring-s3-log-forwarder-layer.yaml \
+        --template-file dynatrace-aws-s3-log-forwarder-layer.yaml \
         --stack-name "${STACK_NAME}-layer" \
         --resolve-s3 \
         --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND
@@ -176,7 +176,7 @@ This will:
     * The e-mail address is set to receive alerts when log files can't be processed and messages are arriving to the Dead Letter Queue. If you don't want to receive those, just leave the parameter empty.
     * An Amazon SNS topic is created to receive monitoring alerts where you can subscribe HTTP endpoints to send the notification to your tools (e.g. PagerDuty, Service Now...).
 
-1. The log forwarding Lambda function pulls configuration data from AWS AppConfig that contains the rules that defines how to forward and process log files. The `dynatrace-aws-platform-monitoring-s3-log-forwarder-configuration.yaml` CloudFormation template is designed to help get you started deploying the log forwarding configuration. It deploys a default "catch all" log forwarding rule that makes the log forwarding Lambda function process any S3 Object it receives an S3 Object Created notification for, and attempts to identify the source of the log, matching the object against supported AWS log sources. The log forwarder logic falls back to generic text log ingestion if it's unable to identify the log source:
+1. The log forwarding Lambda function pulls configuration data from AWS AppConfig that contains the rules that defines how to forward and process log files. The `dynatrace-aws-s3-log-forwarder-configuration.yaml` CloudFormation template is designed to help get you started deploying the log forwarding configuration. It deploys a default "catch all" log forwarding rule that makes the log forwarding Lambda function process any S3 Object it receives an S3 Object Created notification for, and attempts to identify the source of the log, matching the object against supported AWS log sources. The log forwarder logic falls back to generic text log ingestion if it's unable to identify the log source:
 
     ```yaml
     ---
