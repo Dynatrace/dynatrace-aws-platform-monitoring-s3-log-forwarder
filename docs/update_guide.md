@@ -65,7 +65,7 @@ export LAYER_ARN=<new-layer-version-arn>
 
 aws cloudformation deploy --stack-name ${STACK_NAME} \
             --template-file template.yaml \
-            --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
+            --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
             --parameter-overrides \
                 DeploymentPackageType="layer" \
                 DynatraceS3LogForwarderLayerArn="$LAYER_ARN"
@@ -77,7 +77,7 @@ Update the CloudFormation stack:
 
 ```bash
 aws cloudformation deploy --stack-name ${STACK_NAME} \
-            --template-file template.yaml --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND
+            --template-file template.yaml --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND
 ```
 
 Then update the Lambda function code with the new deployment package:
