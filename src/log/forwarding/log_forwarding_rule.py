@@ -26,7 +26,6 @@ class LogForwardingRule:
     source: str
     source_name: Optional[str]
     annotations: Optional[dict]
-    sinks: Optional[list]
 
     def validate(self):
         if self.source not in AVAILABLE_LOG_SOURCES:
@@ -39,9 +38,6 @@ class LogForwardingRule:
             print(type(self.annotations))
             raise ValueError("annotations are invalid.")
 
-        if (not isinstance(self.sinks, list)) and self.sinks is not None:
-            raise ValueError("Invalid sinks configuration")
-
         for i in [self.name, self.source]:
             if not isinstance(i, str):
                 raise ValueError(f"{i} is not a str.")
@@ -53,8 +49,6 @@ class LogForwardingRule:
                 "source_name requires a value when source is 'custom'")
 
     def __post_init__(self):
-        if self.sinks is None:
-            object.__setattr__(self, "sinks", ["1"])
         if self.source == "generic" and self.source_name is None:
             object.__setattr__(self, "source_name", "generic")
         self.validate()

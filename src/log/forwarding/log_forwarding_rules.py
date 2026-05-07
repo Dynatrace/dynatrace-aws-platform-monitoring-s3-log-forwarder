@@ -264,16 +264,15 @@ def _create_log_forwarding_rule_object(rule: dict) -> LogForwardingRule:
         compiled_regex = re.compile(rule['prefix'])
 
          # fill optional values if not present
-        for i in ['source_name','sinks','annotations']:
+        for i in ['source_name','annotations']:
             if not rule.get(i):
                 rule[i] = None
 
         log_forwarding_rule = LogForwardingRule(name=rule['name'],
                                                 s3_prefix_expression=compiled_regex,
                                                 source=rule['source'],
-                                                source_name=rule['source_name'], 
-                                                annotations=rule['annotations'], 
-                                                sinks=rule['sinks'])
+                                                source_name=rule['source_name'],
+                                                annotations=rule['annotations'])
     except KeyError as ex:
         raise IncorrectLogForwardingRuleFormat(message=f"Missing attributes on log forwarding rule {rule}") from ex
     except ValueError as ex:

@@ -24,8 +24,8 @@ case "${DEPLOY_TYPE}" in
 
         log "Deploying the log forwarder template"
         aws cloudformation deploy --stack-name ${STACK_NAME} --parameter-overrides \
-                        DynatraceEnvironment1URL=${DT_TENANT_URL} \
-                        DynatraceEnvironment1ApiKeyParameter="/dynatrace/s3-log-forwarder/${STACK_NAME}/api-key" \
+                        DynatraceEnvironmentURL=${DT_TENANT_URL} \
+                        DynatraceApiKeyParameter="/dynatrace/s3-log-forwarder/${STACK_NAME}/api-key" \
                         EnableCrossRegionCrossAccountForwarding=true \
                         DeploymentPackageType=zip \
                         --template-file template.yaml --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
@@ -77,8 +77,8 @@ case "${DEPLOY_TYPE}" in
 
         log "Deploying the log forwarder template (layer mode)"
         aws cloudformation deploy --stack-name ${STACK_NAME} --parameter-overrides \
-                        DynatraceEnvironment1URL=${DT_TENANT_URL} \
-                        DynatraceEnvironment1ApiKeyParameter="/dynatrace/s3-log-forwarder/${STACK_NAME}/api-key" \
+                        DynatraceEnvironmentURL=${DT_TENANT_URL} \
+                        DynatraceApiKeyParameter="/dynatrace/s3-log-forwarder/${STACK_NAME}/api-key" \
                         EnableCrossRegionCrossAccountForwarding=true \
                         DeploymentPackageType=layer \
                         DynatraceS3LogForwarderLayerArn="${LAYER_ARN}" \

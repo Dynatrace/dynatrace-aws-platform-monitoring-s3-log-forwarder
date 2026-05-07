@@ -27,11 +27,11 @@ Metadata:
     Description: dev
 
 Parameters:
-  DynatraceEnvironment1URL:
+  DynatraceEnvironmentURL:
     Description: URL of your Dynatrace environment. If you're deploying to Dynatrace Managed tenant, enter here the URL of your tenant AG without the trailing API endpoint, e.g. https://{your-activegate-domain}:9999/e/{your-environment-id}
     Type: String
     AllowedPattern: "^https:\\/\\/[a-zA-Z0-9-]{2,}(\\.[a-zA-Z0-9-]{2,})(\\.[a-zA-Z0-9-]{2,})*(:9999\\/e\\/.[a-z0-9-]*)?$"
-  DynatraceEnvironment1ApiKeyParameter:
+  DynatraceApiKeyParameter:
     Description: Name of the SecureString Parameter in AWS Parameter Store storing the Dynatrace API Key.
     Type: String
     Default: /dynatrace/s3-log-forwarder/dynatrace-aws-s3-log-forwarder/tenant/api-key
@@ -200,8 +200,8 @@ Resources:
       Environment:
         Variables:
           LD_LIBRARY_PATH: !If [IsLayerDeployment, !Ref "AWS::NoValue", "/var/task/lib"]
-          DYNATRACE_1_ENV_URL: !Ref DynatraceEnvironment1URL
-          DYNATRACE_1_API_KEY_PARAM: !Ref DynatraceEnvironment1ApiKeyParameter
+          DYNATRACE_ENV_URL: !Ref DynatraceEnvironmentURL
+          DYNATRACE_API_KEY_PARAM: !Ref DynatraceApiKeyParameter
           QueueName: !GetAtt S3NotificationsQueue.QueueName
           LOGGING_LEVEL: !Ref LambdaLoggingLevel
           LOG_FORWARDER_CONFIGURATION_LOCATION: !Ref LogForwarderConfigurationLocation
