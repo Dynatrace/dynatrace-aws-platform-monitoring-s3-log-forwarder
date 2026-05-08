@@ -292,15 +292,32 @@ Resources:
             Condition:
               StringEquals:
                 "aws:SourceAccount": !Ref AWS::AccountId
-          - Sid: "Allow S3 buckets to Send Messages"
-            Effect: "Allow"
-            Principal:
-              Service: "s3.amazonaws.com"
-            Action: "sqs:SendMessage"
-            Resource: !GetAtt S3NotificationsQueue.Arn
-            Condition:
-              StringEquals:
-                "aws:SourceAccount": !Ref AWS::AccountId
+          - !If
+            - S3BucketNamesProvided
+            - Sid: "Allow S3 buckets to Send Messages"
+              Effect: "Allow"
+              Principal:
+                Service: "s3.amazonaws.com"
+              Action: "sqs:SendMessage"
+              Resource: !GetAtt S3NotificationsQueue.Arn
+              Condition:
+                ArnLike:
+                  "aws:SourceArn": !Split
+                    - ","
+                    - !Sub
+                      - "arn:aws:s3:::${BucketList}"
+                      - BucketList: !Join
+                          - ",arn:aws:s3:::"
+                          - !Ref S3BucketNames
+            - Sid: "Allow S3 buckets to Send Messages"
+              Effect: "Allow"
+              Principal:
+                Service: "s3.amazonaws.com"
+              Action: "sqs:SendMessage"
+              Resource: !GetAtt S3NotificationsQueue.Arn
+              Condition:
+                StringEquals:
+                  "aws:SourceAccount": !Ref AWS::AccountId
       Queues:
         - !Ref S3NotificationsQueue
 
