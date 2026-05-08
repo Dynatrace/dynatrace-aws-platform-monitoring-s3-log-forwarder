@@ -66,7 +66,7 @@ default_headers = {
 
 class DynatraceSink():
     def __init__(self, dt_url: str, dt_api_key_parameter: str, verify_ssl: bool = True):
-        self._environment_url = dt_url
+        self._environment_url = dt_url.rstrip('/')
         self._api_key_parameter = dt_api_key_parameter
         self._approx_buffered_messages_size = LIST_BRACKETS_LENGTH
         self._messages = []
