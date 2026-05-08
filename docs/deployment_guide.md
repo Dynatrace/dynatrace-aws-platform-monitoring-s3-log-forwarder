@@ -162,7 +162,7 @@ At this point, you have successfully deployed the `dynatrace-aws-platform-monito
 
 If you provided `S3BucketNames` in Step 4, the main stack has already:
 
-* Created an Amazon EventBridge rule per bucket routing `Object Created` events to the SQS queue
+* Created a single Amazon EventBridge rule (`${StackName}-s3-notifications`) routing `Object Created` events from all listed buckets to the SQS queue
 * Granted the Lambda function `s3:GetObject` access to each bucket
 * Configured the SQS queue policy to accept notifications from those buckets
 
