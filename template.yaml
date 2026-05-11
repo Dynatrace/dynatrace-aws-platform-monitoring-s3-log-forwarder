@@ -156,7 +156,7 @@ Parameters:
     Default: 2
   S3BucketNames:
     Type: CommaDelimitedList
-    Description: "Optional list of S3 bucket names (e.g. my-bucket,another-bucket) to grant the Lambda function s3:GetObject access and create EventBridge routing rules for. Use the per-bucket CloudFormation template for prefix filtering or cross-account/region buckets."
+    Description: "Optional list of S3 bucket names (e.g. my-bucket,another-bucket) to grant the Lambda function s3:GetObject access and create an EventBridge routing rule for. Use the per-bucket CloudFormation template for prefix filtering or cross-account/region buckets."
     Default: ""
   KmsKeyArns:
     Type: CommaDelimitedList
@@ -593,7 +593,7 @@ Resources:
       ConfigurationProfileId: !Ref LogProcessingConfigurationProfile
       ContentType: application/x-yaml
       Content: |
-        ---
+        # No custom log processing rules
 
   LogForwardingRulesDeployment:
     Type: AWS::AppConfig::Deployment
