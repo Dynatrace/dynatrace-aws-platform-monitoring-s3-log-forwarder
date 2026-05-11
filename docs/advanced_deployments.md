@@ -2,6 +2,26 @@
 
 This page contains guidance and considerations for large deployments.
 
+## IAM Role path
+
+Some organizations enforce IAM governance policies that require roles to be created under a specific path (e.g. `/engineering/` or `/service-roles/`). Without the correct path, CloudFormation stack deployment will fail with an access denied error.
+
+Use the `IamRolePath` parameter to set the path for the Lambda execution role:
+
+```bash
+aws cloudformation deploy \
+    --stack-name ${STACK_NAME} \
+    --template-file template.yaml \
+    --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
+    --parameter-overrides \
+        DynatraceEnvironmentURL="https://$DYNATRACE_TENANT_UUID.live.dynatrace.com" \
+        DynatraceApiKeyParameter=$PARAMETER_NAME \
+        DynatraceS3LogForwarderLayerArn="$LAYER_ARN" \
+        IamRolePath="/engineering/platform/"
+```
+
+The path must start and end with `/`. If not specified, the role is created at the root path `/`.
+
 ## Log forwarding throughput
 
 This solution has been tested to forward logs to Dynatrace at a throughput of 10 GB / min.
