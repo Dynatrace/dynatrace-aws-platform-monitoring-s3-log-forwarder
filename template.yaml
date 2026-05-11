@@ -162,11 +162,11 @@ Parameters:
     Type: CommaDelimitedList
     Description: "Optional list of KMS Key ARNs (e.g. arn:aws:kms:us-east-1:123456789012:key/uuid) the Lambda function needs kms:Decrypt access to in order to read SSE-KMS encrypted S3 objects. Leave empty if your buckets are not encrypted with a customer-managed key."
     Default: ""
-But whe  IamRolePath:
+  IamRolePath:
     Type: String
     Description: "Optional IAM path for the Lambda execution role (e.g. /engineering/platform/). Some organizations require IAM roles to be created under a specific path for governance purposes."
     Default: "/"
-    AllowedPattern: "^(\\/|(\\/[a-zA-Z0-9+=,.@_-]+)+\\/)$"
+    AllowedPattern: "^(/[a-zA-Z0-9+=,.@_-]+)*/$"
     ConstraintDescription: "Must be a valid IAM path: starts and ends with '/' (e.g. / or /engineering/ or /engineering/platform/)."
 
 Rules:
