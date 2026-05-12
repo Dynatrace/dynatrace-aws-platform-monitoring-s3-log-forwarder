@@ -2,7 +2,7 @@
 
 The `dynatrace-aws-platform-monitoring-s3-log-forwarder` uses log forwarding rules to determine how to process log files. Log forwarding rules are stored in [AWS AppConfig](https://docs.aws.amazon.com/appconfig/latest/userguide/what-is-appconfig.html), a configuration management service from where the log processing AWS Lambda function pulls the configuration. This allows you to update your configuration at any point in time without requiring you to re-deploy the AWS Lambda function. Once a new configuration version is available, the log processing function will load it within ~1 minute.
 
-You can use the `dynatrace-aws-s3-log-forwarder-configuration.yaml` CloudFormation template,to deploy and manage your configuration. The provided template defines an initial catch-all default log forwarding rule. If you go to the AWS AppConfig [console](https://console.aws.amazon.com/systems-manager/appconfig/) you will find an `Application` named `<your_stack_name>-app-config` with two configuration profiles within it:
+The main `template.yaml` stack deploys an initial catch-all default log forwarding rule. If you go to the AWS AppConfig [console](https://console.aws.amazon.com/systems-manager/appconfig/) you will find an `Application` named `<your_stack_name>-app-config` with two configuration profiles within it:
 
 * log-forwarding-rules: stores log forwarding rules.
 * log-processing-rules: stores custom log processing rules that you can optionally define. For more information, check the [log_processing.md](log_processing.md) documentation.
@@ -230,7 +230,7 @@ For each S3 bucket located in a different AWS region than where the log forwarde
       --region <region-where-your-s3-log-forwarder-instance-is-deployed>
     ```
 
-1. Define an explicit log-forwarding-rule for this S3 bucket on the log-forwarding-rules AWS AppConfig configuration profile and deploy it. Unless you have a default rule defined, logs from this bucket won't be forwarded until you deploy an explicit rule updating and deploying the `dynatrace-aws-s3-log-forwarder-configuration.yaml` CloudFormation stack.
+1. Define an explicit log-forwarding-rule for this S3 bucket on the log-forwarding-rules AWS AppConfig configuration profile. Unless you have a default rule defined, logs from this bucket won't be forwarded until you deploy an explicit rule.
 
 **NOTE:** You'll incurr cross-region data transfer costs between the region where AWS Lambda forwarder function runs and the region where the S3 bucket is located, on top of data transfer between AWS Lambda and your Dynatrace tenant. For more detailed information, check the [AWS Pricing website](https://aws.amazon.com/ec2/pricing/on-demand/#Data_Transfer).
 
@@ -331,4 +331,4 @@ For each S3 bucket located in a different AWS account that you want to forward l
         --region {region_where_the_log_forwarder_is_deployed}
     ```
 
-1. Define an explicit log-forwarding-rule for this S3 bucket on the log-forwarding-rules AWS AppConfig configuration profile and deploy it. Unless you have a default rule defined, logs from this bucket won't be forwarded until you deploy an explicit rule updating and deploying the `dynatrace-aws-s3-log-forwarder-configuration.yaml` CloudFormation stack.
+1. Define an explicit log-forwarding-rule for this S3 bucket on the log-forwarding-rules AWS AppConfig configuration profile. Unless you have a default rule defined, logs from this bucket won't be forwarded until you deploy an explicit rule.
