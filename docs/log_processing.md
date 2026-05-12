@@ -19,7 +19,7 @@ The processing rules are grouped into 3 main blocks (aka sources):
 
 If `aws` or `custom` is defined as source on the log_forwarding_rule and there're no matches against the processed log object, the dynatrace-aws-platform-monitoring-s3-log-forwarder falls back to the `generic` processing rule.
 
-It's possible to define your own log-processing-rules by adding them to the log-processing-rules AWS AppConfig configuration profile. You can update the `dynatrace-aws-platform-monitoring-s3-log-forwarder` CloudFormation [template](../dynatrace-aws-s3-log-forwarder-configuration.yaml#L81) with your own log processing rules.
+It's possible to define your own log-processing-rules by adding them to the log-processing-rules AWS AppConfig configuration profile.
 
 ## Built-in log processing rules
 
@@ -77,7 +77,7 @@ Note that you can also parse log entries directly on your queries without the ne
 
 ## Adding your own log processing rules
 
-If you really need to do custom log processing on the AWS Lambda function, you can add your own log processing rules on the log-processing-rules AWS AppConfig configuration profile. You can update the rules modifying the `dynatrace-aws-s3-log-forwarder-configuration.yaml` CloudFormation [template](../dynatrace-aws-s3-log-forwarder-configuration.yaml#L81).
+If you really need to do custom log processing on the AWS Lambda function, you can add your own log processing rules on the log-processing-rules AWS AppConfig configuration profile.
 
 A log processing rule has the following format:
 

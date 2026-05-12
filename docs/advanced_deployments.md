@@ -22,6 +22,51 @@ aws cloudformation deploy \
 
 The path must start and end with `/`. If not specified, the role is created at the root path `/`.
 
+## Configuring S3 buckets with prefix filtering
+
+The `S3BucketNames` parameter in `template.yaml` forwards logs from entire buckets. If you need to forward logs only from specific S3 key prefixes within a bucket, use the `dynatrace-aws-s3-log-forwarder-s3-bucket-configuration.yaml` template once per bucket instead.
+
+Deploy the main stack without `S3BucketNames`:
+
+```bash
+aws cloudformation deploy \
+    --stack-name ${STACK_NAME} \
+    --template-file template.yaml \
+    --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
+    --parameter-overrides \
+        DynatraceEnvironmentURL="https://$DYNATRACE_TENANT_UUID.live.dynatrace.com" \
+        DynatraceApiKeyParameter=$PARAMETER_NAME \
+        DynatraceS3LogForwarderLayerArn="$LAYER_ARN"
+```
+
+Then deploy the per-bucket stack for each bucket, specifying the prefixes to forward logs from:
+
+```bash
+export BUCKET_NAME=your-bucket-name
+
+aws cloudformation deploy \
+    --template-file dynatrace-aws-s3-log-forwarder-s3-bucket-configuration.yaml \
+    --stack-name dynatrace-aws-s3-log-forwarder-s3-bucket-configuration-$BUCKET_NAME \
+    --parameter-overrides \
+        DynatraceAwsS3LogForwarderStackName=$STACK_NAME \
+        LogsBucketName=$BUCKET_NAME \
+        LogsBucketPrefix1=AWSLogs/123456789012/CloudTrail/ \
+        LogsBucketPrefix2=AWSLogs/987654321098/CloudTrail/ \
+    --capabilities CAPABILITY_IAM
+```
+
+You can specify up to 10 prefixes per bucket using `LogsBucketPrefix1` through `LogsBucketPrefix10`. Prefixes should end with `/` to match all objects under that path.
+
+> [!WARNING]
+>
+> Do not add a bucket to both `S3BucketNames` in the main stack and a per-bucket configuration stack. The main stack's EventBridge rule matches all `Object Created` events from that bucket with no prefix filter, so objects in the prefix would be routed to SQS by both rules and ingested into Dynatrace twice.
+
+> [!NOTE]
+>
+> * If your S3 objects are encrypted with a customer-managed KMS key, add `KmsKeyArns="arn:aws:kms:region:account:key/uuid"` to the main stack deploy command so the Lambda function can decrypt them.
+> * For cross-region or cross-account buckets, add the `S3BucketIsCrossRegionOrCrossAccount=true` parameter and deploy the `eventbridge-cross-region-or-account-forward-rules.yaml` template in the bucket's account/region. See [log_forwarding.md](log_forwarding.md#forward-logs-from-s3-buckets-on-different-aws-regions) for details.
+> * Each per-bucket stack adds an inline IAM policy statement to the Lambda execution role. See [IAM Role Policy size limit](#iam-role-policy-size-limit) below for scaling considerations.
+
 ## Log forwarding throughput
 
 This solution has been tested to forward logs to Dynatrace at a throughput of 10 GB / min.

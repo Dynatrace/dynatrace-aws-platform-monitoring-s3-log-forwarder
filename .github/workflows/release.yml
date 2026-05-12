@@ -35,13 +35,11 @@ jobs:
       - name: Upload CloudFormation templates to S3
         run: |
           aws s3 cp template.yaml s3://${RELEASE_BUCKET}/${{ github.ref_name }}/
-          aws s3 cp dynatrace-aws-s3-log-forwarder-configuration.yaml s3://${RELEASE_BUCKET}/${{ github.ref_name }}/
           aws s3 cp dynatrace-aws-s3-log-forwarder-s3-bucket-configuration.yaml s3://${RELEASE_BUCKET}/${{ github.ref_name }}/
           aws s3 cp eventbridge-cross-region-or-account-forward-rules.yaml s3://${RELEASE_BUCKET}/${{ github.ref_name }}/
       - name: Create and upload templates archive
         run: |
           zip templates.zip -j template.yaml \
-            dynatrace-aws-s3-log-forwarder-configuration.yaml \
             dynatrace-aws-s3-log-forwarder-s3-bucket-configuration.yaml \
             eventbridge-cross-region-or-account-forward-rules.yaml \
             dist/lambda.zip
