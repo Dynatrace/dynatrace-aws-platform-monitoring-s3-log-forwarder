@@ -349,12 +349,18 @@ Resources:
               Condition:
                 ArnLike:
                   "aws:SourceArn": !Split
+                    # Input: (string) arn:aws:s3:::bucket1,arn:aws:s3:::bucket2,arn:aws:s3:::bucket3
+                    # Output: a list of ARNs arn:aws:s3:::bucket1, arn:aws:s3:::bucket2, arn:aws:s3:::bucket3
                     - ","
                     - !Sub
                       - "arn:aws:s3:::${BucketList}"
+                      # Input: bucket1,arn:aws:s3:::bucket2,arn:aws:s3:::bucket3
+                      # Output: arn:aws:s3:::bucket1,arn:aws:s3:::bucket2,arn:aws:s3:::bucket3 -> it just adds the arn:aws:s3::: prefix to first bucket
                       - BucketList: !Join
                           - ",arn:aws:s3:::"
                           - !Ref S3BucketNames
+                          # Input: bucket1,bucket2,bucket3
+                          # Output: bucket1,arn:aws:s3:::bucket2,arn:aws:s3:::bucket3
             - Sid: "Allow S3 buckets to Send Messages"
               Effect: "Allow"
               Principal:
@@ -1137,12 +1143,18 @@ Resources:
           - Effect: Allow
             Action: s3:GetObject
             Resource: !Split
+              # Input: (string) arn:aws:s3:::bucket1/*,arn:aws:s3:::bucket2/*,arn:aws:s3:::bucket3/*
+              # Output: a list of ARNs arn:aws:s3:::bucket1/*, arn:aws:s3:::bucket2/*, arn:aws:s3:::bucket3/*
               - ","
               - !Sub
                 - "arn:aws:s3:::${BucketList}/*"
+                # Input: bucket1/*,arn:aws:s3:::bucket2/*,arn:aws:s3:::bucket3
+                # Output: arn:aws:s3:::bucket1/*,arn:aws:s3:::bucket2/*,arn:aws:s3:::bucket3/* -> adds arn:aws:s3::: prefix to first bucket and /* suffix to last
                 - BucketList: !Join
                     - "/*,arn:aws:s3:::"
                     - !Ref S3BucketNames
+                    # Input: bucket1,bucket2,bucket3
+                    # Output: bucket1/*,arn:aws:s3:::bucket2/*,arn:aws:s3:::bucket3
       Roles:
         - !Ref QueueProcessingFunctionRole
 
