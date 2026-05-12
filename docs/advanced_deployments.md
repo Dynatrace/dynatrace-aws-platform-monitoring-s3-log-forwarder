@@ -61,6 +61,8 @@ You can specify up to 10 prefixes per bucket using `LogsBucketPrefix1` through `
 >
 > Do not add a bucket to both `S3BucketNames` in the main stack and a per-bucket configuration stack. The main stack's EventBridge rule matches all `Object Created` events from that bucket with no prefix filter, so objects in the prefix would be routed to SQS by both rules and ingested into Dynatrace twice.
 
+<!-- -->
+
 > [!NOTE]
 >
 > * If your S3 objects are encrypted with a customer-managed KMS key, add `KmsKeyArns="arn:aws:kms:region:account:key/uuid"` to the main stack deploy command so the Lambda function can decrypt them.
