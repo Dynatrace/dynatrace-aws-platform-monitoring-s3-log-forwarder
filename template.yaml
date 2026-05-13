@@ -325,6 +325,7 @@ Resources:
     Condition: CreateSNSTopicForS3Notifications
     Properties:
       TopicName: !Sub ${AWS::StackName}-S3Notifications
+      KmsMasterKeyId: alias/aws/sns
 
   S3NotificationsSNSSubscription:
     Type: AWS::SNS::Subscription
@@ -359,6 +360,7 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       TopicName: !Sub ${AWS::StackName}-Alarms
+      KmsMasterKeyId: alias/aws/sns
   
   AlarmsEmailSubscription:
     Type: AWS::SNS::Subscription

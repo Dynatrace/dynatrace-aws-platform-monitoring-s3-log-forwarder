@@ -1,0 +1,95 @@
+# Requirements:
+#   - Repo variable SNYK_ORG_ID  : Snyk Organization ID (UUID) for capability_data_acquisition.
+#                                  Get it at app.snyk.io → Settings → General → Organization ID.
+#   - Repo secret  SNYK_TOKEN    : Snyk API token (set as a GitHub secret).
+#   - Repo secret  DT_TENANT_URL : Dynatrace tenant URL (already used by ci.yml e2e jobs).
+---
+name: Snyk
+
+on:
+  push:
+    branches:
+      - '**'
+    tags-ignore:
+      - 'v*'
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write  # required for dynatrace-apps/actions/metadata OIDC auth
+
+jobs:
+  snyk-open-source:
+    name: Snyk Open Source (Python deps)
+    # Skip on PRs from forks — they don't get id-token: write.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Collect metadata
+        uses: dynatrace-apps/actions/metadata@v0
+        with:
+          sdlc-host: ${{ secrets.DT_TENANT_URL }}
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v6.0.0
+        with:
+          python-version: '3.14'
+      - name: Install runtime dependencies
+        # Snyk's Python scanner inspects the resolved environment — without this
+        # step it errors with SNYK-OS-PYTHON-0013.
+        run: pip install -r src/requirements.txt
+      - name: Set up Snyk CLI
+        uses: snyk/actions/setup@master
+      - name: Snyk test
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: snyk test --file=src/requirements.txt --severity-threshold=high --org=${{ vars.SNYK_ORG_ID }}
+      - name: Snyk monitor (main only)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: snyk monitor --file=src/requirements.txt --org=${{ vars.SNYK_ORG_ID }}
+
+  snyk-code:
+    name: Snyk Code (SAST)
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Collect metadata
+        uses: dynatrace-apps/actions/metadata@v0
+        with:
+          sdlc-host: ${{ secrets.DT_TENANT_URL }}
+      - name: Set up Snyk CLI
+        uses: snyk/actions/setup@master
+      - name: Snyk Code test
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: snyk code test --severity-threshold=high --org=${{ vars.SNYK_ORG_ID }}
+
+  snyk-iac:
+    name: Snyk IaC (CloudFormation)
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Collect metadata
+        uses: dynatrace-apps/actions/metadata@v0
+        with:
+          sdlc-host: ${{ secrets.DT_TENANT_URL }}
+      - name: Set up Snyk CLI
+        uses: snyk/actions/setup@master
+      - name: Snyk IaC test
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: snyk iac test --severity-threshold=high --org=${{ vars.SNYK_ORG_ID }}
