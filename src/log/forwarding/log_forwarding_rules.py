@@ -65,7 +65,7 @@ def load_forwarding_rules_yaml(body: str) -> dict:
     log_forwarding_rules = {}
 
     try:
-        yaml_iterator = yaml.load_all(body,Loader=yaml.SafeLoader)
+        yaml_iterator = yaml.safe_load_all(body)
         for i, forwarding_rule_dict in enumerate(yaml_iterator):
             try:
                 if isinstance(forwarding_rule_dict,dict):
@@ -161,8 +161,7 @@ def load_forwarding_rules_from_local_folder():
             log_forwarding_rules_directory, rule_file)
         try:
             with open(rule_config_file_path, encoding=ENCODING) as rule_file:
-                rules_list = yaml.load(
-                    rule_file, Loader=yaml.loader.SafeLoader)
+                rules_list = yaml.safe_load(rule_file)
 
                 # if not a dict
                 if not isinstance(rules_list, list):

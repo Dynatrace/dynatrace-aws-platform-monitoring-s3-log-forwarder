@@ -1,0 +1,42 @@
+# Requirements:
+#   - Repo secret  SONAR_TOKEN   : SonarQube token (set as a GitHub secret).
+#   - Repo secret  DT_TENANT_URL : Dynatrace tenant URL (already used by ci.yml e2e jobs).
+---
+name: SonarQube
+
+on:
+  push:
+    branches:
+      - '**'
+    tags-ignore:
+      - 'v*'
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write  # required for dynatrace-apps/actions/metadata OIDC auth
+
+jobs:
+  sonarqube:
+    name: SonarQube analysis
+    # TODO: re-enable once SONAR_TOKEN is configured for the SonarCloud organization.
+    if: false
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          # SonarQube needs full history for blame-based features (new-code period,
+          # issue assignment). Override the default shallow clone.
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Collect metadata
+        uses: dynatrace-apps/actions/metadata@v0
+        with:
+          sdlc-host: ${{ secrets.DT_TENANT_URL }}
+      - name: SonarCloud scan
+        uses: SonarSource/sonarqube-scan-action@v6
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: https://sonarcloud.io
