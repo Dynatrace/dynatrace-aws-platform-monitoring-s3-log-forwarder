@@ -15,11 +15,11 @@ log() {
 
 SSM_PARAMETER_NAME="/dynatrace/s3-log-forwarder/${STACK_NAME}/api-key"
 
-log "Storing Dynatrace API key in SSM Parameter Store"
+log "Storing Dynatrace platform token in SSM Parameter Store"
 aws ssm put-parameter \
     --name "${SSM_PARAMETER_NAME}" \
     --type SecureString \
-    --value "${DT_TENANT_API_KEY}" \
+    --value "${DT_TENANT_PLATFORM_TOKEN}" \
     --overwrite
 
 case "${DEPLOY_TYPE}" in

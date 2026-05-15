@@ -10,7 +10,7 @@ You'll need the following software installed:
 
 You'll also need:
 
-* A [Dynatrace access token](https://www.dynatrace.com/support/help/dynatrace-api/basics/dynatrace-api-authentication) for your tenant with the `logs.ingest` APIv2 scope.
+* A Dynatrace [platform token](https://docs.dynatrace.com/docs/manage/identity-access-management/access-tokens-and-oauth-clients/platform-tokens) for your tenant with the `data-acquisition:logs:ingest` scope (used to authenticate against the generic S3 logs ingest API).
 
 ## Deployment options
 
@@ -40,21 +40,21 @@ export DYNATRACE_TENANT_UUID=<replace-with-your-dynatrace-tenant-uuid>
 >
 > Your stack name should have a maximum of 47 characters, otherwise deployment will fail.
 
-### Step 2. Store the Dynatrace API key in AWS Systems Manager Parameter Store
+### Step 2. Store the Dynatrace platform token in AWS Systems Manager Parameter Store
 
-Store the Dynatrace API key as a SecureString parameter so the Lambda function can retrieve it at runtime:
+Store the Dynatrace platform token (scope `data-acquisition:logs:ingest`) as a SecureString parameter so the Lambda function can retrieve it at runtime to authenticate against the generic S3 logs ingest API:
 
 ```bash
 export HISTCONTROL=ignorespace
  aws ssm put-parameter \
      --name "/dynatrace/s3-log-forwarder/$STACK_NAME/api-key" \
      --type SecureString \
-     --value "<your_dynatrace-access-token-here>"
+     --value "<your_dynatrace_platform_token_here>"
 ```
 
 > [!NOTE]
 >
-> **Alternative:** If your security requirements are less strict, you can skip this step and pass the API key directly via `DynatraceApiKey` in the deploy command. The template will store it in an SSM Parameter (String type) and the Lambda reads from it. Note that the key will not be encrypted at rest — use `DynatraceApiKeySSMParameter` with a SecureString parameter as shown above if that is a requirement.
+> **Alternative:** If your security requirements are less strict, you can skip this step and pass the platform token directly via `DynatraceApiKey` in the deploy command. The template will store it in an SSM Parameter (String type) and the Lambda reads from it. Note that the token will not be encrypted at rest — use `DynatraceApiKeySSMParameter` with a SecureString parameter as shown above if that is a requirement.
 
 ### Step 3. Download the CloudFormation templates
 

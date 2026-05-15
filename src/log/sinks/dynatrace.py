@@ -30,11 +30,10 @@ from version import get_version
 
 logger = logging.getLogger()
 
-LOGV2_API_URL_SUFFIX = '/api/v2/logs/ingest'
+GENERIC_LOGS_INGEST_API_URL_SUFFIX = '/api/aws/s3/v1/logs'
 ENVIRONMENT_AG_URL_PART = '/e/'
 
 # Related documentation
-# https://www.dynatrace.com/support/help/dynatrace-api/environment-api/log-monitoring-v2/post-ingest-logs
 # https://www.dynatrace.com/support/help/how-to-use-dynatrace/log-monitoring/log-monitoring-limits
 
 DYNATRACE_LOG_INGEST_CONTENT_MARK_TRIMMED = '[TRUNCATED]'
@@ -65,9 +64,9 @@ default_headers = {
 }
 
 class DynatraceSink():
-    def __init__(self, dt_url: str, dt_api_key_parameter: str, verify_ssl: bool = True):
+    def __init__(self, dt_url: str, dt_platform_token_parameter: str, verify_ssl: bool = True):
         self._environment_url = dt_url.rstrip('/')
-        self._api_key_parameter = dt_api_key_parameter
+        self._platform_token_parameter = dt_platform_token_parameter
         self._approx_buffered_messages_size = LIST_BRACKETS_LENGTH
         self._messages = []
         self._batch_num = 1
@@ -150,10 +149,10 @@ class DynatraceSink():
                                unit=MetricUnit.Count, value=1)
         return message
 
-    def post_logsv2(self, dt_url, dt_api_key, data,
-                    compress=True, session=None):
+    def post_logs(self, dt_url, dt_platform_token, dt_tenant, data,
+                  compress=True, session=None):
         '''
-        Does an HTTP POST request to the Logs V2 API. Compresses data by default.
+        Does an HTTP POST request to the generic logs ingest API. Compresses data by default.
         '''
 
         if session is None:
@@ -162,8 +161,9 @@ class DynatraceSink():
         headers = {}
         headers.update(default_headers)
         headers.update({
-            'Authorization': f'Api-Token {dt_api_key}',
-            'Content-Type': 'application/json; charset=utf-8'
+            'Authorization': f'Bearer {dt_platform_token}',
+            'Content-Type': 'application/json; charset=utf-8',
+            'Dt-Tenant': dt_tenant
         })
 
 
@@ -190,8 +190,8 @@ class DynatraceSink():
         Returns a list of failed batch numbers.
         '''
 
-        dt_api_key = parameters.get_parameter(
-            self._api_key_parameter, max_age=120, decrypt=True)
+        dt_platform_token = parameters.get_parameter(
+            self._platform_token_parameter, max_age=120, decrypt=True)
 
         tenant_id = extract_tenant_id_from_url(self._environment_url)
 
@@ -207,8 +207,8 @@ class DynatraceSink():
         start_time = time.time()
 
         # https://github.com/requests/requests-threads
-        resp = self.post_logsv2(self._environment_url + LOGV2_API_URL_SUFFIX,
-                                dt_api_key, data, session=session)
+        resp = self.post_logs(self._environment_url + GENERIC_LOGS_INGEST_API_URL_SUFFIX,
+                              dt_platform_token, tenant_id, data, session=session)
 
         if resp.status_code == 204:
             logger.debug('%s: Successfully posted batch %d. Ingested %.2f KB of log data to Dynatrace',
@@ -225,6 +225,13 @@ class DynatraceSink():
                 '%s: Parts of batch %s were not successfully posted: %s. Source file: %s',tenant_id, batch_num, resp.text, self._s3_source)
             metrics.add_metric(
                 name='DynatraceHTTP400InvalidLogEntries', unit=MetricUnit.Count, value=1)
+        elif resp.status_code == 413:
+            logger.error(
+                "%s: Batch %d rejected by Dynatrace (payload too large): %s. Source file: %s",
+                tenant_id, batch_num, resp.text, self._s3_source)
+            metrics.add_metric(name='DynatraceHTTP413PayloadTooLarge', unit=MetricUnit.Count, value=1)
+            metrics.add_metric(name='DynatraceHTTPErrors', unit=MetricUnit.Count, value=1)
+            raise DynatraceIngestionException
         elif resp.status_code == 429:
             logger.error("%s: Throttled by Dynatrace. Exhausted retry attempts... Source file: %s", tenant_id, self._s3_source)
             metrics.add_metric(name='DynatraceHTTP429Throttled',unit=MetricUnit.Count, value=1)
@@ -254,7 +261,8 @@ class DynatraceSink():
 def load_sink() -> 'DynatraceSink':
     '''
     Loads the configured Dynatrace sink. Reads DYNATRACE_API_KEY_SSM for the SSM parameter
-    path that stores the API key — always set by the CloudFormation template.
+    path that stores the Dynatrace platform token (used as Bearer credential against the
+    generic S3 logs ingest API). Always set by the CloudFormation template.
     '''
     verify_ssl = False if os.environ['VERIFY_DT_SSL_CERT'] == "false" else True
     return DynatraceSink(os.environ['DYNATRACE_ENV_URL'], os.environ['DYNATRACE_API_KEY_SSM'], verify_ssl)

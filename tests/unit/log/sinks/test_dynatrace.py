@@ -18,6 +18,7 @@ import json
 import logging
 import sys
 from math import ceil
+from unittest.mock import patch
 import requests
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
@@ -53,7 +54,7 @@ class TestDynatraceSink(unittest.TestCase):
         dynatrace_sink = dynatrace.DynatraceSink(mock_dt_url,mock_dt_key_parameter)
         test_log_messages = [{'content': 'test'}] * (dynatrace.DYNATRACE_LOG_INGEST_MAX_ENTRIES_COUNT + 1)
         
-        responses.add(responses.POST, dynatrace_sink.get_environment_url() + dynatrace.LOGV2_API_URL_SUFFIX,
+        responses.add(responses.POST, dynatrace_sink.get_environment_url() + dynatrace.GENERIC_LOGS_INGEST_API_URL_SUFFIX,
                       status=204)
 
         for message in test_log_messages:
@@ -73,7 +74,7 @@ class TestDynatraceSink(unittest.TestCase):
         num_messages_to_push = ceil(
             (dynatrace.DYNATRACE_LOG_INGEST_PAYLOAD_MAX_SIZE - dynatrace.LIST_BRACKETS_LENGTH) / log_message_size) + 1
         
-        responses.add(responses.POST, dynatrace_sink.get_environment_url() + dynatrace.LOGV2_API_URL_SUFFIX,
+        responses.add(responses.POST, dynatrace_sink.get_environment_url() + dynatrace.GENERIC_LOGS_INGEST_API_URL_SUFFIX,
                       status=204)
 
         for _ in range(1,num_messages_to_push):
@@ -91,7 +92,7 @@ class TestDynatraceSink(unittest.TestCase):
         dynatrace_sink = dynatrace.DynatraceSink(mock_dt_url,mock_dt_key_parameter)
 
         test_log_entries = [{'content': 'test log'}]
-        responses.add(responses.POST, dynatrace_sink.get_environment_url() + dynatrace.LOGV2_API_URL_SUFFIX,
+        responses.add(responses.POST, dynatrace_sink.get_environment_url() + dynatrace.GENERIC_LOGS_INGEST_API_URL_SUFFIX,
                       body=json.dumps({'details': {'message': 'Too many requests','code': 429}}).encode(dynatrace.ENCODING), 
                       content_type="application/json",
                       status=429)
@@ -110,6 +111,32 @@ class TestDynatraceSink(unittest.TestCase):
         session.mount("https://", adapter)
 
         self.assertRaises(requests.exceptions.RetryError,dynatrace_sink.ingest_logs,test_log_entries,session=session)
+
+    @responses.activate
+    @patch('log.sinks.dynatrace.parameters.get_parameter', return_value='dt0s01.faketoken')
+    def test_dt_tenant_header_and_bearer_auth(self, _mock_get_parameter):
+        dynatrace_sink = dynatrace.DynatraceSink(mock_dt_url, mock_dt_key_parameter)
+        responses.add(responses.POST, dynatrace_sink.get_environment_url() + dynatrace.GENERIC_LOGS_INGEST_API_URL_SUFFIX,
+                      status=204)
+
+        dynatrace_sink.ingest_logs([{'content': 'hello'}])
+
+        sent = responses.calls[0].request
+        self.assertEqual(sent.headers['Authorization'], 'Bearer dt0s01.faketoken')
+        # Tenant ID extracted from https://test.live.dynatrace.com is "test"
+        self.assertEqual(sent.headers['Dt-Tenant'], 'test')
+
+    @responses.activate
+    @patch('log.sinks.dynatrace.parameters.get_parameter', return_value='dt0s01.faketoken')
+    def test_dynatrace_413_payload_too_large(self, _mock_get_parameter):
+        dynatrace_sink = dynatrace.DynatraceSink(mock_dt_url, mock_dt_key_parameter)
+        responses.add(responses.POST, dynatrace_sink.get_environment_url() + dynatrace.GENERIC_LOGS_INGEST_API_URL_SUFFIX,
+                      body=json.dumps({'error': {'code': 413, 'message': 'Payload too large'}}).encode(dynatrace.ENCODING),
+                      content_type="application/json",
+                      status=413)
+
+        self.assertRaises(dynatrace.DynatraceIngestionException,
+                          dynatrace_sink.ingest_logs, [{'content': 'hello'}])
 
 if __name__ == '__main__':
     unittest.main()
