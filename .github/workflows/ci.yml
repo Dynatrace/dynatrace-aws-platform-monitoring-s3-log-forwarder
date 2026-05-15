@@ -3,7 +3,7 @@
 #   AWS_SECRET_ACCESS_KEY        - Corresponding AWS secret key
 #   CFN_ROLE_ARN                 - IAM role ARN passed to CloudFormation deploy for E2E tests
 #   DT_TENANT_URL                - Dynatrace tenant URL for the log forwarder (e.g. https://abc1234.live.dynatrace.com)
-#   DT_TENANT_API_KEY            - Dynatrace API key used to create the SSM parameter during E2E deployment
+#   DT_TENANT_PLATFORM_TOKEN     - Dynatrace platform token used to create the SSM parameter during E2E deployment
 #   DT_TENANT_PLATFORM_URL       - Dynatrace platform URL for log validation queries
 #   DT_SSO_URL                   - Dynatrace SSO URL for OAuth token exchange
 #   DT_OAUTH_CLIENT_ID           - OAuth client ID for log validation
@@ -84,7 +84,7 @@ jobs:
       E2E_TESTING_BUCKET_NAME: dynatrace-aws-s3-log-forwarder-e2e-testing
       CI_RUN_ID: ${{ github.run_id }}
       DT_TENANT_URL: ${{ secrets.DT_TENANT_URL }}
-      DT_TENANT_API_KEY: ${{ secrets.DT_TENANT_API_KEY }}
+      DT_TENANT_PLATFORM_TOKEN: ${{ secrets.DT_TENANT_PLATFORM_TOKEN }}
       CFN_ROLE_ARN: ${{ secrets.CFN_ROLE_ARN }}
       DT_TENANT_PLATFORM_URL: ${{ secrets.DT_TENANT_PLATFORM_URL }}
       DT_SSO_URL: ${{ secrets.DT_SSO_URL }}
@@ -131,7 +131,7 @@ jobs:
       E2E_TESTING_BUCKET_NAME: dynatrace-aws-s3-log-forwarder-e2e-testing
       CI_RUN_ID: ${{ github.run_id }}
       DT_TENANT_URL: ${{ secrets.DT_TENANT_URL }}
-      DT_TENANT_API_KEY: ${{ secrets.DT_TENANT_API_KEY }}
+      DT_TENANT_PLATFORM_TOKEN: ${{ secrets.DT_TENANT_PLATFORM_TOKEN }}
       CFN_ROLE_ARN: ${{ secrets.CFN_ROLE_ARN }}
       DT_TENANT_PLATFORM_URL: ${{ secrets.DT_TENANT_PLATFORM_URL }}
       DT_SSO_URL: ${{ secrets.DT_SSO_URL }}

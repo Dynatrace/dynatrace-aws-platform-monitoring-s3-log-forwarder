@@ -32,13 +32,13 @@ Parameters:
     Type: String
     AllowedPattern: "^https:\\/\\/[a-zA-Z0-9-]{2,}(\\.[a-zA-Z0-9-]{2,})(\\.[a-zA-Z0-9-]{2,})*(:9999\\/e\\/.[a-z0-9-]*)?$"
   DynatraceApiKeySSMParameter:
-    Description: "Path of the SecureString Parameter in AWS Systems Manager Parameter Store that stores the Dynatrace API key (e.g. /dynatrace/s3-log-forwarder/my-stack/api-key). Use this or DynatraceApiKey, not both."
+    Description: "Path of the SecureString Parameter in AWS Systems Manager Parameter Store that stores the Dynatrace platform token (scope: data-acquisition:logs:ingest) used to authenticate against the generic S3 logs ingest API (e.g. /dynatrace/s3-log-forwarder/my-stack/api-key). Use this or DynatraceApiKey, not both."
     Type: String
     Default: ""
     AllowedPattern: "(^$|^\\/[a-zA-Z0-9._\\-\\/]+$)"
     ConstraintDescription: "Must be a valid SSM parameter path starting with '/' (e.g. /dynatrace/s3-log-forwarder/my-stack/api-key) or left empty."
   DynatraceApiKey:
-    Description: "Dynatrace API key with logs.ingest scope. Use this or DynatraceApiKeySSMParameter, not both. The key is stored in an SSM Parameter (String type) at /dynatrace/s3-log-forwarder/{stack-name}/api-key. For encrypted-at-rest storage, create a SecureString SSM parameter yourself and provide its path via DynatraceApiKeySSMParameter instead."
+    Description: "Dynatrace platform token with data-acquisition:logs:ingest scope. Use this or DynatraceApiKeySSMParameter, not both. The token is stored in an SSM Parameter (String type) at /dynatrace/s3-log-forwarder/{stack-name}/api-key. For encrypted-at-rest storage, create a SecureString SSM parameter yourself and provide its path via DynatraceApiKeySSMParameter instead."
     Type: String
     Default: ""
     NoEcho: true
@@ -646,6 +646,15 @@ Resources:
                     [
                       ".",
                       "DynatraceHTTP400InvalidLogEntries",
+                      ".",
+                      ".",
+                      {
+                        "yAxis": "right"
+                      }
+                    ],
+                    [
+                      ".",
+                      "DynatraceHTTP413PayloadTooLarge",
                       ".",
                       ".",
                       {

@@ -22,7 +22,7 @@ You'll need the following software installed:
 
 You'll also need:
 
-* A [Dynatrace access token](https://www.dynatrace.com/support/help/dynatrace-api/basics/dynatrace-api-authentication) for your tenant with the `logs.ingest` APIv2 scope.
+* A Dynatrace [platform token](https://docs.dynatrace.com/docs/manage/identity-access-management/access-tokens-and-oauth-clients/platform-tokens) for your tenant with the `data-acquisition:logs:ingest` scope (used to authenticate against the generic S3 logs ingest API).
 
 ## Setup
 
@@ -48,20 +48,20 @@ Before deploying either option, complete the following steps.
     >
     > Your stack name should have a maximum of 47 characters, otherwise deployment will fail.
 
-1. Create an AWS SSM SecureString Parameter to store your Dynatrace access token to ingest logs.
+1. Create an AWS SSM SecureString Parameter to store your Dynatrace platform token to ingest logs.
 
     ```bash
     export PARAMETER_NAME="/dynatrace/s3-log-forwarder/$STACK_NAME/$DYNATRACE_TENANT_UUID/api-key"
-    # Configure HISTCONTROL to avoid storing on the bash history the commands containing API keys
+    # Configure HISTCONTROL to avoid storing on the bash history the commands containing tokens
     export HISTCONTROL=ignorespace
-     export PARAMETER_VALUE=your_dynatrace_api_key_here
+     export PARAMETER_VALUE=your_dynatrace_platform_token_here
      aws ssm put-parameter --name $PARAMETER_NAME --type SecureString --value $PARAMETER_VALUE
     ```
 
     > [!NOTE]
     >
     > * It's important that your parameter name follows the structure above, as the solution grants permissions to AWS Lambda to the hierarchy `/dynatrace/s3-log-forwarder/your_stack_name/*`
-    > * Your API Key is stored encrypted with the default AWS-managed key alias: `aws/ssm`. If you want to use a Customer-managed Key, you'll need to grant Decrypt permissions to the AWS Lambda IAM Role that's deployed within the SAM template.
+    > * Your platform token is stored encrypted with the default AWS-managed key alias: `aws/ssm`. If you want to use a Customer-managed Key, you'll need to grant Decrypt permissions to the AWS Lambda IAM Role that's deployed within the SAM template.
 
 ## Building and deploying a Lambda Layer from source
 
