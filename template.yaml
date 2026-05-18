@@ -97,7 +97,7 @@ Parameters:
   LogForwarderConfigurationLocation:
     Description: Location from which to pull log forwarding and log processing rules (aws-appconfig or local)
     Type: String
-    Default: aws-appconfig
+    Default: local
     AllowedValues:
       - aws-appconfig
       - local
@@ -239,17 +239,6 @@ Resources:
                   - ssm:GetParameter
                   - ssm:GetParameters
                 Resource: !Sub arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/dynatrace/s3-log-forwarder/${AWS::StackName}/*
-        - PolicyName: AppConfigPolicy
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Effect: Allow
-                Action:
-                  - appconfig:StartConfigurationSession
-                  - appconfig:GetLatestConfiguration
-                Resource:
-                  - !Sub arn:${AWS::Partition}:appconfig:${AWS::Region}:${AWS::AccountId}:application/${AppConfigApplication}
-                  - !Sub arn:${AWS::Partition}:appconfig:${AWS::Region}:${AWS::AccountId}:application/${AppConfigApplication}/environment/${AppConfigEnvironment}/*
 
   QueueProcessingFunction:
     Type: AWS::Serverless::Function
@@ -536,89 +525,6 @@ Resources:
           ArnEquals:
             "aws:SourceArn": 
               - !Sub arn:aws:events:*:*:rule/dt-s3-log-fwd-to-${AWS::AccountId}-*
-
-  AppConfigApplication:
-    Type: AWS::AppConfig::Application
-    Properties:
-      Description: "dynatrace-aws-platform-monitoring-s3-log-forwarder application configuration"
-      Name: !Sub ${AWS::StackName}-app-config
-  
-  LogForwardingConfigurationProfile:
-    Type: AWS::AppConfig::ConfigurationProfile
-    Properties:
-      ApplicationId: !Ref AppConfigApplication
-      Description: "dynatrace-aws-s3-log-forwarding forwarding rules configuration profile"
-      LocationUri: hosted
-      Name: log-forwarding-rules
-      Type: AWS.Freeform
-  
-  LogProcessingConfigurationProfile:
-    Type: AWS::AppConfig::ConfigurationProfile
-    Properties:
-      ApplicationId: !Ref AppConfigApplication
-      Description: "dynatrace-aws-s3-log-forwarding processing rules configuration profile"
-      LocationUri: hosted
-      Name: log-processing-rules
-      Type: AWS.Freeform
-
-  AppConfigDeploymentStrategy:
-    Type: AWS::AppConfig::DeploymentStrategy
-    Properties:
-      Name: !Sub ${AWS::StackName}-AllAtOnce
-      DeploymentDurationInMinutes: 0
-      FinalBakeTimeInMinutes: 0
-      GrowthFactor: 100
-      ReplicateTo: NONE
-  
-  AppConfigEnvironment:
-    Type: AWS::AppConfig::Environment
-    Properties:
-      Name: !Sub ${AWS::StackName}
-      ApplicationId: !Ref AppConfigApplication
-
-  LogForwardingRulesHostedConfiguration:
-    Type: AWS::AppConfig::HostedConfigurationVersion
-    Properties:
-      Description: dynatrace-aws-s3-log-forwarder log forwarding rules
-      ApplicationId: !Ref AppConfigApplication
-      ConfigurationProfileId: !Ref LogForwardingConfigurationProfile
-      ContentType: application/x-yaml
-      Content: |
-        ---
-        bucket_name: default
-        log_forwarding_rules:
-          - name: default_forward_all
-            prefix: ".*"
-            source: aws
-
-  LogProcessingRulesHostedConfiguration:
-    Type: AWS::AppConfig::HostedConfigurationVersion
-    Properties:
-      Description: dynatrace-aws-s3-log-forwarder log processing rules
-      ApplicationId: !Ref AppConfigApplication
-      ConfigurationProfileId: !Ref LogProcessingConfigurationProfile
-      ContentType: application/x-yaml
-      Content: |
-        # No custom log processing rules
-
-  LogForwardingRulesDeployment:
-    Type: AWS::AppConfig::Deployment
-    Properties:
-      ApplicationId: !Ref AppConfigApplication
-      ConfigurationProfileId: !Ref LogForwardingConfigurationProfile
-      DeploymentStrategyId: !Ref AppConfigDeploymentStrategy
-      EnvironmentId: !Ref AppConfigEnvironment
-      ConfigurationVersion: !Ref LogForwardingRulesHostedConfiguration
-
-  LogProcessingRulesDeployment:
-    Type: AWS::AppConfig::Deployment
-    DependsOn: LogForwardingRulesDeployment
-    Properties:
-      ApplicationId: !Ref AppConfigApplication
-      ConfigurationProfileId: !Ref LogProcessingConfigurationProfile
-      DeploymentStrategyId: !Ref AppConfigDeploymentStrategy
-      EnvironmentId: !Ref AppConfigEnvironment
-      ConfigurationVersion: !Ref LogProcessingRulesHostedConfiguration
 
   CloudWatchDashboard:
     Condition: DeployMonitoringDashboard
@@ -1188,14 +1094,6 @@ Resources:
       Value: !GetAtt QueueProcessingFunctionRole.Arn
       Description: !Sub "ARN of the Lambda IAM role for deployment ${AWS::StackName}"
 
-  SSMParameterAppConfigApplicationId:
-    Type: AWS::SSM::Parameter
-    Properties:
-      Name: !Sub /dynatrace/s3-log-forwarder/${AWS::StackName}/appconfig-application-id
-      Type: String
-      Value: !Ref AppConfigApplication
-      Description: !Sub "AppConfig application ID for deployment ${AWS::StackName}"
-
 Outputs:
   QueueProcessingFunction:
     Description: "Queue Processing Lambda Function ARN"
@@ -1233,37 +1131,9 @@ Outputs:
     Description: "URL for the CloudWatch Dashboard to monitor the dynatrace-aws-s3-log-forwarder"
     Value: !Sub |
               https://${AWS::Region}.console.aws.amazon.com/cloudwatch/home#dashboards:name=${CloudWatchDashboard}
-  AppConfigApplicationId:
-    Description: AppConfig configuration application id
-    Value: !Ref AppConfigApplication
-    Export:
-      Name: !Sub ${AWS::StackName}:AppConfigApplicationId
-  AppConfigEnvironmentId:
-    Description: AppConfig configuration environment id
-    Value: !Ref AppConfigEnvironment
-    Export:
-      Name: !Sub ${AWS::StackName}:AppConfigEnvironmentId
-  LogForwardingConfigurationProfile:
-    Description: AppConfig Configuration Profile for log forwarding rules
-    Value: !Ref LogForwardingConfigurationProfile
-    Export:
-      Name: !Sub ${AWS::StackName}:LogForwardingConfigurationProfileId
-  LogProcessingConfigurationProfile: 
-    Description: AppConfig Configuration Profile for log forwarding rules
-    Value: !Ref LogProcessingConfigurationProfile
-    Export:
-      Name: !Sub ${AWS::StackName}:LogProcessingConfigurationProfileId
-  AppConfigAllAtOnceDeploymentStrategy:
-    Description: Deployment strategy for AWS AppConfig to deploy the log forwarding and processing configuration
-    Value: !Ref AppConfigDeploymentStrategy
-    Export:
-      Name: !Sub ${AWS::StackName}:AppConfigDeploymentStrategyId
   SSMParameterPathSQSQueueArn:
     Description: "SSM Parameter path storing the SQS queue ARN"
     Value: !Sub /dynatrace/s3-log-forwarder/${AWS::StackName}/sqs-queue-arn
   SSMParameterPathLambdaRoleArn:
     Description: "SSM Parameter path storing the Lambda IAM role ARN"
     Value: !Sub /dynatrace/s3-log-forwarder/${AWS::StackName}/lambda-role-arn
-  SSMParameterPathAppConfigApplicationId:
-    Description: "SSM Parameter path storing the AppConfig application ID"
-    Value: !Sub /dynatrace/s3-log-forwarder/${AWS::StackName}/appconfig-application-id

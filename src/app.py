@@ -71,7 +71,7 @@ def generate_execution_timeout_batch_item_failures(index: int, batch_item_failur
 
 def reload_rules(rules_type: str):
 
-    if os.environ['LOG_FORWARDER_CONFIGURATION_LOCATION'] == "aws-appconfig":
+    if os.environ.get('LOG_FORWARDER_CONFIGURATION_LOCATION') == "aws-appconfig":
         # load globals
         glob = globals()
 

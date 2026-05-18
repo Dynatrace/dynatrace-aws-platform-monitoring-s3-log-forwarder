@@ -37,16 +37,24 @@ logger = logging.getLogger()
 
 def load():
     '''
-    Loads log forwarding rules from AWS Config or from local file. Only use this method for
-    lambda startup.
+    Loads log forwarding rules from AWS AppConfig or from local file. Only use this method for
+    lambda startup. Falls back to bundled local defaults when AppConfig is unavailable or
+    LOG_FORWARDER_CONFIGURATION_LOCATION is not set.
     '''
     if os.environ.get('LOG_FORWARDER_CONFIGURATION_LOCATION') == 'aws-appconfig':
-        return load_forwarding_rules_from_aws_appconfig()
+        try:
+            return load_forwarding_rules_from_aws_appconfig()
+        except aws_appconfig_helpers.ErrorAccessingAppConfig:
+            logger.warning(
+                "Unable to load log-forwarding-rules from AWS AppConfig at cold start, "
+                "falling back to bundled local defaults")
     elif os.environ.get('LOG_FORWARDER_CONFIGURATION_LOCATION') == 'local':
         if os.path.isfile(DEFAULT_FORWARDING_RULES_FILE):
             return load_forwarding_rules_from_local_file()
 
         return load_forwarding_rules_from_local_folder()
+
+    return load_forwarding_rules_from_local_file()
 
 def load_forwarding_rules_yaml(body: str) -> dict:
     '''
