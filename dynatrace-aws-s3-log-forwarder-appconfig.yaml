@@ -1,0 +1,161 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: |
+  dynatrace-aws-s3-log-forwarder-appconfig
+
+  Deploys AWS AppConfig resources for the dynatrace-aws-platform-monitoring-s3-log-forwarder,
+  allowing runtime customisation of log forwarding and log processing rules without redeploying
+  the Lambda function.
+
+  Deploy this template once per dynatrace-aws-platform-monitoring-s3-log-forwarder deployment
+  when you want to customise forwarding or processing rules. After deployment, edit the
+  log-forwarding-rules and log-processing-rules configuration profiles in AppConfig and deploy
+  them — the Lambda will pick up changes within ~1 minute.
+
+  For more information: https://github.com/Dynatrace/dynatrace-aws-platform-monitoring-s3-log-forwarder
+
+Metadata:
+  License:
+    Description: |
+      Copyright 2022 Dynatrace LLC
+
+      Licensed under the Apache License, Version 2.0 (the "License");
+      you may not use this file except in compliance with the License.
+      You may obtain a copy of the License at
+
+           https://www.apache.org/licenses/LICENSE-2.0
+
+      Unless required by applicable law or agreed to in writing, software
+      distributed under the License is distributed on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+      See the License for the specific language governing permissions and
+      limitations under the License.
+
+  Version:
+    Description: dev
+
+  Instructions:
+    Description: |
+      Deploy this template once per dynatrace-aws-platform-monitoring-s3-log-forwarder deployment.
+      Pass the name of the main stack as DynatraceAwsS3LogForwarderStackName.
+
+      Example AWS CLI command:
+
+      aws cloudformation deploy \
+          --template-file dynatrace-aws-s3-log-forwarder-appconfig.yaml \
+          --stack-name dynatrace-aws-s3-log-forwarder-appconfig-{your-deployment-name} \
+          --parameter-overrides DynatraceAwsS3LogForwarderStackName={your-dynatrace-aws-s3-log-forwarder-stack-name} \
+          --capabilities CAPABILITY_IAM
+
+      After deployment, set LOG_FORWARDER_CONFIGURATION_LOCATION=aws-appconfig on the Lambda
+      function (or redeploy the main stack with LogForwarderConfigurationLocation=aws-appconfig).
+
+Parameters:
+  DynatraceAwsS3LogForwarderStackName:
+    Type: String
+    Description: Name of the CloudFormation stack where you deployed the dynatrace-aws-platform-monitoring-s3-log-forwarder
+
+Resources:
+  AppConfigApplication:
+    Type: AWS::AppConfig::Application
+    Properties:
+      Description: "dynatrace-aws-platform-monitoring-s3-log-forwarder application configuration"
+      Name: !Sub ${DynatraceAwsS3LogForwarderStackName}-app-config
+
+  LogForwardingConfigurationProfile:
+    Type: AWS::AppConfig::ConfigurationProfile
+    Properties:
+      ApplicationId: !Ref AppConfigApplication
+      Description: "dynatrace-aws-s3-log-forwarder log forwarding rules configuration profile"
+      LocationUri: hosted
+      Name: log-forwarding-rules
+      Type: AWS.Freeform
+
+  LogProcessingConfigurationProfile:
+    Type: AWS::AppConfig::ConfigurationProfile
+    Properties:
+      ApplicationId: !Ref AppConfigApplication
+      Description: "dynatrace-aws-s3-log-forwarder log processing rules configuration profile"
+      LocationUri: hosted
+      Name: log-processing-rules
+      Type: AWS.Freeform
+
+  AppConfigDeploymentStrategy:
+    Type: AWS::AppConfig::DeploymentStrategy
+    Properties:
+      Name: !Sub ${DynatraceAwsS3LogForwarderStackName}-AllAtOnce
+      DeploymentDurationInMinutes: 0
+      FinalBakeTimeInMinutes: 0
+      GrowthFactor: 100
+      ReplicateTo: NONE
+
+  AppConfigEnvironment:
+    Type: AWS::AppConfig::Environment
+    Properties:
+      Name: !Ref DynatraceAwsS3LogForwarderStackName
+      ApplicationId: !Ref AppConfigApplication
+
+  LogForwardingRulesHostedConfiguration:
+    Type: AWS::AppConfig::HostedConfigurationVersion
+    Properties:
+      Description: dynatrace-aws-s3-log-forwarder log forwarding rules
+      ApplicationId: !Ref AppConfigApplication
+      ConfigurationProfileId: !Ref LogForwardingConfigurationProfile
+      ContentType: application/x-yaml
+      Content: |
+        ---
+        bucket_name: default
+        log_forwarding_rules:
+          - name: default_forward_all
+            prefix: ".*"
+            source: aws
+
+  LogProcessingRulesHostedConfiguration:
+    Type: AWS::AppConfig::HostedConfigurationVersion
+    Properties:
+      Description: dynatrace-aws-s3-log-forwarder log processing rules
+      ApplicationId: !Ref AppConfigApplication
+      ConfigurationProfileId: !Ref LogProcessingConfigurationProfile
+      ContentType: application/x-yaml
+      Content: |
+        # No custom log processing rules
+
+  LambdaAppConfigPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: AppConfigPolicy
+      Roles:
+        - Fn::ImportValue: !Sub ${DynatraceAwsS3LogForwarderStackName}:QueueProcessingFunctionIamRole
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - appconfig:StartConfigurationSession
+              - appconfig:GetLatestConfiguration
+            Resource:
+              - !Sub arn:${AWS::Partition}:appconfig:${AWS::Region}:${AWS::AccountId}:application/${AppConfigApplication}
+              - !Sub arn:${AWS::Partition}:appconfig:${AWS::Region}:${AWS::AccountId}:application/${AppConfigApplication}/environment/${AppConfigEnvironment}/*
+
+  LogForwardingRulesDeployment:
+    Type: AWS::AppConfig::Deployment
+    Properties:
+      ApplicationId: !Ref AppConfigApplication
+      ConfigurationProfileId: !Ref LogForwardingConfigurationProfile
+      DeploymentStrategyId: !Ref AppConfigDeploymentStrategy
+      EnvironmentId: !Ref AppConfigEnvironment
+      ConfigurationVersion: !Ref LogForwardingRulesHostedConfiguration
+
+  LogProcessingRulesDeployment:
+    Type: AWS::AppConfig::Deployment
+    DependsOn: LogForwardingRulesDeployment
+    Properties:
+      ApplicationId: !Ref AppConfigApplication
+      ConfigurationProfileId: !Ref LogProcessingConfigurationProfile
+      DeploymentStrategyId: !Ref AppConfigDeploymentStrategy
+      EnvironmentId: !Ref AppConfigEnvironment
+      ConfigurationVersion: !Ref LogProcessingRulesHostedConfiguration
+
+Outputs:
+  AppConfigApplicationId:
+    Description: AppConfig configuration application id
+    Value: !Ref AppConfigApplication
