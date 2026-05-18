@@ -153,7 +153,7 @@ Parameters:
   MaximumSQSMessageRetries:
     Type: Number
     Description: Maximum number of retries for failed processing of S3 Object Created notification messages
-    Default: 2
+    Default: 3
   S3BucketNames:
     Type: CommaDelimitedList
     Description: "Optional list of S3 bucket names (e.g. my-bucket,another-bucket) to grant the Lambda function s3:GetObject access and create an EventBridge routing rule for. Use the per-bucket CloudFormation template for prefix filtering or cross-account/region buckets."

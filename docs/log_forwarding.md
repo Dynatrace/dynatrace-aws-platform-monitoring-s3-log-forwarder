@@ -100,7 +100,7 @@ The SAM template deploys the forwarder with the following default parameters tha
 * `LambdaMaximumExecutionTime`: 300  --> Maximum execution time in seconds of the AWS Lambda function, you can increase this up to 900
 * `SQSVisibilityTimeout`: 420  --> SQS message invisibility time once received. This value should be larger than the LambdaMaximumExecutionTime to avoid more than one Lambda function processing the same log file (note however that SQS provides at-least-once delivery)
 * `SQSLongPollingMaxSeconds`: 20  --> Time to wait while polling the SQS queue for messages
-* `MaximumSQSMessageRetries`: 2  --> Maximum number of times the forwarder retries processing a log file if it fails before sending the S3 Object created notification to the DLQ
+* `MaximumSQSMessageRetries`: 3  --> Maximum number of times the forwarder retries processing a log file if it fails before sending the S3 Object created notification to the DLQ
 * `CreateS3NotificationsSNSTopic`: false --> Set to "true" to create an SNS topic for receiving S3 Object Created notifications (useful for fan-out architectures)
 
 ## S3 notification source options
