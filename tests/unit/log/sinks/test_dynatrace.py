@@ -16,6 +16,7 @@ import unittest
 from datetime import datetime
 import json
 import logging
+import os
 import sys
 from math import ceil
 import requests
@@ -110,6 +111,38 @@ class TestDynatraceSink(unittest.TestCase):
         session.mount("https://", adapter)
 
         self.assertRaises(requests.exceptions.RetryError,dynatrace_sink.ingest_logs,test_log_entries,session=session)
+
+class TestDynatraceSinkInit(unittest.TestCase):
+
+    def test_neither_key_nor_parameter_raises_value_error(self):
+        with self.assertRaises(ValueError) as cm:
+            dynatrace.DynatraceSink('https://test.live.dynatrace.com')
+        self.assertIn("neither was provided", str(cm.exception))
+
+
+class TestLoadSink(unittest.TestCase):
+
+    def setUp(self):
+        os.environ['DYNATRACE_ENV_URL'] = 'https://test.live.dynatrace.com'
+        os.environ['VERIFY_DT_SSL_CERT'] = 'true'
+
+    def tearDown(self):
+        for key in ('DYNATRACE_ENV_URL', 'VERIFY_DT_SSL_CERT',
+                    'DYNATRACE_API_KEY', 'DYNATRACE_API_KEY_SSM'):
+            os.environ.pop(key, None)
+
+    def test_neither_key_set_raises_value_error(self):
+        with self.assertRaises(ValueError) as cm:
+            dynatrace.load_sink()
+        self.assertIn("Neither", str(cm.exception))
+
+    def test_both_keys_set_raises_value_error(self):
+        os.environ['DYNATRACE_API_KEY'] = 'direct-token'
+        os.environ['DYNATRACE_API_KEY_SSM'] = '/some/ssm/param'
+        with self.assertRaises(ValueError) as cm:
+            dynatrace.load_sink()
+        self.assertIn("Both", str(cm.exception))
+
 
 if __name__ == '__main__':
     unittest.main()

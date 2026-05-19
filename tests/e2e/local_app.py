@@ -187,7 +187,7 @@ if os.environ['AWS_SAM_LOCAL'] == 'True':
 
     def save_test_ssm_parameters():
         client = boto3.client('ssm')
-        api_key_parameter = os.environ['DYNATRACE_API_KEY_PARAM']
+        api_key_parameter = os.environ['DYNATRACE_API_KEY_SSM']
         client.put_parameter(Name=api_key_parameter, Type='SecureString',
                              Value=os.environ['DYNATRACE_API_KEY'])
 

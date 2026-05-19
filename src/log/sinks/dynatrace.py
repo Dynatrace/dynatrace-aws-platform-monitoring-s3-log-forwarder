@@ -67,6 +67,9 @@ default_headers = {
 class DynatraceSink():
     def __init__(self, dt_url: str, dt_api_key_parameter: str = None,
                  verify_ssl: bool = True, *, dt_api_key: str = None):
+        if not dt_api_key and not dt_api_key_parameter:
+            raise ValueError(
+                "DynatraceSink requires either dt_api_key or dt_api_key_parameter; neither was provided.")
         self._environment_url = dt_url.rstrip('/')
         self._api_key_parameter = dt_api_key_parameter
         self._api_key = dt_api_key
@@ -259,13 +262,22 @@ class DynatraceSink():
 def load_sink() -> 'DynatraceSink':
     '''
     Loads the configured Dynatrace sink. Reads DYNATRACE_API_KEY for a direct token or
-    DYNATRACE_API_KEY_PARAM for an SSM SecureString path — exactly one must be set.
+    DYNATRACE_API_KEY_SSM for an SSM SecureString path — exactly one must be set.
     '''
     verify_ssl = False if os.environ['VERIFY_DT_SSL_CERT'] == "false" else True
     direct_key = os.environ.get('DYNATRACE_API_KEY')
+    ssm_param = os.environ.get('DYNATRACE_API_KEY_SSM')
+
+    if direct_key and ssm_param:
+        raise ValueError(
+            "Both DYNATRACE_API_KEY and DYNATRACE_API_KEY_SSM are set; provide exactly one.")
+    if not direct_key and not ssm_param:
+        raise ValueError(
+            "Neither DYNATRACE_API_KEY nor DYNATRACE_API_KEY_SSM is set; provide exactly one.")
+
     if direct_key:
         return DynatraceSink(os.environ['DYNATRACE_ENV_URL'], verify_ssl=verify_ssl, dt_api_key=direct_key)
-    return DynatraceSink(os.environ['DYNATRACE_ENV_URL'], os.environ['DYNATRACE_API_KEY_PARAM'], verify_ssl)
+    return DynatraceSink(os.environ['DYNATRACE_ENV_URL'], ssm_param, verify_ssl)
 
 
 def extract_tenant_id_from_url(environment_url: str):
