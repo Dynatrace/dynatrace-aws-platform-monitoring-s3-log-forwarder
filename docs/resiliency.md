@@ -6,39 +6,21 @@ The SAM template configures a CloudWatch alarm to trigger whenever messages make
 
 You can take a look at the messages on the Dead Letter Queue, as well as the dynatrace-s3-log-forwarder logs to determine the cause of the error. If it's a retriable error due to a temporary situation, you can redrive the messages in the DLQ so they're re-processed by the log forwarder. More information [here](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-configure-dead-letter-queue-redrive.html).
 
-You can customize the solution behavior changing the `S3NotificationsQueue`.`RedrivePolicy` attributes and the `SQSDeadLetterQueue`.`MessageRetentionPeriod` attribute on the SAM template:
+You can customize the solution behavior using the following CloudFormation parameters when deploying or updating the stack:
 
-```yaml
-S3NotificationsQueue:
-  Type: AWS::SQS::Queue
-  Properties:
-    # Use crafted queue name to avoid circular dependency with RedriveAllowPolic
-    QueueName: !Sub ${AWS::StackName}-S3NotificationsQueue
-    ReceiveMessageWaitTimeSeconds: 10
-    VisibilityTimeout: 420
-    MessageRetentionPeriod: 43200
-    RedrivePolicy:
-      deadLetterTargetArn: !GetAtt SQSDeadLetterQueue.Arn
-      maxReceiveCount: 3
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `MaximumSQSMessageRetries` | `3` | Maximum number of processing attempts before a message is sent to the DLQ |
+| `SQSVisibilityTimeout` | `420` | Seconds a message is hidden after being received. Must be greater than `LambdaMaximumExecutionTime` |
+| `SQSLongPollingMaxSeconds` | `20` | Maximum seconds to wait for messages during long polling |
 
-SQSDeadLetterQueue:
-Type: AWS::SQS::Queue
-Properties:
-  QueueName: !Sub ${AWS::StackName}-S3NotificationsDQL
-  # Keep messages during 1 day for troubleshooting purpos
-  MessageRetentionPeriod: 86400
-  RedriveAllowPolicy:
-    redrivePermission: byQueue
-    # Hand-crafted ARN to avoid circular dependency
-    sourceQueueArns:
-      - !Join
-        - ":"
-        - - arn
-          - !Ref AWS::Partition
-          - sqs
-          - !Ref AWS::Region
-          - !Ref AWS::AccountId
-          - !Sub ${AWS::StackName}-S3NotificationsQueue
+```bash
+aws cloudformation deploy --stack-name ${STACK_NAME} \
+    --template-file template.yaml \
+    --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
+    --parameter-overrides \
+        MaximumSQSMessageRetries=5 \
+        SQSVisibilityTimeout=600
 ```
 
-**Note:** The VisibilityTimeout value should be higher than the Lambda function timeout (default is 300s), to avoid processing the same message multiple times.
+**Note:** `SQSVisibilityTimeout` must be greater than `LambdaMaximumExecutionTime` (default 300s) to avoid the same message being processed multiple times.

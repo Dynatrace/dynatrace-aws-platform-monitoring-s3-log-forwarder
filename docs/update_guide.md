@@ -33,7 +33,7 @@ Set the `VERSION_TAG` environment variable to the latest release version tag of 
 
 ```bash
 # Get the latest version
-export VERSION_TAG=$(curl -s https://api.github.com/repos/dynatrace/dynatrace-aws-s3-log-forwarder/releases/latest | grep tag_name | cut -d'"' -f4)
+export VERSION_TAG=$(curl -s https://api.github.com/repos/dynatrace/dynatrace-aws-platform-monitoring-s3-log-forwarder/releases/latest | grep tag_name | cut -d'"' -f4)
 ```
 
 > [!Note]

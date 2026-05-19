@@ -38,7 +38,7 @@ export DYNATRACE_TENANT_UUID=<replace-with-your-dynatrace-tenant-uuid>
 
 > [!IMPORTANT]
 >
-> Your stack name should have a maximum of 53 characters, otherwise deployment will fail.
+> Your stack name should have a maximum of 47 characters, otherwise deployment will fail.
 
 ### Step 2. Download the CloudFormation templates and Lambda package
 
@@ -81,9 +81,9 @@ aws cloudformation deploy \
         S3BucketNames="my-bucket,another-bucket"
 ```
 
-> **Note:** When the publisher releases a new layer version, update the `DynatraceS3LogForwarderLayerArn` parameter with the new ARN and redeploy the stack to pick up the update.
-
 > [!NOTE]
+>
+> When the publisher releases a new layer version, update the `DynatraceS3LogForwarderLayerArn` parameter with the new ARN and redeploy the stack to pick up the update.
 >
 > **Storing the API key in AWS SSM Parameter Store:** If you prefer not to pass the token directly as a Lambda environment variable, you can store it in AWS Systems Manager Parameter Store as a SecureString and pass its path via `DynatraceApiKeySSMParameter`:
 >
@@ -147,17 +147,11 @@ If successfull, you'll see a message similar to the below at the end of the exec
 
 ### Step 4. Configure S3 buckets to send "S3 Object created" notifications to the log forwarder.
 
-At this point, you have successfully deployed the `dynatrace-aws-platform-monitoring-s3-log-forwarder`. Now you need to enable Amazon EventBridge notifications on each S3 bucket you listed in `S3BucketNames`.
+At this point, you have successfully deployed the `dynatrace-aws-platform-monitoring-s3-log-forwarder`. Now you need to configure each S3 bucket to send `Object Created` notifications to the log forwarder. There are three supported methods:
 
-#### Simple use case (same AWS account and region)
+#### Option A: Amazon EventBridge (recommended)
 
-If you provided `S3BucketNames` in Step 3, the main stack has already:
-
-* Created a single Amazon EventBridge rule (`${StackName}-s3-notifications`) routing `Object Created` events from all listed buckets to the SQS queue
-* Granted the Lambda function `s3:GetObject` access to each bucket
-* Configured the SQS queue policy to accept notifications from those buckets
-
-The only remaining action is to enable EventBridge notifications on each S3 bucket:
+If you provided `S3BucketNames` in Step 3, the main stack has already created an EventBridge rule routing `Object Created` events from the listed buckets to the SQS queue. Enable EventBridge notifications on each bucket:
 
 ```bash
 for BUCKET in my-bucket another-bucket; do
@@ -169,20 +163,75 @@ done
 
 Or via the console: S3 bucket → **Properties** → **Amazon EventBridge** → **Send notifications to Amazon EventBridge** → **On**.
 
+#### Option B: Direct S3 to SQS
+
+Configure the S3 bucket to send `Object Created` notifications directly to the log forwarder's SQS queue. Retrieve the queue ARN first:
+
+```bash
+QUEUE_ARN=$(aws ssm get-parameter \
+    --name "/dynatrace/s3-log-forwarder/${STACK_NAME}/sqs-queue-arn" \
+    --query 'Parameter.Value' --output text)
+```
+
+Then configure the bucket notification ([AWS instructions](https://docs.aws.amazon.com/AmazonS3/latest/userguide/ways-to-add-notification-config-to-bucket.html)). The SQS queue policy already allows the buckets listed in `S3BucketNames` to send notifications directly.
+
+> [!NOTE]
+> Direct S3 to SQS only works for buckets in the same AWS region as the log forwarder.
+
+#### Option C: SNS fan-out
+
+If you have an existing SNS topic receiving S3 Object Created notifications, subscribe the log forwarder's SQS queue to it:
+
+```bash
+aws sns subscribe \
+    --topic-arn <your-sns-topic-arn> \
+    --protocol sqs \
+    --notification-endpoint $QUEUE_ARN
+```
+
+Alternatively, deploy the main stack with `CreateS3NotificationsSNSTopic=true` to create a dedicated SNS topic (`${StackName}-S3Notifications`) and subscribe your S3 buckets to it. This is useful for fan-out architectures where multiple consumers process the same S3 events.
+
+For more details on all notification methods see [log_forwarding.md](log_forwarding.md).
+
 > [!NOTE]
 >
-> * This only works for buckets in the same AWS account and region as the log forwarder.
+> * Options A and B only work for buckets in the same AWS account and region as the log forwarder. For cross-account or cross-region buckets, see [Advanced deployments](#advanced-deployments).
 > * If your S3 objects are encrypted with a customer-managed KMS key, add `KmsKeyArns="arn:aws:kms:region:account:key/uuid,..."` to your Step 3 deploy command so the Lambda function can decrypt them.
 > * `S3BucketNames` does not support prefix filtering. If you need to forward logs only from specific prefixes within a bucket, use the advanced option below instead.
 
 ## Advanced deployments
 
-<!-- TODO: document advanced deployment scenarios:
-  - Per-bucket stack with prefix filtering (dynatrace-aws-s3-log-forwarder-s3-bucket-configuration.yaml)
-  - Cross-region and cross-account forwarding (eventbridge-cross-region-or-account-forward-rules.yaml)
-  - Custom log forwarding and processing rules via AppConfig (dynatrace-aws-s3-log-forwarder-appconfig.yaml)
-  - SNS fan-out and direct S3-to-SQS notification methods
--->
+For detailed instructions on each scenario, see [advanced_deployments.md](advanced_deployments.md).
+
+### Prefix filtering per bucket
+
+`S3BucketNames` forwards all objects from the listed buckets. To forward only from specific key prefixes (e.g. `AWSLogs/123456789012/CloudTrail/`), deploy the `dynatrace-aws-s3-log-forwarder-s3-bucket-configuration.yaml` template once per bucket — it supports up to 10 prefixes and uses EventBridge for routing.
+
+See [Configuring S3 buckets with prefix filtering](advanced_deployments.md#configuring-s3-buckets-with-prefix-filtering).
+
+### Custom log forwarding and processing rules
+
+By default the forwarder uses built-in rules. To customise which logs are forwarded and how they are parsed at runtime without redeploying Lambda, deploy the optional `dynatrace-aws-s3-log-forwarder-appconfig.yaml` template.
+
+See [Custom log forwarding and processing rules via AppConfig](advanced_deployments.md#custom-log-forwarding-and-processing-rules-via-appconfig).
+
+### IAM role path
+
+If your organization requires IAM roles to be created under a specific path (e.g. `/engineering/platform/`), use the `IamRolePath` parameter.
+
+See [IAM Role path](advanced_deployments.md#iam-role-path).
+
+### Cross-region forwarding
+
+Centralize log forwarding from S3 buckets in different AWS regions into a single forwarder deployment. Requires enabling a dedicated EventBridge event bus on the main stack and deploying the `eventbridge-cross-region-or-account-forward-rules.yaml` template in the bucket's region.
+
+See [Forward logs from S3 buckets on different AWS regions](advanced_deployments.md#forward-logs-from-s3-buckets-on-different-aws-regions).
+
+### Cross-account forwarding
+
+Forward logs from S3 buckets in different AWS accounts into a single forwarder deployment. Requires enabling the cross-account event bus, granting permissions to source accounts, and configuring bucket policies to allow the forwarder's IAM role.
+
+See [Forward logs from S3 buckets on different AWS accounts](advanced_deployments.md#forward-logs-from-s3-buckets-on-different-aws-accounts).
 
 ## Next steps
 
