@@ -155,7 +155,15 @@ Resources:
       EnvironmentId: !Ref AppConfigEnvironment
       ConfigurationVersion: !Ref LogProcessingRulesHostedConfiguration
 
+  SSMParameterAppConfigApplicationId:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /dynatrace/s3-log-forwarder/${DynatraceAwsS3LogForwarderStackName}/appconfig-application-id
+      Type: String
+      Value: !Ref AppConfigApplication
+      Description: !Sub "AppConfig application ID for deployment ${DynatraceAwsS3LogForwarderStackName}"
+
 Outputs:
-  AppConfigApplicationId:
-    Description: AppConfig configuration application id
-    Value: !Ref AppConfigApplication
+  SSMParameterPathAppConfigApplicationId:
+    Description: "SSM Parameter path storing the AppConfig application ID"
+    Value: !Sub /dynatrace/s3-log-forwarder/${DynatraceAwsS3LogForwarderStackName}/appconfig-application-id
