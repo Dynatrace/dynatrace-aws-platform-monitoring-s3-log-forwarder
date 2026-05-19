@@ -46,7 +46,7 @@ Before deploying either option, complete the following steps.
 
     > [!IMPORTANT]
     >
-    > Your stack name should have a maximum of 53 characters, otherwise deployment will fail.
+    > Your stack name should have a maximum of 47 characters, otherwise deployment will fail.
 
 1. Create an AWS SSM SecureString Parameter to store your Dynatrace access token to ingest logs.
 
@@ -153,7 +153,8 @@ This will:
                --template-file template.yaml \
                --parameter-overrides \
                     DynatraceEnvironmentURL="https://$DYNATRACE_TENANT_UUID.live.dynatrace.com" \
-                    DynatraceApiKeyParameter=$PARAMETER_NAME \
+                    DynatraceApiKeySSMParameter=$PARAMETER_NAME \
+                    DeploymentPackageType=zip \
                --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND
     ```
 

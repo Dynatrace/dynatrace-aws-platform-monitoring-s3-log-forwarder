@@ -360,15 +360,7 @@ Resources:
                           - !Ref S3BucketNames
                           # Input: bucket1,bucket2,bucket3
                           # Output: bucket1,arn:aws:s3:::bucket2,arn:aws:s3:::bucket3
-            - Sid: "Allow S3 buckets to Send Messages"
-              Effect: "Allow"
-              Principal:
-                Service: "s3.amazonaws.com"
-              Action: "sqs:SendMessage"
-              Resource: !GetAtt S3NotificationsQueue.Arn
-              Condition:
-                StringEquals:
-                  "aws:SourceAccount": !Ref AWS::AccountId
+            - !Ref AWS::NoValue
       Queues:
         - !Ref S3NotificationsQueue
 
