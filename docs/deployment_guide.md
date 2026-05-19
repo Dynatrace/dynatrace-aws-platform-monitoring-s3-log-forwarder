@@ -85,7 +85,7 @@ aws cloudformation deploy \
 
 > [!NOTE]
 >
-> **Storing the API key in AWS SSM Parameter Store:** `DynatraceApiKey` passes the token directly as a Lambda environment variable. For production workloads where stricter access controls are required, you can instead store the token in AWS Systems Manager Parameter Store as a SecureString and pass its path via `DynatraceApiKeySSMParameter`:
+> **Storing the API key in AWS SSM Parameter Store:** If you prefer not to pass the token directly as a Lambda environment variable, you can store it in AWS Systems Manager Parameter Store as a SecureString and pass its path via `DynatraceApiKeySSMParameter`:
 >
 > ```bash
 > export HISTCONTROL=ignorespace
