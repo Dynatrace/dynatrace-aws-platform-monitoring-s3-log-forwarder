@@ -65,9 +65,11 @@ default_headers = {
 }
 
 class DynatraceSink():
-    def __init__(self, dt_url: str, dt_api_key_parameter: str, verify_ssl: bool = True):
+    def __init__(self, dt_url: str, dt_api_key_parameter: str = None,
+                 verify_ssl: bool = True, *, dt_api_key: str = None):
         self._environment_url = dt_url.rstrip('/')
         self._api_key_parameter = dt_api_key_parameter
+        self._api_key = dt_api_key
         self._approx_buffered_messages_size = LIST_BRACKETS_LENGTH
         self._messages = []
         self._batch_num = 1
@@ -190,9 +192,11 @@ class DynatraceSink():
         Returns a list of failed batch numbers.
         '''
 
-        # Pull API Key from SSM / Cache for 2 mins
-        dt_api_key = parameters.get_parameter(
-            self._api_key_parameter, max_age=120, decrypt=True)
+        if self._api_key:
+            dt_api_key = self._api_key
+        else:
+            dt_api_key = parameters.get_parameter(
+                self._api_key_parameter, max_age=120, decrypt=True)
 
         tenant_id = extract_tenant_id_from_url(self._environment_url)
 
@@ -254,10 +258,13 @@ class DynatraceSink():
 
 def load_sink() -> 'DynatraceSink':
     '''
-    Loads the configured Dynatrace sink from environment variables DYNATRACE_ENV_URL
-    and DYNATRACE_API_KEY_PARAM.
+    Loads the configured Dynatrace sink. Reads DYNATRACE_API_KEY for a direct token or
+    DYNATRACE_API_KEY_PARAM for an SSM SecureString path — exactly one must be set.
     '''
     verify_ssl = False if os.environ['VERIFY_DT_SSL_CERT'] == "false" else True
+    direct_key = os.environ.get('DYNATRACE_API_KEY')
+    if direct_key:
+        return DynatraceSink(os.environ['DYNATRACE_ENV_URL'], verify_ssl=verify_ssl, dt_api_key=direct_key)
     return DynatraceSink(os.environ['DYNATRACE_ENV_URL'], os.environ['DYNATRACE_API_KEY_PARAM'], verify_ssl)
 
 

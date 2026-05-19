@@ -40,25 +40,7 @@ export DYNATRACE_TENANT_UUID=<replace-with-your-dynatrace-tenant-uuid>
 >
 > Your stack name should have a maximum of 53 characters, otherwise deployment will fail.
 
-### Step 2. Create an AWS SSM SecureString Parameter to store your Dynatrace access token to ingest logs.
-
-Execute the following command to create an AWS SSM Parameter Store SecureString parameter to store your Dynatrace access token. The log forwarder Lambda function retrieves the access token from this parameter at runtime.
-
-```bash
-export PARAMETER_NAME="/dynatrace/s3-log-forwarder/$STACK_NAME/$DYNATRACE_TENANT_UUID/api-key"
-# Configure HISTCONTROL to avoid storing on the bash history the commands containing API keys
-export HISTCONTROL=ignorespace
- export PARAMETER_VALUE=<your_dynatrace-access-token-here>
- aws ssm put-parameter --name $PARAMETER_NAME --type SecureString --value $PARAMETER_VALUE
-```
-
-> [!NOTE]
->
-> * HISTCONTROL is set here to avoid storing commands starting with a space on bash history.
-> * It's important that your parameter name follows the structure above, as the solution grants permissions to AWS Lambda to the hierarchy `/dynatrace/s3-log-forwarder/your-stack-name/*`
-> * Your API Key is stored encyrpted with the default AWS-managed key alias: `aws/ssm`. If you want to use a Customer-managed Key, you'll need to grant Decrypt permissions to the AWS Lambda IAM Role that's deployed within the CloudFormation template.
-
-### Step 3. Download the CloudFormation templates and Lambda package
+### Step 2. Download the CloudFormation templates and Lambda package
 
 Download the templates and pre-built Lambda ZIP for the latest release:
 
@@ -69,7 +51,7 @@ wget https://dynatrace-aws-s3-log-forwarder-assets.s3.amazonaws.com/${VERSION_TA
 unzip templates.zip
 ```
 
-### Step 4. Deploy the Lambda function
+### Step 3. Deploy the Lambda function
 
 Choose one of the deployment options below:
 
@@ -94,17 +76,26 @@ aws cloudformation deploy \
     --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
     --parameter-overrides \
         DynatraceEnvironmentURL="https://$DYNATRACE_TENANT_UUID.live.dynatrace.com" \
-        DynatraceApiKeyParameter=$PARAMETER_NAME \
+        DynatraceApiKey="<your_dynatrace-access-token-here>" \
         DynatraceS3LogForwarderLayerArn="$LAYER_ARN" \
         S3BucketNames="my-bucket,another-bucket"
 ```
 
 > **Note:** When the publisher releases a new layer version, update the `DynatraceS3LogForwarderLayerArn` parameter with the new ARN and redeploy the stack to pick up the update.
 
----
-
-> [!IMPORTANT]
-> If you deployed using the default Lambda Layer option above, continue directly to [Step 5. Configure S3 buckets](#step-5-configure-s3-buckets-to-send-s3-object-created-notifications-to-the-log-forwarder).
+> [!NOTE]
+>
+> **Storing the API key in AWS SSM Parameter Store:** `DynatraceApiKey` passes the token directly as a Lambda environment variable. For production workloads where stricter access controls are required, you can instead store the token in AWS Systems Manager Parameter Store as a SecureString and pass its path via `DynatraceApiKeySSMParameter`:
+>
+> ```bash
+> export HISTCONTROL=ignorespace
+>  aws ssm put-parameter \
+>      --name "/dynatrace/s3-log-forwarder/$STACK_NAME/$DYNATRACE_TENANT_UUID/api-key" \
+>      --type SecureString \
+>      --value "<your_dynatrace-access-token-here>"
+> ```
+>
+> Then replace `DynatraceApiKey="..."` with `DynatraceApiKeySSMParameter="/dynatrace/s3-log-forwarder/$STACK_NAME/$DYNATRACE_TENANT_UUID/api-key"` in the deploy command above. The parameter path must be under `/dynatrace/s3-log-forwarder/$STACK_NAME/` so that the Lambda IAM role has permission to read it.
 
 ---
 
@@ -119,7 +110,7 @@ aws cloudformation deploy \
     --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
     --parameter-overrides \
         DynatraceEnvironmentURL="https://$DYNATRACE_TENANT_UUID.live.dynatrace.com" \
-        DynatraceApiKeyParameter=$PARAMETER_NAME \
+        DynatraceApiKey="<your_dynatrace-access-token-here>" \
         DeploymentPackageType="zip" \
         S3BucketNames="my-bucket,another-bucket"
 ```
@@ -154,13 +145,13 @@ If successfull, you'll see a message similar to the below at the end of the exec
 > * To ingest logs into a Dynatrace Managed environment, the `DynatraceEnvironmentURL` parameter should be formatted like this: `https://{your-activegate-domain}:9999/e/{your-environment-id}`. Unless your environment Active Gate is public-facing, you'll need to configure Lambda to run on an Amazon VPC from where your Active Gate can be reached adding the parameters `LambdaSubnetIds` with the list of subnets where Lambda can run (for high availability, select at least 2 in different Availability Zones) and `LambdaSecurityGroupId` with the security group assigned to your Lambda function. The subnets where the Lambda function runs should allow outbound connectivity to the Internet. For more details, check the [AWS Lambda documentation](https://docs.aws.amazon.com/lambda/latest/dg/configuration-vpc.htm). If your Active Gate uses a self-signed SSL certificate, set the parameter `VerifyLogEndpointSSLCerts` to `false`.
 > * If ingesting logs into a Dynatrace Managed environment, add the parameter `DynatraceLogIngestContentMaxLength`=`8192`, as it is the default content length in Managed Dynatrace.
 
-### Step 5. Configure S3 buckets to send "S3 Object created" notifications to the log forwarder.
+### Step 4. Configure S3 buckets to send "S3 Object created" notifications to the log forwarder.
 
 At this point, you have successfully deployed the `dynatrace-aws-platform-monitoring-s3-log-forwarder`. Now you need to enable Amazon EventBridge notifications on each S3 bucket you listed in `S3BucketNames`.
 
 #### Simple use case (same AWS account and region)
 
-If you provided `S3BucketNames` in Step 4, the main stack has already:
+If you provided `S3BucketNames` in Step 3, the main stack has already:
 
 * Created a single Amazon EventBridge rule (`${StackName}-s3-notifications`) routing `Object Created` events from all listed buckets to the SQS queue
 * Granted the Lambda function `s3:GetObject` access to each bucket
@@ -181,7 +172,7 @@ Or via the console: S3 bucket → **Properties** → **Amazon EventBridge** → 
 > [!NOTE]
 >
 > * This only works for buckets in the same AWS account and region as the log forwarder.
-> * If your S3 objects are encrypted with a customer-managed KMS key, add `KmsKeyArns="arn:aws:kms:region:account:key/uuid,..."` to your Step 4 deploy command so the Lambda function can decrypt them.
+> * If your S3 objects are encrypted with a customer-managed KMS key, add `KmsKeyArns="arn:aws:kms:region:account:key/uuid,..."` to your Step 3 deploy command so the Lambda function can decrypt them.
 > * `S3BucketNames` does not support prefix filtering. If you need to forward logs only from specific prefixes within a bucket, use the advanced option below instead.
 
 ## Advanced deployments

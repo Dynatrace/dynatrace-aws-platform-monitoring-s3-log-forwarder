@@ -31,12 +31,17 @@ Parameters:
     Description: URL of your Dynatrace environment. If you're deploying to Dynatrace Managed tenant, enter here the URL of your tenant AG without the trailing API endpoint, e.g. https://{your-activegate-domain}:9999/e/{your-environment-id}
     Type: String
     AllowedPattern: "^https:\\/\\/[a-zA-Z0-9-]{2,}(\\.[a-zA-Z0-9-]{2,})(\\.[a-zA-Z0-9-]{2,})*(:9999\\/e\\/.[a-z0-9-]*)?$"
-  DynatraceApiKeyParameter:
-    Description: Name of the SecureString Parameter in AWS Parameter Store storing the Dynatrace API Key.
+  DynatraceApiKeySSMParameter:
+    Description: "Path of the SecureString Parameter in AWS Systems Manager Parameter Store that stores the Dynatrace API key (e.g. /dynatrace/s3-log-forwarder/my-stack/api-key). Use this or DynatraceApiKey, not both."
     Type: String
-    Default: /dynatrace/s3-log-forwarder/dynatrace-aws-s3-log-forwarder/tenant/api-key
-    AllowedPattern: "^\\/[a-zA-Z0-9._\\-\\/]+$"
-    ConstraintDescription: "Must be a valid SSM parameter path starting with '/' (e.g. /dynatrace/s3-log-forwarder/my-stack/api-key)."
+    Default: ""
+    AllowedPattern: "(^$|^\\/[a-zA-Z0-9._\\-\\/]+$)"
+    ConstraintDescription: "Must be a valid SSM parameter path starting with '/' (e.g. /dynatrace/s3-log-forwarder/my-stack/api-key) or left empty."
+  DynatraceApiKey:
+    Description: "Dynatrace API key with logs.ingest scope. Use this or DynatraceApiKeySSMParameter, not both. The key is stored in the Lambda environment — use DynatraceApiKeySSMParameter for production workloads where stricter access controls are required."
+    Type: String
+    Default: ""
+    NoEcho: true
   DynatraceLogIngestContentMaxLength:
     Description: Log content maximum byte size, longer logs will be trimmed
     Type: Number
@@ -188,6 +193,7 @@ Conditions:
   LambdaVpcSecurityGroupSpecified: !Not [!Equals [!Ref LambdaSecurityGroupId, ""]]
   S3BucketNamesProvided: !Not [!Equals [!Join ["", !Ref S3BucketNames], ""]]
   KmsKeyArnsProvided: !Not [!Equals [!Join ["", !Ref KmsKeyArns], ""]]
+  UseSSMApiKey: !Equals [!Ref DynatraceApiKey, ""]
 
 Globals:
   Function:
@@ -230,15 +236,18 @@ Resources:
                   - sqs:ChangeMessageVisibilityBatch
                   - sqs:DeleteMessageBatch
                 Resource: !GetAtt S3NotificationsQueue.Arn
-        - PolicyName: SSMParameterReadPolicy
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Effect: Allow
-                Action:
-                  - ssm:GetParameter
-                  - ssm:GetParameters
-                Resource: !Sub arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/dynatrace/s3-log-forwarder/${AWS::StackName}/*
+        - !If
+          - UseSSMApiKey
+          - PolicyName: SSMParameterReadPolicy
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - ssm:GetParameter
+                    - ssm:GetParameters
+                  Resource: !Sub arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/dynatrace/s3-log-forwarder/${AWS::StackName}/*
+          - !Ref AWS::NoValue
 
   QueueProcessingFunction:
     Type: AWS::Serverless::Function
@@ -264,7 +273,8 @@ Resources:
         Variables:
           LD_LIBRARY_PATH: !If [IsLayerDeployment, !Ref "AWS::NoValue", "/var/task/lib"]
           DYNATRACE_ENV_URL: !Ref DynatraceEnvironmentURL
-          DYNATRACE_API_KEY_PARAM: !Ref DynatraceApiKeyParameter
+          DYNATRACE_API_KEY_PARAM: !If [UseSSMApiKey, !Ref DynatraceApiKeySSMParameter, !Ref AWS::NoValue]
+          DYNATRACE_API_KEY: !If [UseSSMApiKey, !Ref AWS::NoValue, !Ref DynatraceApiKey]
           QueueName: !GetAtt S3NotificationsQueue.QueueName
           LOGGING_LEVEL: !Ref LambdaLoggingLevel
           LOG_FORWARDER_CONFIGURATION_LOCATION: !Ref LogForwarderConfigurationLocation
