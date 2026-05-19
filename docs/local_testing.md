@@ -12,7 +12,7 @@ You can use the following steps to test locally:
    DEPLOYMENT_NAME=test
    POWERTOOLS_METRICS_NAMESPACE=local
    DYNATRACE_ENV_URL=https://xxx.dynatrace.com
-   DYNATRACE_API_KEY_PARAM=/dynatrace/s3-log-forwarder/dynatrace-aws-s3-log-forwarder/tenant/api-key
+   DYNATRACE_API_KEY_SSM=/dynatrace/s3-log-forwarder/dynatrace-aws-s3-log-forwarder/tenant/api-key
    DYNATRACE_API_KEY=dt0c01.XXX
    PYTHONPATH=src
    LOG_FORWARDER_CONFIGURATION_LOCATION=local

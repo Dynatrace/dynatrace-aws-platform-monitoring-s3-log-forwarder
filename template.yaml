@@ -180,6 +180,17 @@ Rules:
     Assertions:
       - Assert: !Not [!Equals [!Ref DynatraceS3LogForwarderLayerArn, ""]]
         AssertDescription: "DynatraceS3LogForwarderLayerArn must be provided when DeploymentPackageType is 'layer'. Specify a valid Lambda Layer Version ARN (e.g. arn:aws:lambda:us-east-1:123456789012:layer:dynatrace-aws-s3-log-forwarder:1)."
+  ApiKeyExactlyOneMustBeSet:
+    Assertions:
+      - Assert: !Or
+          - !Not [!Equals [!Ref DynatraceApiKey, ""]]
+          - !Not [!Equals [!Ref DynatraceApiKeySSMParameter, ""]]
+        AssertDescription: "Provide either DynatraceApiKey or DynatraceApiKeySSMParameter — at least one must be set."
+      - Assert: !Not
+          - !And
+            - !Not [!Equals [!Ref DynatraceApiKey, ""]]
+            - !Not [!Equals [!Ref DynatraceApiKeySSMParameter, ""]]
+        AssertDescription: "Provide either DynatraceApiKey or DynatraceApiKeySSMParameter — not both."
 
 Conditions:
   CrossRegionCrossAccountForwardingIsEnabled: !Equals [ !Ref EnableCrossRegionCrossAccountForwarding, "true" ]
@@ -273,7 +284,7 @@ Resources:
         Variables:
           LD_LIBRARY_PATH: !If [IsLayerDeployment, !Ref "AWS::NoValue", "/var/task/lib"]
           DYNATRACE_ENV_URL: !Ref DynatraceEnvironmentURL
-          DYNATRACE_API_KEY_PARAM: !If [UseSSMApiKey, !Ref DynatraceApiKeySSMParameter, !Ref AWS::NoValue]
+          DYNATRACE_API_KEY_SSM: !If [UseSSMApiKey, !Ref DynatraceApiKeySSMParameter, !Ref AWS::NoValue]
           DYNATRACE_API_KEY: !If [UseSSMApiKey, !Ref AWS::NoValue, !Ref DynatraceApiKey]
           QueueName: !GetAtt S3NotificationsQueue.QueueName
           LOGGING_LEVEL: !Ref LambdaLoggingLevel
