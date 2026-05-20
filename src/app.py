@@ -217,6 +217,8 @@ def lambda_handler(event, context):
                 return total_batch_item_failures
 
             except Exception:
+                # Intentionally swallowed — must return batchItemFailures for SQS DLQ routing.
+                # Check LogProcessingFailures CloudWatch metric and this function's log group.
                 logger.exception(
                     'Error processing message %s', message['messageId'])
 
