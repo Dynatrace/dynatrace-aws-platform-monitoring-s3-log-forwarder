@@ -127,21 +127,13 @@ class TestLoadSink(unittest.TestCase):
         os.environ['VERIFY_DT_SSL_CERT'] = 'true'
 
     def tearDown(self):
-        for key in ('DYNATRACE_ENV_URL', 'VERIFY_DT_SSL_CERT',
-                    'DYNATRACE_API_KEY', 'DYNATRACE_API_KEY_SSM'):
+        for key in ('DYNATRACE_ENV_URL', 'VERIFY_DT_SSL_CERT', 'DYNATRACE_API_KEY_SSM'):
             os.environ.pop(key, None)
 
-    def test_neither_key_set_raises_value_error(self):
+    def test_ssm_param_not_set_raises_value_error(self):
         with self.assertRaises(ValueError) as cm:
             dynatrace.load_sink()
-        self.assertIn("Neither", str(cm.exception))
-
-    def test_both_keys_set_raises_value_error(self):
-        os.environ['DYNATRACE_API_KEY'] = 'direct-token'
-        os.environ['DYNATRACE_API_KEY_SSM'] = '/some/ssm/param'
-        with self.assertRaises(ValueError) as cm:
-            dynatrace.load_sink()
-        self.assertIn("Both", str(cm.exception))
+        self.assertIn("DYNATRACE_API_KEY_SSM", str(cm.exception))
 
 
 if __name__ == '__main__':
