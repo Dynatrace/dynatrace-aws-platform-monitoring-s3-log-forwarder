@@ -44,15 +44,23 @@ export VERSION_TAG=$(curl -s https://api.github.com/repos/dynatrace/dynatrace-aw
 > export VERSION_TAG=v0.5.8
 > ```
 
-### Step 4. Download the latest templates and Lambda package
+### Step 4. Download the latest templates
 
-Download the CloudFormation templates and the Lambda deployment package for the version you're updating to:
+Download the CloudFormation templates for the version you're updating to:
 
 ```bash
 mkdir -p dynatrace-aws-s3-log-forwarder-templates && cd "$_"
 wget https://dynatrace-aws-s3-log-forwarder-assets.s3.amazonaws.com/${VERSION_TAG}/templates.zip
 unzip -o templates.zip
 ```
+
+> [!NOTE]
+>
+> If you're using the **ZIP deployment** option, also download the Lambda package:
+>
+> ```bash
+> wget https://dynatrace-aws-s3-log-forwarder-assets.s3.amazonaws.com/${VERSION_TAG}/lambda.zip
+> ```
 
 ### Step 5. Update the stack
 
