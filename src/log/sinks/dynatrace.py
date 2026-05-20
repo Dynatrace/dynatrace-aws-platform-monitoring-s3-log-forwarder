@@ -261,22 +261,16 @@ class DynatraceSink():
 
 def load_sink() -> 'DynatraceSink':
     '''
-    Loads the configured Dynatrace sink. Reads DYNATRACE_API_KEY for a direct token or
-    DYNATRACE_API_KEY_SSM for an SSM SecureString path — exactly one must be set.
+    Loads the configured Dynatrace sink. Reads DYNATRACE_API_KEY_SSM for the SSM parameter
+    path that stores the API key — always set by the CloudFormation template.
     '''
     verify_ssl = False if os.environ['VERIFY_DT_SSL_CERT'] == "false" else True
-    direct_key = os.environ.get('DYNATRACE_API_KEY')
     ssm_param = os.environ.get('DYNATRACE_API_KEY_SSM')
 
-    if direct_key and ssm_param:
+    if not ssm_param:
         raise ValueError(
-            "Both DYNATRACE_API_KEY and DYNATRACE_API_KEY_SSM are set; provide exactly one.")
-    if not direct_key and not ssm_param:
-        raise ValueError(
-            "Neither DYNATRACE_API_KEY nor DYNATRACE_API_KEY_SSM is set; provide exactly one.")
+            "DYNATRACE_API_KEY_SSM is not set; the CloudFormation template must set this environment variable.")
 
-    if direct_key:
-        return DynatraceSink(os.environ['DYNATRACE_ENV_URL'], verify_ssl=verify_ssl, dt_api_key=direct_key)
     return DynatraceSink(os.environ['DYNATRACE_ENV_URL'], ssm_param, verify_ssl)
 
 

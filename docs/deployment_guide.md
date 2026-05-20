@@ -40,7 +40,23 @@ export DYNATRACE_TENANT_UUID=<replace-with-your-dynatrace-tenant-uuid>
 >
 > Your stack name should have a maximum of 47 characters, otherwise deployment will fail.
 
-### Step 2. Download the CloudFormation templates and Lambda package
+### Step 2. Store the Dynatrace API key in AWS Systems Manager Parameter Store
+
+Store the Dynatrace API key as a SecureString parameter so the Lambda function can retrieve it at runtime:
+
+```bash
+export HISTCONTROL=ignorespace
+ aws ssm put-parameter \
+     --name "/dynatrace/s3-log-forwarder/$STACK_NAME/api-key" \
+     --type SecureString \
+     --value "<your_dynatrace-access-token-here>"
+```
+
+> [!NOTE]
+>
+> **Alternative:** If your security requirements are less strict, you can skip this step and pass the API key directly via `DynatraceApiKey` in the deploy command. The template will store it in an SSM Parameter (String type) and the Lambda reads from it. Note that the key will not be encrypted at rest — use `DynatraceApiKeySSMParameter` with a SecureString parameter as shown above if that is a requirement.
+
+### Step 3. Download the CloudFormation templates and Lambda package
 
 Download the templates and pre-built Lambda ZIP for the latest release:
 
@@ -51,7 +67,7 @@ wget https://dynatrace-aws-s3-log-forwarder-assets.s3.amazonaws.com/${VERSION_TA
 unzip templates.zip
 ```
 
-### Step 3. Deploy the Lambda function
+### Step 4. Deploy the Lambda function
 
 Choose one of the deployment options below:
 
@@ -76,7 +92,7 @@ aws cloudformation deploy \
     --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
     --parameter-overrides \
         DynatraceEnvironmentURL="https://$DYNATRACE_TENANT_UUID.live.dynatrace.com" \
-        DynatraceApiKey="<your_dynatrace-access-token-here>" \
+        DynatraceApiKeySSMParameter="/dynatrace/s3-log-forwarder/$STACK_NAME/api-key" \
         DynatraceS3LogForwarderLayerArn="$LAYER_ARN" \
         S3BucketNames="my-bucket,another-bucket"
 ```
@@ -84,18 +100,6 @@ aws cloudformation deploy \
 > [!NOTE]
 >
 > When the publisher releases a new layer version, update the `DynatraceS3LogForwarderLayerArn` parameter with the new ARN and redeploy the stack to pick up the update.
->
-> **Storing the API key in AWS SSM Parameter Store:** If you prefer not to pass the token directly as a Lambda environment variable, you can store it in AWS Systems Manager Parameter Store as a SecureString and pass its path via `DynatraceApiKeySSMParameter`:
->
-> ```bash
-> export HISTCONTROL=ignorespace
->  aws ssm put-parameter \
->      --name "/dynatrace/s3-log-forwarder/$STACK_NAME/$DYNATRACE_TENANT_UUID/api-key" \
->      --type SecureString \
->      --value "<your_dynatrace-access-token-here>"
-> ```
->
-> Then replace `DynatraceApiKey="..."` with `DynatraceApiKeySSMParameter="/dynatrace/s3-log-forwarder/$STACK_NAME/$DYNATRACE_TENANT_UUID/api-key"` in the deploy command above. The parameter path must be under `/dynatrace/s3-log-forwarder/$STACK_NAME/` so that the Lambda IAM role has permission to read it.
 
 ---
 
@@ -110,7 +114,7 @@ aws cloudformation deploy \
     --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
     --parameter-overrides \
         DynatraceEnvironmentURL="https://$DYNATRACE_TENANT_UUID.live.dynatrace.com" \
-        DynatraceApiKey="<your_dynatrace-access-token-here>" \
+        DynatraceApiKeySSMParameter="/dynatrace/s3-log-forwarder/$STACK_NAME/api-key" \
         DeploymentPackageType="zip" \
         S3BucketNames="my-bucket,another-bucket"
 ```
@@ -145,13 +149,13 @@ If successfull, you'll see a message similar to the below at the end of the exec
 > * To ingest logs into a Dynatrace Managed environment, the `DynatraceEnvironmentURL` parameter should be formatted like this: `https://{your-activegate-domain}:9999/e/{your-environment-id}`. Unless your environment Active Gate is public-facing, you'll need to configure Lambda to run on an Amazon VPC from where your Active Gate can be reached adding the parameters `LambdaSubnetIds` with the list of subnets where Lambda can run (for high availability, select at least 2 in different Availability Zones) and `LambdaSecurityGroupId` with the security group assigned to your Lambda function. The subnets where the Lambda function runs should allow outbound connectivity to the Internet. For more details, check the [AWS Lambda documentation](https://docs.aws.amazon.com/lambda/latest/dg/configuration-vpc.htm). If your Active Gate uses a self-signed SSL certificate, set the parameter `VerifyLogEndpointSSLCerts` to `false`.
 > * If ingesting logs into a Dynatrace Managed environment, add the parameter `DynatraceLogIngestContentMaxLength`=`8192`, as it is the default content length in Managed Dynatrace.
 
-### Step 4. Configure S3 buckets to send "S3 Object created" notifications to the log forwarder.
+### Step 5. Configure S3 buckets to send "S3 Object created" notifications to the log forwarder.
 
 At this point, you have successfully deployed the `dynatrace-aws-platform-monitoring-s3-log-forwarder`. Now you need to configure each S3 bucket to send `Object Created` notifications to the log forwarder. There are three supported methods:
 
 #### Option A: Amazon EventBridge (recommended)
 
-If you provided `S3BucketNames` in Step 3, the main stack has already created an EventBridge rule routing `Object Created` events from the listed buckets to the SQS queue. Enable EventBridge notifications on each bucket:
+If you provided `S3BucketNames` in Step 4, the main stack has already created an EventBridge rule routing `Object Created` events from the listed buckets to the SQS queue. Enable EventBridge notifications on each bucket:
 
 ```bash
 for BUCKET in my-bucket another-bucket; do
