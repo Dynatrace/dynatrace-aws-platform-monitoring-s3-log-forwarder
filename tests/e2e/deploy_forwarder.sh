@@ -13,6 +13,15 @@ log() {
     return
 }
 
+SSM_PARAMETER_NAME="/dynatrace/s3-log-forwarder/${STACK_NAME}/api-key"
+
+log "Storing Dynatrace API key in SSM Parameter Store"
+aws ssm put-parameter \
+    --name "${SSM_PARAMETER_NAME}" \
+    --type SecureString \
+    --value "${DT_TENANT_API_KEY}" \
+    --overwrite
+
 case "${DEPLOY_TYPE}" in
     zip)
         log "Building Lambda ZIP"
@@ -21,7 +30,7 @@ case "${DEPLOY_TYPE}" in
         log "Deploying the log forwarder template"
         aws cloudformation deploy --stack-name ${STACK_NAME} --parameter-overrides \
                         DynatraceEnvironmentURL=${DT_TENANT_URL} \
-                        DynatraceApiKey="${DT_TENANT_API_KEY}" \
+                        DynatraceApiKeySSMParameter="${SSM_PARAMETER_NAME}" \
                         EnableCrossRegionCrossAccountForwarding=true \
                         DeploymentPackageType=zip \
                         --template-file template.yaml --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
@@ -74,7 +83,7 @@ case "${DEPLOY_TYPE}" in
         log "Deploying the log forwarder template (layer mode)"
         aws cloudformation deploy --stack-name ${STACK_NAME} --parameter-overrides \
                         DynatraceEnvironmentURL=${DT_TENANT_URL} \
-                        DynatraceApiKey="${DT_TENANT_API_KEY}" \
+                        DynatraceApiKeySSMParameter="${SSM_PARAMETER_NAME}" \
                         EnableCrossRegionCrossAccountForwarding=true \
                         DeploymentPackageType=layer \
                         DynatraceS3LogForwarderLayerArn="${LAYER_ARN}" \

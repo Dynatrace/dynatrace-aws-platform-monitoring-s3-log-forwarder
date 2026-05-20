@@ -65,14 +65,9 @@ default_headers = {
 }
 
 class DynatraceSink():
-    def __init__(self, dt_url: str, dt_api_key_parameter: str = None,
-                 verify_ssl: bool = True, *, dt_api_key: str = None):
-        if not dt_api_key and not dt_api_key_parameter:
-            raise ValueError(
-                "DynatraceSink requires either dt_api_key or dt_api_key_parameter; neither was provided.")
+    def __init__(self, dt_url: str, dt_api_key_parameter: str, verify_ssl: bool = True):
         self._environment_url = dt_url.rstrip('/')
         self._api_key_parameter = dt_api_key_parameter
-        self._api_key = dt_api_key
         self._approx_buffered_messages_size = LIST_BRACKETS_LENGTH
         self._messages = []
         self._batch_num = 1
@@ -195,11 +190,8 @@ class DynatraceSink():
         Returns a list of failed batch numbers.
         '''
 
-        if self._api_key:
-            dt_api_key = self._api_key
-        else:
-            dt_api_key = parameters.get_parameter(
-                self._api_key_parameter, max_age=120, decrypt=True)
+        dt_api_key = parameters.get_parameter(
+            self._api_key_parameter, max_age=120, decrypt=True)
 
         tenant_id = extract_tenant_id_from_url(self._environment_url)
 
@@ -265,13 +257,7 @@ def load_sink() -> 'DynatraceSink':
     path that stores the API key — always set by the CloudFormation template.
     '''
     verify_ssl = False if os.environ['VERIFY_DT_SSL_CERT'] == "false" else True
-    ssm_param = os.environ.get('DYNATRACE_API_KEY_SSM')
-
-    if not ssm_param:
-        raise ValueError(
-            "DYNATRACE_API_KEY_SSM is not set; the CloudFormation template must set this environment variable.")
-
-    return DynatraceSink(os.environ['DYNATRACE_ENV_URL'], ssm_param, verify_ssl)
+    return DynatraceSink(os.environ['DYNATRACE_ENV_URL'], os.environ['DYNATRACE_API_KEY_SSM'], verify_ssl)
 
 
 def extract_tenant_id_from_url(environment_url: str):
