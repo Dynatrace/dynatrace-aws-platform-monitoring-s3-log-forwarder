@@ -1,0 +1,19 @@
+duration-sec: 600               # 10 minutes
+max-log-file-size-mb: 75
+upload-threads: 5               # number of concurrent S3 upload threads (all respecting log-interval-sec property)
+log-interval-sec: 60            # time window length in seconds
+files-per-interval: 10          # number of files to upload per log-interval-sec window
+file-types:                     # which file types to send (jsonl, json_array, alb)
+  - jsonl
+  - json_array
+  - alb
+tier-count: 8                   # number of file-size tiers (tier 1 = max-log-file-size-mb, each next tier halves the size)
+tier-weights:                   # sampling probability weight per tier, starting with the largest one (must have exactly tier-count entries)
+  - 1
+  - 2
+  - 4
+  - 6
+  - 7
+  - 25
+  - 35
+  - 20
