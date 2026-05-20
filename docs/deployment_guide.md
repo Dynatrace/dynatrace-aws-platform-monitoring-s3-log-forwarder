@@ -56,9 +56,9 @@ export HISTCONTROL=ignorespace
 >
 > **Alternative:** If your security requirements are less strict, you can skip this step and pass the API key directly via `DynatraceApiKey` in the deploy command. The template will store it in an SSM Parameter (String type) and the Lambda reads from it. Note that the key will not be encrypted at rest — use `DynatraceApiKeySSMParameter` with a SecureString parameter as shown above if that is a requirement.
 
-### Step 3. Download the CloudFormation templates and Lambda package
+### Step 3. Download the CloudFormation templates
 
-Download the templates and pre-built Lambda ZIP for the latest release:
+Download the CloudFormation templates for the latest release:
 
 ```bash
 export VERSION_TAG=$(curl -s https://api.github.com/repos/dynatrace/dynatrace-aws-platform-monitoring-s3-log-forwarder/releases/latest | grep tag_name | cut -d'"' -f4)
@@ -66,6 +66,14 @@ mkdir dynatrace-aws-platform-monitoring-s3-log-forwarder && cd "$_"
 wget https://dynatrace-aws-s3-log-forwarder-assets.s3.amazonaws.com/${VERSION_TAG}/templates.zip
 unzip templates.zip
 ```
+
+> [!NOTE]
+>
+> If you intend to use the **ZIP deployment** option, also download the Lambda package:
+>
+> ```bash
+> wget https://dynatrace-aws-s3-log-forwarder-assets.s3.amazonaws.com/${VERSION_TAG}/lambda.zip
+> ```
 
 ### Step 4. Deploy the Lambda function
 
