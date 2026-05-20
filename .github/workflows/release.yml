@@ -8,6 +8,9 @@ on:
   push:
     tags:
       - 'v*'
+    branches:
+      - fixes-for-beta-release
+  workflow_dispatch:
 
 jobs:
   release:
