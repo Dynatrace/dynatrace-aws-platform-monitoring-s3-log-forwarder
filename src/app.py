@@ -217,6 +217,11 @@ def lambda_handler(event, context):
                 return total_batch_item_failures
 
             except Exception:
+                # Exception is intentionally swallowed here. Lambda must return the full
+                # batchItemFailures list to SQS so unprocessed messages are retried and
+                # eventually routed to the DLQ — raising would skip that return path.
+                # To investigate failures, check the LogProcessingFailures CloudWatch metric
+                # and the Lambda function's CloudWatch Log Group for the logged exception above.
                 logger.exception(
                     'Error processing message %s', message['messageId'])
 
