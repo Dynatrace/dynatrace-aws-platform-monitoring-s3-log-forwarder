@@ -107,43 +107,43 @@ aws cloudformation deploy \
 
 1. Download the Lambda deployment package:
 
-```bash
-wget https://dynatrace-aws-s3-log-forwarder-assets.s3.amazonaws.com/${VERSION_TAG}/lambda.zip
-```
+    ```bash
+    wget https://dynatrace-aws-s3-log-forwarder-assets.s3.amazonaws.com/${VERSION_TAG}/lambda.zip
+    ```
 
 1. Deploy the CloudFormation stack:
 
-```bash
-aws cloudformation deploy \
-    --stack-name ${STACK_NAME} \
-    --template-file template.yaml \
-    --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
-    --parameter-overrides \
-        DynatraceEnvironmentURL="https://$DYNATRACE_TENANT_UUID.live.dynatrace.com" \
-        DynatraceApiKeySSMParameter="/dynatrace/s3-log-forwarder/$STACK_NAME/api-key" \
-        DeploymentPackageType="zip" \
-        S3BucketNames="my-bucket,another-bucket"
-```
+    ```bash
+    aws cloudformation deploy \
+        --stack-name ${STACK_NAME} \
+        --template-file template.yaml \
+        --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
+        --parameter-overrides \
+            DynatraceEnvironmentURL="https://$DYNATRACE_TENANT_UUID.live.dynatrace.com" \
+            DynatraceApiKeySSMParameter="/dynatrace/s3-log-forwarder/$STACK_NAME/api-key" \
+            DeploymentPackageType="zip" \
+            S3BucketNames="my-bucket,another-bucket"
+    ```
 
 1. Update the Lambda function code with the deployment package:
 
-```bash
-FUNCTION_NAME=$(aws cloudformation describe-stacks --stack-name ${STACK_NAME} \
-    --query 'Stacks[0].Outputs[?OutputKey==`QueueProcessingFunction`].OutputValue' \
-    --output text | rev | cut -d':' -f1 | rev)
+    ```bash
+    FUNCTION_NAME=$(aws cloudformation describe-stacks --stack-name ${STACK_NAME} \
+        --query 'Stacks[0].Outputs[?OutputKey==`QueueProcessingFunction`].OutputValue' \
+        --output text | rev | cut -d':' -f1 | rev)
 
-aws lambda update-function-code --function-name ${FUNCTION_NAME} \
-    --zip-file fileb://lambda.zip
-```
+    aws lambda update-function-code --function-name ${FUNCTION_NAME} \
+        --zip-file fileb://lambda.zip
+    ```
 
-If successfull, you'll see a message similar to the below at the end of the execution:
+    If successfull, you'll see a message similar to the below at the end of the execution:
 
-```json
-{
-    "FunctionName": "...",
-    "LastUpdateStatus": "InProgress"
-}
-```
+    ```json
+    {
+        "FunctionName": "...",
+        "LastUpdateStatus": "InProgress"
+    }
+    ```
 
 ---
 
