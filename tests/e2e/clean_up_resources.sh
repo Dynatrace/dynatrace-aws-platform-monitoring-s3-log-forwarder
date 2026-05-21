@@ -53,11 +53,11 @@ if [ "${NOTIFICATION_TYPE:-eventbridge}" = "sns" ]; then
         --query 'Stacks[0].Outputs[?OutputKey==`S3NotificationsSNSTopic`].OutputValue' \
         --output text 2>/dev/null || true)
     if [ -n "${SNS_TOPIC_ARN}" ]; then
-        CURRENT=$(aws s3api get-bucket-notification-configuration --bucket "${E2E_SNS_TESTING_BUCKET_NAME}" 2>/dev/null || echo '{}')
+        CURRENT=$(aws s3api get-bucket-notification-configuration --bucket "${E2E_TESTING_BUCKET_NAME}" 2>/dev/null || echo '{}')
         NEW_CONFIG=$(echo "${CURRENT}" | jq --arg arn "${SNS_TOPIC_ARN}" '
             .TopicConfigurations = ((.TopicConfigurations // []) | map(select(.TopicArn != $arn)))')
         aws s3api put-bucket-notification-configuration \
-            --bucket "${E2E_SNS_TESTING_BUCKET_NAME}" \
+            --bucket "${E2E_TESTING_BUCKET_NAME}" \
             --notification-configuration "${NEW_CONFIG}" || true
     fi
 else
