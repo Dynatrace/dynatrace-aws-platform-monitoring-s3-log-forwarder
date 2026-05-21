@@ -34,7 +34,7 @@ case "${DEPLOY_TYPE}" in
                         DynatraceApiKeySSMParameter="${SSM_PARAMETER_NAME}" \
                         EnableCrossRegionCrossAccountForwarding=true \
                         DeploymentPackageType=zip \
-                        $([ "${NOTIFICATION_TYPE}" = "sns" ] && echo "CreateS3NotificationsSNSTopic=true S3BucketNames=${E2E_SNS_TESTING_BUCKET_NAME}") \
+                        $([ "${NOTIFICATION_TYPE}" = "sns" ] && echo "CreateS3NotificationsSNSTopic=true S3BucketNames=${E2E_TESTING_BUCKET_NAME}") \
                         --template-file template.yaml --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
                         --role-arn ${CFN_ROLE_ARN}
 
@@ -89,7 +89,7 @@ case "${DEPLOY_TYPE}" in
                         EnableCrossRegionCrossAccountForwarding=true \
                         DeploymentPackageType=layer \
                         DynatraceS3LogForwarderLayerArn="${LAYER_ARN}" \
-                        $([ "${NOTIFICATION_TYPE}" = "sns" ] && echo "CreateS3NotificationsSNSTopic=true S3BucketNames=${E2E_SNS_TESTING_BUCKET_NAME}") \
+                        $([ "${NOTIFICATION_TYPE}" = "sns" ] && echo "CreateS3NotificationsSNSTopic=true S3BucketNames=${E2E_TESTING_BUCKET_NAME}") \
                         --template-file template.yaml --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
                         --role-arn ${CFN_ROLE_ARN}
 
@@ -121,14 +121,14 @@ case "${NOTIFICATION_TYPE}" in
             --query 'Stacks[0].Outputs[?OutputKey==`S3NotificationsSNSTopic`].OutputValue' \
             --output text)
 
-        CURRENT=$(aws s3api get-bucket-notification-configuration --bucket "${E2E_SNS_TESTING_BUCKET_NAME}" 2>/dev/null || echo '{}')
+        CURRENT=$(aws s3api get-bucket-notification-configuration --bucket "${E2E_TESTING_BUCKET_NAME}" 2>/dev/null || echo '{}')
         NEW_CONFIG=$(echo "${CURRENT}" | jq --arg arn "${SNS_TOPIC_ARN}" --arg prefix "${E2E_TEST_PREFIX}/" '
             .TopicConfigurations = ((.TopicConfigurations // []) | map(select(.TopicArn != $arn))) + [{
                 "TopicArn": $arn, "Events": ["s3:ObjectCreated:*"],
                 "Filter": {"Key": {"FilterRules": [{"Name": "prefix", "Value": $prefix}]}}
             }]')
         aws s3api put-bucket-notification-configuration \
-            --bucket "${E2E_SNS_TESTING_BUCKET_NAME}" \
+            --bucket "${E2E_TESTING_BUCKET_NAME}" \
             --notification-configuration "${NEW_CONFIG}"
         ;;
 
