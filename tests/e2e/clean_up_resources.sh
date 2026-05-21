@@ -60,6 +60,18 @@ if [ "${NOTIFICATION_TYPE:-eventbridge}" = "sns" ]; then
             --bucket "${E2E_TESTING_BUCKET_NAME}" \
             --notification-configuration "${NEW_CONFIG}" || true
     fi
+elif [ "${NOTIFICATION_TYPE}" = "sqs" ]; then
+    QUEUE_ARN=$(aws ssm get-parameter \
+        --name "/dynatrace/s3-log-forwarder/${STACK_NAME}/sqs-queue-arn" \
+        --query 'Parameter.Value' --output text 2>/dev/null || true)
+    if [ -n "${QUEUE_ARN}" ]; then
+        CURRENT=$(aws s3api get-bucket-notification-configuration --bucket "${E2E_TESTING_BUCKET_NAME}" 2>/dev/null || echo '{}')
+        NEW_CONFIG=$(echo "${CURRENT}" | jq --arg arn "${QUEUE_ARN}" '
+            .QueueConfigurations = ((.QueueConfigurations // []) | map(select(.QueueArn != $arn)))')
+        aws s3api put-bucket-notification-configuration \
+            --bucket "${E2E_TESTING_BUCKET_NAME}" \
+            --notification-configuration "${NEW_CONFIG}" || true
+    fi
 else
     log "Deleting Cloudformation Stack ${STACK_NAME}-s3-bucket-configuration"
     aws cloudformation delete-stack --stack-name ${STACK_NAME}-s3-bucket-configuration

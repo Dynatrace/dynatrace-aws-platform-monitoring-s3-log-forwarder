@@ -1,11 +1,11 @@
 #!/bin/bash
 
 # Deploy the dynatrace-aws-platform-monitoring-s3-log-forwarder for e2e validation.
-# Usage: ./tests/e2e/deploy_forwarder.sh <layer|zip> [eventbridge|sns]
+# Usage: ./tests/e2e/deploy_forwarder.sh <layer|zip> [eventbridge|sns|sqs]
 
 set -e
 
-DEPLOY_TYPE="${1:?Usage: $0 <layer|zip> [eventbridge|sns]}"
+DEPLOY_TYPE="${1:?Usage: $0 <layer|zip> [eventbridge|sns|sqs]}"
 NOTIFICATION_TYPE="${2:-eventbridge}"
 
 TIMESTAMP_FORMAT='+%Y-%m-%dT%H:%M:%SZ'
@@ -35,6 +35,7 @@ case "${DEPLOY_TYPE}" in
                         EnableCrossRegionCrossAccountForwarding=true \
                         DeploymentPackageType=zip \
                         $([ "${NOTIFICATION_TYPE}" = "sns" ] && echo "CreateS3NotificationsSNSTopic=true S3BucketNames=${E2E_TESTING_BUCKET_NAME}") \
+                        $([ "${NOTIFICATION_TYPE}" = "sqs" ] && echo "S3BucketNames=${E2E_TESTING_BUCKET_NAME}") \
                         --template-file template.yaml --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
                         --role-arn ${CFN_ROLE_ARN}
 
@@ -90,6 +91,7 @@ case "${DEPLOY_TYPE}" in
                         DeploymentPackageType=layer \
                         DynatraceS3LogForwarderLayerArn="${LAYER_ARN}" \
                         $([ "${NOTIFICATION_TYPE}" = "sns" ] && echo "CreateS3NotificationsSNSTopic=true S3BucketNames=${E2E_TESTING_BUCKET_NAME}") \
+                        $([ "${NOTIFICATION_TYPE}" = "sqs" ] && echo "S3BucketNames=${E2E_TESTING_BUCKET_NAME}") \
                         --template-file template.yaml --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
                         --role-arn ${CFN_ROLE_ARN}
 
@@ -132,8 +134,24 @@ case "${NOTIFICATION_TYPE}" in
             --notification-configuration "${NEW_CONFIG}"
         ;;
 
+    sqs)
+        QUEUE_ARN=$(aws ssm get-parameter \
+            --name "/dynatrace/s3-log-forwarder/${STACK_NAME}/sqs-queue-arn" \
+            --query 'Parameter.Value' --output text)
+
+        CURRENT=$(aws s3api get-bucket-notification-configuration --bucket "${E2E_TESTING_BUCKET_NAME}" 2>/dev/null || echo '{}')
+        NEW_CONFIG=$(echo "${CURRENT}" | jq --arg arn "${QUEUE_ARN}" --arg prefix "${E2E_TEST_PREFIX}/" '
+            .QueueConfigurations = ((.QueueConfigurations // []) | map(select(.QueueArn != $arn))) + [{
+                "QueueArn": $arn, "Events": ["s3:ObjectCreated:*"],
+                "Filter": {"Key": {"FilterRules": [{"Name": "prefix", "Value": $prefix}]}}
+            }]')
+        aws s3api put-bucket-notification-configuration \
+            --bucket "${E2E_TESTING_BUCKET_NAME}" \
+            --notification-configuration "${NEW_CONFIG}"
+        ;;
+
     *)
-        echo "ERROR: unknown notification type '${NOTIFICATION_TYPE}'. Use 'eventbridge' or 'sns'." >&2
+        echo "ERROR: unknown notification type '${NOTIFICATION_TYPE}'. Use 'eventbridge', 'sns' or 'sqs'." >&2
         exit 1
         ;;
 esac
