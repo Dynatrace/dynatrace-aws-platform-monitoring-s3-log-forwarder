@@ -54,14 +54,6 @@ wget https://dynatrace-aws-s3-log-forwarder-assets.s3.amazonaws.com/${VERSION_TA
 unzip -o templates.zip
 ```
 
-> [!NOTE]
->
-> If you're using the **ZIP deployment** option, also download the Lambda package:
->
-> ```bash
-> wget https://dynatrace-aws-s3-log-forwarder-assets.s3.amazonaws.com/${VERSION_TAG}/lambda.zip
-> ```
-
 ### Step 5. Update the stack
 
 #### If using Lambda Layer deployment
@@ -80,6 +72,12 @@ aws cloudformation deploy --stack-name ${STACK_NAME} \
 ```
 
 #### If using ZIP deployment
+
+Download the new Lambda deployment package:
+
+```bash
+wget https://dynatrace-aws-s3-log-forwarder-assets.s3.amazonaws.com/${VERSION_TAG}/lambda.zip
+```
 
 Update the CloudFormation stack:
 
