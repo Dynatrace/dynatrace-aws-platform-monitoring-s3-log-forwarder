@@ -128,7 +128,7 @@ jobs:
     env:
       STACK_NAME: e2e-s3lf-zip-sns-${{ github.run_id }}
       E2E_TEST_PREFIX: test/${{ github.run_id }}/zip/sns
-      E2E_SNS_TESTING_BUCKET_NAME: dynatrace-aws-s3-log-forwarder-e2e-testing
+      E2E_TESTING_BUCKET_NAME: dynatrace-aws-s3-log-forwarder-e2e-testing
       NOTIFICATION_TYPE: sns
       CI_RUN_ID: ${{ github.run_id }}
       DT_TENANT_URL: ${{ secrets.DT_TENANT_URL }}
@@ -223,7 +223,7 @@ jobs:
     env:
       STACK_NAME: e2e-s3lf-layer-sns-${{ github.run_id }}
       E2E_TEST_PREFIX: test/${{ github.run_id }}/layer/sns
-      E2E_SNS_TESTING_BUCKET_NAME: dynatrace-aws-s3-log-forwarder-e2e-testing
+      E2E_TESTING_BUCKET_NAME: dynatrace-aws-s3-log-forwarder-e2e-testing
       NOTIFICATION_TYPE: sns
       CI_RUN_ID: ${{ github.run_id }}
       DT_TENANT_URL: ${{ secrets.DT_TENANT_URL }}
