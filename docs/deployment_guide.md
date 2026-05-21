@@ -67,14 +67,6 @@ wget https://dynatrace-aws-s3-log-forwarder-assets.s3.amazonaws.com/${VERSION_TA
 unzip templates.zip
 ```
 
-> [!NOTE]
->
-> If you intend to use the **ZIP deployment** option, also download the Lambda package:
->
-> ```bash
-> wget https://dynatrace-aws-s3-log-forwarder-assets.s3.amazonaws.com/${VERSION_TAG}/lambda.zip
-> ```
-
 ### Step 4. Deploy the Lambda function
 
 Choose one of the deployment options below:
@@ -112,6 +104,12 @@ aws cloudformation deploy \
 ---
 
 #### Alternative option: ZIP deployment
+
+1. Download the Lambda deployment package:
+
+```bash
+wget https://dynatrace-aws-s3-log-forwarder-assets.s3.amazonaws.com/${VERSION_TAG}/lambda.zip
+```
 
 1. Deploy the CloudFormation stack:
 
