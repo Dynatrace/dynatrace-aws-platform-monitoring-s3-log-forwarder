@@ -120,6 +120,54 @@ jobs:
         if: always()
         run: ./tests/e2e/clean_up_resources.sh
 
+  e2e-test-zip-sns:
+    name: End-to-end deployment test (ZIP, SNS)
+    runs-on: ubuntu-latest
+    needs: unit-tests
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
+    env:
+      STACK_NAME: e2e-s3lf-zip-sns-${{ github.run_id }}
+      E2E_TEST_PREFIX: test/${{ github.run_id }}/zip/sns
+      E2E_SNS_TESTING_BUCKET_NAME: dynatrace-aws-s3-log-forwarder-e2e-testing
+      NOTIFICATION_TYPE: sns
+      CI_RUN_ID: ${{ github.run_id }}
+      DT_TENANT_URL: ${{ secrets.DT_TENANT_URL }}
+      DT_TENANT_API_KEY: ${{ secrets.DT_TENANT_API_KEY }}
+      CFN_ROLE_ARN: ${{ secrets.CFN_ROLE_ARN }}
+      DT_TENANT_PLATFORM_URL: ${{ secrets.DT_TENANT_PLATFORM_URL }}
+      DT_SSO_URL: ${{ secrets.DT_SSO_URL }}
+      DT_OAUTH_CLIENT_ID: ${{ secrets.DT_OAUTH_CLIENT_ID }}
+      DT_OAUTH_CLIENT_SECRET: ${{ secrets.DT_OAUTH_CLIENT_SECRET }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.14'
+      - name: Install dependencies
+        run: pip install requests
+      - name: Update version and deploy forwarder (ZIP, SNS)
+        env:
+          GIT_COMMIT: ${{ github.sha }}
+        run: |
+          ./scripts/update_version.sh
+          ./tests/e2e/deploy_forwarder.sh zip sns
+      - name: Write test log to S3 and wait for ingestion
+        run: |
+          echo "[$(date -u '+%Y-%m-%dT%H:%M:%SZ')] E2E testing SNS validation log entry" > ${{ github.run_id }}.log
+          aws s3 cp ${{ github.run_id }}.log s3://${E2E_SNS_TESTING_BUCKET_NAME}/${E2E_TEST_PREFIX}/test_log.log
+          sleep 120
+      - name: Validate log entry exists in Dynatrace
+        run: ./tests/e2e/validate_logs_exist.py --bucket ${E2E_SNS_TESTING_BUCKET_NAME} --key ${E2E_TEST_PREFIX}/test_log.log
+      - name: Clean up resources
+        if: always()
+        run: ./tests/e2e/clean_up_resources.sh
+
   e2e-test-layer:
     name: End-to-end deployment test (Lambda Layer)
     runs-on: ubuntu-latest
@@ -163,6 +211,54 @@ jobs:
           sleep 120
       - name: Validate log entry exists in Dynatrace
         run: ./tests/e2e/validate_logs_exist.py --bucket ${E2E_TESTING_BUCKET_NAME} --key ${E2E_TEST_PREFIX}/test_log.log
+      - name: Clean up resources
+        if: always()
+        run: ./tests/e2e/clean_up_resources.sh
+
+  e2e-test-layer-sns:
+    name: End-to-end deployment test (Lambda Layer, SNS)
+    runs-on: ubuntu-latest
+    needs: unit-tests
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
+    env:
+      STACK_NAME: e2e-s3lf-layer-sns-${{ github.run_id }}
+      E2E_TEST_PREFIX: test/${{ github.run_id }}/layer/sns
+      E2E_SNS_TESTING_BUCKET_NAME: dynatrace-aws-s3-log-forwarder-e2e-testing
+      NOTIFICATION_TYPE: sns
+      CI_RUN_ID: ${{ github.run_id }}
+      DT_TENANT_URL: ${{ secrets.DT_TENANT_URL }}
+      DT_TENANT_API_KEY: ${{ secrets.DT_TENANT_API_KEY }}
+      CFN_ROLE_ARN: ${{ secrets.CFN_ROLE_ARN }}
+      DT_TENANT_PLATFORM_URL: ${{ secrets.DT_TENANT_PLATFORM_URL }}
+      DT_SSO_URL: ${{ secrets.DT_SSO_URL }}
+      DT_OAUTH_CLIENT_ID: ${{ secrets.DT_OAUTH_CLIENT_ID }}
+      DT_OAUTH_CLIENT_SECRET: ${{ secrets.DT_OAUTH_CLIENT_SECRET }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.14'
+      - name: Install dependencies
+        run: pip install requests
+      - name: Update version and deploy forwarder (Lambda Layer, SNS)
+        env:
+          GIT_COMMIT: ${{ github.sha }}
+        run: |
+          ./scripts/update_version.sh
+          ./tests/e2e/deploy_forwarder.sh layer sns
+      - name: Write test log to S3 and wait for ingestion
+        run: |
+          echo "[$(date -u '+%Y-%m-%dT%H:%M:%SZ')] E2E testing SNS validation log entry" > ${{ github.run_id }}.log
+          aws s3 cp ${{ github.run_id }}.log s3://${E2E_SNS_TESTING_BUCKET_NAME}/${E2E_TEST_PREFIX}/test_log.log
+          sleep 120
+      - name: Validate log entry exists in Dynatrace
+        run: ./tests/e2e/validate_logs_exist.py --bucket ${E2E_SNS_TESTING_BUCKET_NAME} --key ${E2E_TEST_PREFIX}/test_log.log
       - name: Clean up resources
         if: always()
         run: ./tests/e2e/clean_up_resources.sh

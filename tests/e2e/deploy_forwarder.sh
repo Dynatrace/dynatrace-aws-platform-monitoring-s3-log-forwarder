@@ -1,11 +1,12 @@
 #!/bin/bash
 
 # Deploy the dynatrace-aws-platform-monitoring-s3-log-forwarder for e2e validation.
-# Usage: ./tests/e2e/deploy_forwarder.sh <layer|zip>
+# Usage: ./tests/e2e/deploy_forwarder.sh <layer|zip> [eventbridge|sns]
 
 set -e
 
-DEPLOY_TYPE="${1:?Usage: $0 <layer|zip>}"
+DEPLOY_TYPE="${1:?Usage: $0 <layer|zip> [eventbridge|sns]}"
+NOTIFICATION_TYPE="${2:-eventbridge}"
 
 TIMESTAMP_FORMAT='+%Y-%m-%dT%H:%M:%SZ'
 log() {
@@ -33,6 +34,7 @@ case "${DEPLOY_TYPE}" in
                         DynatraceApiKeySSMParameter="${SSM_PARAMETER_NAME}" \
                         EnableCrossRegionCrossAccountForwarding=true \
                         DeploymentPackageType=zip \
+                        $([ "${NOTIFICATION_TYPE}" = "sns" ] && echo "CreateS3NotificationsSNSTopic=true S3BucketNames=${E2E_SNS_TESTING_BUCKET_NAME}") \
                         --template-file template.yaml --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
                         --role-arn ${CFN_ROLE_ARN}
 
@@ -87,6 +89,7 @@ case "${DEPLOY_TYPE}" in
                         EnableCrossRegionCrossAccountForwarding=true \
                         DeploymentPackageType=layer \
                         DynatraceS3LogForwarderLayerArn="${LAYER_ARN}" \
+                        $([ "${NOTIFICATION_TYPE}" = "sns" ] && echo "CreateS3NotificationsSNSTopic=true S3BucketNames=${E2E_SNS_TESTING_BUCKET_NAME}") \
                         --template-file template.yaml --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
                         --role-arn ${CFN_ROLE_ARN}
 
@@ -99,13 +102,38 @@ case "${DEPLOY_TYPE}" in
         ;;
 esac
 
-log "Deploying the S3 bucket configuration template"
-aws cloudformation deploy --stack-name ${STACK_NAME}-s3-bucket-configuration --parameter-overrides \
-                DynatraceAwsS3LogForwarderStackName=${STACK_NAME} \
-                LogsBucketName=${E2E_TESTING_BUCKET_NAME} \
-                LogsBucketPrefix1=${E2E_TEST_PREFIX}/ \
-                --capabilities CAPABILITY_IAM \
-                --template-file dynatrace-aws-s3-log-forwarder-s3-bucket-configuration.yaml \
-                --role-arn ${CFN_ROLE_ARN}
+case "${NOTIFICATION_TYPE}" in
+    eventbridge)
+        log "Deploying the S3 bucket configuration template"
+        aws cloudformation deploy --stack-name ${STACK_NAME}-s3-bucket-configuration --parameter-overrides \
+                        DynatraceAwsS3LogForwarderStackName=${STACK_NAME} \
+                        LogsBucketName=${E2E_TESTING_BUCKET_NAME} \
+                        LogsBucketPrefix1=${E2E_TEST_PREFIX}/ \
+                        --capabilities CAPABILITY_IAM \
+                        --template-file dynatrace-aws-s3-log-forwarder-s3-bucket-configuration.yaml \
+                        --role-arn ${CFN_ROLE_ARN}
 
-aws cloudformation wait stack-create-complete --stack-name ${STACK_NAME}-s3-bucket-configuration
+        aws cloudformation wait stack-create-complete --stack-name ${STACK_NAME}-s3-bucket-configuration
+        ;;
+
+    sns)
+        SNS_TOPIC_ARN=$(aws cloudformation describe-stacks --stack-name "${STACK_NAME}" \
+            --query 'Stacks[0].Outputs[?OutputKey==`S3NotificationsSNSTopic`].OutputValue' \
+            --output text)
+
+        CURRENT=$(aws s3api get-bucket-notification-configuration --bucket "${E2E_SNS_TESTING_BUCKET_NAME}" 2>/dev/null || echo '{}')
+        NEW_CONFIG=$(echo "${CURRENT}" | jq --arg arn "${SNS_TOPIC_ARN}" --arg prefix "${E2E_TEST_PREFIX}/" '
+            .TopicConfigurations = ((.TopicConfigurations // []) | map(select(.TopicArn != $arn))) + [{
+                "TopicArn": $arn, "Events": ["s3:ObjectCreated:*"],
+                "Filter": {"Key": {"FilterRules": [{"Name": "prefix", "Value": $prefix}]}}
+            }]')
+        aws s3api put-bucket-notification-configuration \
+            --bucket "${E2E_SNS_TESTING_BUCKET_NAME}" \
+            --notification-configuration "${NEW_CONFIG}"
+        ;;
+
+    *)
+        echo "ERROR: unknown notification type '${NOTIFICATION_TYPE}'. Use 'eventbridge' or 'sns'." >&2
+        exit 1
+        ;;
+esac
