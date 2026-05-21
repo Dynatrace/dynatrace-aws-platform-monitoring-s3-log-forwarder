@@ -48,9 +48,24 @@ export_cloudwatch_logs () {
 
 # Delete resources
 
-log "Deleting Cloudformation Stack ${STACK_NAME}-s3-bucket-configutation"
-aws cloudformation delete-stack --stack-name ${STACK_NAME}-s3-bucket-configuration
-aws cloudformation wait stack-delete-complete --stack-name ${STACK_NAME}-s3-bucket-configuration
+if [ "${NOTIFICATION_TYPE:-eventbridge}" = "sns" ]; then
+    SNS_TOPIC_ARN=$(aws cloudformation describe-stacks --stack-name "${STACK_NAME}" \
+        --query 'Stacks[0].Outputs[?OutputKey==`S3NotificationsSNSTopic`].OutputValue' \
+        --output text 2>/dev/null || true)
+    if [ -n "${SNS_TOPIC_ARN}" ]; then
+        CURRENT=$(aws s3api get-bucket-notification-configuration --bucket "${E2E_SNS_TESTING_BUCKET_NAME}" 2>/dev/null || echo '{}')
+        NEW_CONFIG=$(echo "${CURRENT}" | jq --arg arn "${SNS_TOPIC_ARN}" '
+            .TopicConfigurations = ((.TopicConfigurations // []) | map(select(.TopicArn != $arn)))')
+        aws s3api put-bucket-notification-configuration \
+            --bucket "${E2E_SNS_TESTING_BUCKET_NAME}" \
+            --notification-configuration "${NEW_CONFIG}" || true
+    fi
+else
+    log "Deleting Cloudformation Stack ${STACK_NAME}-s3-bucket-configuration"
+    aws cloudformation delete-stack --stack-name ${STACK_NAME}-s3-bucket-configuration
+    aws cloudformation wait stack-delete-complete --stack-name ${STACK_NAME}-s3-bucket-configuration
+fi
+
 log "Deleting Cloudformation Stack ${STACK_NAME}"
 aws cloudformation delete-stack --stack-name ${STACK_NAME}
 aws cloudformation wait stack-delete-complete --stack-name ${STACK_NAME}
