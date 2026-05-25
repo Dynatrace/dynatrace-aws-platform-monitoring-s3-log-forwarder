@@ -31,7 +31,6 @@ from version import get_version
 logger = logging.getLogger()
 
 GENERIC_LOGS_INGEST_API_URL_SUFFIX = '/api/aws/s3/v1/logs'
-ENVIRONMENT_AG_URL_PART = '/e/'
 
 # Related documentation
 # https://www.dynatrace.com/support/help/how-to-use-dynatrace/log-monitoring/log-monitoring-limits
@@ -269,12 +268,7 @@ def load_sink() -> 'DynatraceSink':
 
 
 def extract_tenant_id_from_url(environment_url: str):
-    env_prefix_index = environment_url.find(ENVIRONMENT_AG_URL_PART)
-    if env_prefix_index != -1:
-        offset = len(ENVIRONMENT_AG_URL_PART)
-        return environment_url[env_prefix_index + offset: environment_url.find("/", env_prefix_index + offset)]
-    else:
-        return environment_url[environment_url.find("//") + 2: environment_url.find(".")]
+    return environment_url[environment_url.find("//") + 2: environment_url.find(".")]
 
 
 class DynatraceThrottlingException(Exception):
