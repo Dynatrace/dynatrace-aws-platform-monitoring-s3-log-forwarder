@@ -48,9 +48,10 @@ fi
 # Default to all enabled commercial regions if none specified
 if [[ ${#REGIONS[@]} -eq 0 ]]; then
     echo "Querying available AWS regions..."
+    # me-* regions (Middle East) are excluded — currently defunct and publishing fails there
     REGIONS=($(aws ec2 describe-regions \
         --query "Regions[].RegionName" \
-        --output text))
+        --output text | tr '\t' '\n' | grep -v '^me-'))
 fi
 
 echo "Publishing Lambda Layer: $LAYER_NAME"
