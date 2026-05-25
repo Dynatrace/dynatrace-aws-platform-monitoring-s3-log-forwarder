@@ -70,9 +70,12 @@ Parameters:
       - zip
   DynatraceS3LogForwarderLayerArn:
     Type: String
-    Description: ARN of the Lambda Layer Version containing the dynatrace-aws-platform-monitoring-s3-log-forwarder application code and dependencies (required when DeploymentPackageType is 'layer').
     Default: ""
     AllowedPattern: "(arn:(aws[a-zA-Z-]*)?:lambda:[a-z]{2}(-gov)?(-iso([a-z])?)?-[a-z]+-\\d{1}:\\d{12}:layer:[a-zA-Z0-9-_]+:[0-9]+)?"
+    Description: >
+      (Optional) ARN of the Dynatrace S3 Log Forwarder Lambda Layer.
+      If not provided, the most recent version of the Dynatrace S3 Log Forwarder Lambda Layer will be used 
+      (if DeploymentPackageType is 'layer').
   LambdaFunctionMemorySize:
     Description: Memory size of the queue processing Lambda function
     Type: Number
@@ -175,11 +178,6 @@ Parameters:
     ConstraintDescription: "Must be a valid IAM path: starts and ends with '/' (e.g. / or /engineering/ or /engineering/platform/)."
 
 Rules:
-  LayerArnRequiredForLayerDeployment:
-    RuleCondition: !Equals [!Ref DeploymentPackageType, "layer"]
-    Assertions:
-      - Assert: !Not [!Equals [!Ref DynatraceS3LogForwarderLayerArn, ""]]
-        AssertDescription: "DynatraceS3LogForwarderLayerArn must be provided when DeploymentPackageType is 'layer'. Specify a valid Lambda Layer Version ARN (e.g. arn:aws:lambda:us-east-1:123456789012:layer:dynatrace-aws-s3-log-forwarder:1)."
   ApiKeyExactlyOneMustBeSet:
     Assertions:
       - Assert: !Or
@@ -191,6 +189,67 @@ Rules:
             - !Not [!Equals [!Ref DynatraceApiKey, ""]]
             - !Not [!Equals [!Ref DynatraceApiKeySSMParameter, ""]]
         AssertDescription: "Provide either DynatraceApiKey or DynatraceApiKeySSMParameter — not both."
+
+Mappings:
+  LayerArns:
+    af-south-1:
+      Arn: null
+    ap-east-1:
+      Arn: null
+    ap-northeast-1:
+      Arn: null
+    ap-northeast-2:
+      Arn: null
+    ap-northeast-3:
+      Arn: null
+    ap-south-1:
+      Arn: null
+    ap-south-2:
+      Arn: null
+    ap-southeast-1:
+      Arn: null
+    ap-southeast-2:
+      Arn: null
+    ap-southeast-3:
+      Arn: null
+    ap-southeast-4:
+      Arn: null
+    ca-central-1:
+      Arn: null
+    ca-west-1:
+      Arn: null
+    eu-central-1:
+      Arn: null
+    eu-central-2:
+      Arn: null
+    eu-north-1:
+      Arn: null
+    eu-south-1:
+      Arn: null
+    eu-south-2:
+      Arn: null
+    eu-west-1:
+      Arn: null
+    eu-west-2:
+      Arn: null
+    eu-west-3:
+      Arn: null
+    il-central-1:
+      Arn: null
+    me-central-1:
+      Arn: null
+    me-south-1:
+      Arn: null
+    sa-east-1:
+      Arn: null
+    us-east-1:
+      Arn: null
+    us-east-2:
+      Arn: null
+    us-west-1:
+      Arn: null
+    us-west-2:
+      Arn: null
 
 Conditions:
   CrossRegionCrossAccountForwardingIsEnabled: !Equals [ !Ref EnableCrossRegionCrossAccountForwarding, "true" ]
@@ -205,6 +264,7 @@ Conditions:
   S3BucketNamesProvided: !Not [!Equals [!Join ["", !Ref S3BucketNames], ""]]
   KmsKeyArnsProvided: !Not [!Equals [!Join ["", !Ref KmsKeyArns], ""]]
   DirectApiKeyProvided: !Not [!Equals [!Ref DynatraceApiKey, ""]]
+  IsLayerArnProvided: !Not [!Equals [!Ref DynatraceS3LogForwarderLayerArn, ""]]
 
 Globals:
   Function:
@@ -277,8 +337,11 @@ Resources:
       Runtime: python3.14
       Layers: !If
         - IsLayerDeployment
-        - - !Ref DynatraceS3LogForwarderLayerArn
-        - !Ref "AWS::NoValue"
+        - - !If
+            - IsLayerArnProvided
+            - !Ref DynatraceS3LogForwarderLayerArn
+            - !FindInMap [LayerArns, !Ref AWS::Region, Arn]
+        - !Ref AWS::NoValue
       MemorySize: !Ref LambdaFunctionMemorySize
       Architectures:
         - x86_64
@@ -1213,3 +1276,4 @@ Outputs:
     Condition: DirectApiKeyProvided
     Description: "SSM Parameter path where the Dynatrace API key was stored by the stack"
     Value: !Sub /dynatrace/s3-log-forwarder/${AWS::StackName}/api-key
+

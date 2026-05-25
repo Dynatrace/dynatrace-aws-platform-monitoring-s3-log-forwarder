@@ -33,6 +33,14 @@ Lambda Layers are regional — a layer must be published in each region where cu
 
 The script will output the `LayerVersionArn` for each region — share the appropriate ARN with customers based on their deployment region.
 
+### Skip automatic file updates
+
+By default, after a successful publish the script automatically updates the Layer ARN table in `README.md` and the `Mappings.LayerArns` block in `template.yaml`. To skip these updates, pass `--no-update-files`:
+
+```bash
+./scripts/publish_layer.sh dist/layer.zip --no-update-files
+```
+
 ### Manual publishing
 
 Alternatively, you can publish manually:
@@ -50,7 +58,7 @@ Note the `LayerVersionArn` from the output — this is the ARN you'll share with
 
 ## Step 3. Share the Layer ARN with customers
 
-Provide customers with the full Layer Version ARN, for example:
+The Layer ARNs for all published regions are maintained in the [Lambda Layer ARNs table in README.md](../README.md). Provide customers with the full Layer Version ARN for their deployment region, for example:
 
 ```text
 arn:aws:lambda:us-east-1:123456789012:layer:dynatrace-aws-s3-log-forwarder:1
