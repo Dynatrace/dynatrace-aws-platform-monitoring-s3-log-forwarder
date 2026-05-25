@@ -20,7 +20,7 @@
 
 set -e
 
-LAYER_NAME="dynatrace-aws-s3-log-forwarder"
+LAYER_NAME="dynatrace-aws-platform-monitoring-s3-log-forwarder"
 ZIP_FILE="${1:?Usage: $0 <zip> [--regions r1,r2,...]}"
 REGIONS=()
 
