@@ -243,7 +243,12 @@ def load_custom_rules():
     log_processing_rules = {}
 
     if os.environ.get('LOG_FORWARDER_CONFIGURATION_LOCATION') == 'aws-appconfig':
-        log_processing_rules, log_processing_rules_verison = load_custom_rules_from_aws_appconfig()
+        try:
+            log_processing_rules, log_processing_rules_verison = load_custom_rules_from_aws_appconfig()
+        except aws_appconfig_helpers.ErrorAccessingAppConfig:
+            logger.warning(
+                "Unable to load custom log-processing-rules from AWS AppConfig at cold start, "
+                "continuing with built-in rules only")
 
     elif os.environ.get('LOG_FORWARDER_CONFIGURATION_LOCATION') == 'local':
         if 'LOG_PROCESSING_RULES_PATH' in os.environ:

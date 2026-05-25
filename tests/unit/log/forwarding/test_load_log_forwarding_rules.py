@@ -13,8 +13,13 @@
 #  limitations under the License.
 
 import unittest
+from unittest.mock import patch
 import os
-from log.forwarding import log_forwarding_rules 
+
+os.environ['DEPLOYMENT_NAME'] = 'test'
+
+from log.forwarding import log_forwarding_rules
+from utils import aws_appconfig_extension_helpers as aws_appconfig_helpers
 
 TEST_FORWARDING_RULES_PATH = os.path.join(
     os.path.dirname(os.path.abspath(__file__)),
@@ -72,6 +77,25 @@ class TestLoadLogForwardingRules(unittest.TestCase):
             if k in rules_per_bucket:
                 for i in rules_per_bucket[k]:
                     self.assertTrue(i in v.keys())
+
+
+    @patch("log.forwarding.log_forwarding_rules.load_forwarding_rules_from_local_file")
+    @patch("log.forwarding.log_forwarding_rules.load_forwarding_rules_from_aws_appconfig")
+    def test_appconfig_error_at_cold_start_falls_back_to_local_defaults(
+            self, mock_appconfig, mock_local):
+        mock_appconfig.side_effect = aws_appconfig_helpers.ErrorAccessingAppConfig
+        mock_local.return_value = ({"default": {}}, 0)
+
+        os.environ["LOG_FORWARDER_CONFIGURATION_LOCATION"] = "aws-appconfig"
+        try:
+            with self.assertLogs(level="WARNING") as cm:
+                rules, version = log_forwarding_rules.load()
+        finally:
+            del os.environ["LOG_FORWARDER_CONFIGURATION_LOCATION"]
+
+        mock_local.assert_called_once()
+        self.assertEqual(rules, {"default": {}})
+        self.assertTrue(any("cold start" in msg for msg in cm.output))
 
 
 if __name__ == '__main__':

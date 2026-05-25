@@ -20,7 +20,7 @@
 
 set -e
 
-LAYER_NAME="dynatrace-aws-s3-log-forwarder"
+LAYER_NAME="dynatrace-aws-platform-monitoring-s3-log-forwarder"
 ZIP_FILE="${1:?Usage: $0 <zip> [--regions r1,r2,...]}"
 REGIONS=()
 
@@ -48,9 +48,10 @@ fi
 # Default to all enabled commercial regions if none specified
 if [[ ${#REGIONS[@]} -eq 0 ]]; then
     echo "Querying available AWS regions..."
+    # me-* regions (Middle East) are excluded — currently defunct and publishing fails there
     REGIONS=($(aws ec2 describe-regions \
         --query "Regions[].RegionName" \
-        --output text))
+        --output text | tr '\t' '\n' | grep -v '^me-'))
 fi
 
 echo "Publishing Lambda Layer: $LAYER_NAME"

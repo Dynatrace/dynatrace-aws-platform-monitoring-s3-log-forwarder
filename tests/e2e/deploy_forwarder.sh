@@ -13,9 +13,14 @@ log() {
     return
 }
 
-log "Creating the SSM parameter"
-aws ssm put-parameter --name "/dynatrace/s3-log-forwarder/${STACK_NAME}/api-key" \
-                       --type SecureString --value $DT_TENANT_API_KEY
+SSM_PARAMETER_NAME="/dynatrace/s3-log-forwarder/${STACK_NAME}/api-key"
+
+log "Storing Dynatrace API key in SSM Parameter Store"
+aws ssm put-parameter \
+    --name "${SSM_PARAMETER_NAME}" \
+    --type SecureString \
+    --value "${DT_TENANT_API_KEY}" \
+    --overwrite
 
 case "${DEPLOY_TYPE}" in
     zip)
@@ -24,11 +29,11 @@ case "${DEPLOY_TYPE}" in
 
         log "Deploying the log forwarder template"
         aws cloudformation deploy --stack-name ${STACK_NAME} --parameter-overrides \
-                        DynatraceEnvironment1URL=${DT_TENANT_URL} \
-                        DynatraceEnvironment1ApiKeyParameter="/dynatrace/s3-log-forwarder/${STACK_NAME}/api-key" \
+                        DynatraceEnvironmentURL=${DT_TENANT_URL} \
+                        DynatraceApiKeySSMParameter="${SSM_PARAMETER_NAME}" \
                         EnableCrossRegionCrossAccountForwarding=true \
                         DeploymentPackageType=zip \
-                        --template-file template.yaml --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
+                        --template-file template.yaml --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
                         --role-arn ${CFN_ROLE_ARN}
 
         aws cloudformation wait stack-create-complete --stack-name ${STACK_NAME}
@@ -77,12 +82,12 @@ case "${DEPLOY_TYPE}" in
 
         log "Deploying the log forwarder template (layer mode)"
         aws cloudformation deploy --stack-name ${STACK_NAME} --parameter-overrides \
-                        DynatraceEnvironment1URL=${DT_TENANT_URL} \
-                        DynatraceEnvironment1ApiKeyParameter="/dynatrace/s3-log-forwarder/${STACK_NAME}/api-key" \
+                        DynatraceEnvironmentURL=${DT_TENANT_URL} \
+                        DynatraceApiKeySSMParameter="${SSM_PARAMETER_NAME}" \
                         EnableCrossRegionCrossAccountForwarding=true \
                         DeploymentPackageType=layer \
                         DynatraceS3LogForwarderLayerArn="${LAYER_ARN}" \
-                        --template-file template.yaml --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
+                        --template-file template.yaml --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
                         --role-arn ${CFN_ROLE_ARN}
 
         aws cloudformation wait stack-create-complete --stack-name ${STACK_NAME}
@@ -93,14 +98,6 @@ case "${DEPLOY_TYPE}" in
         exit 1
         ;;
 esac
-
-log "Deploying the forwarder configuration template"
-aws cloudformation deploy --stack-name ${STACK_NAME}-configuration --parameter-overrides \
-                DynatraceAwsS3LogForwarderStackName=${STACK_NAME} \
-                --template-file dynatrace-aws-s3-log-forwarder-configuration.yaml \
-                --role-arn ${CFN_ROLE_ARN}
-
-aws cloudformation wait stack-create-complete --stack-name ${STACK_NAME}-configuration
 
 log "Deploying the S3 bucket configuration template"
 aws cloudformation deploy --stack-name ${STACK_NAME}-s3-bucket-configuration --parameter-overrides \

@@ -27,23 +27,21 @@ Metadata:
     Description: dev
 
 Parameters:
-  DynatraceEnvironment1URL:
+  DynatraceEnvironmentURL:
     Description: URL of your Dynatrace environment. If you're deploying to Dynatrace Managed tenant, enter here the URL of your tenant AG without the trailing API endpoint, e.g. https://{your-activegate-domain}:9999/e/{your-environment-id}
     Type: String
     AllowedPattern: "^https:\\/\\/[a-zA-Z0-9-]{2,}(\\.[a-zA-Z0-9-]{2,})(\\.[a-zA-Z0-9-]{2,})*(:9999\\/e\\/.[a-z0-9-]*)?$"
-  DynatraceEnvironment1ApiKeyParameter:
-    Description: Name of the SecureString Parameter in AWS Parameter Store storing the Dynatrace API Key.
-    Type: String
-    Default: /dynatrace/s3-log-forwarder/dynatrace-aws-s3-log-forwarder/tenant/api-key
-  DynatraceEnvironment2URL:
-    Description: "[Optional]: URL of an additional Dynatrace environment you want to forward logs to. If none, leave this empy. [This feature is experimental and may change in the future]"
+  DynatraceApiKeySSMParameter:
+    Description: "Path of the SecureString Parameter in AWS Systems Manager Parameter Store that stores the Dynatrace API key (e.g. /dynatrace/s3-log-forwarder/my-stack/api-key). Use this or DynatraceApiKey, not both."
     Type: String
     Default: ""
-    AllowedPattern: "(^https:\\/\\/[a-zA-Z0-9-]{2,}(\\.[a-zA-Z0-9-]{2,})(\\.[a-zA-Z0-9-]{2,})*(:9999\\/e\\/.[a-z0-9-]*)?$)?"
-  DynatraceEnvironment2ApiKeyParameter:
-    Description: "[Optional]: Name of the SecureString Parameter in AWS Parameter Store storing the Dynatrace Environment 2 API Key.[This feature is experimental and may change in the future]"
+    AllowedPattern: "(^$|^\\/[a-zA-Z0-9._\\-\\/]+$)"
+    ConstraintDescription: "Must be a valid SSM parameter path starting with '/' (e.g. /dynatrace/s3-log-forwarder/my-stack/api-key) or left empty."
+  DynatraceApiKey:
+    Description: "Dynatrace API key with logs.ingest scope. Use this or DynatraceApiKeySSMParameter, not both. The key is stored in an SSM Parameter (String type) at /dynatrace/s3-log-forwarder/{stack-name}/api-key. For encrypted-at-rest storage, create a SecureString SSM parameter yourself and provide its path via DynatraceApiKeySSMParameter instead."
     Type: String
     Default: ""
+    NoEcho: true
   DynatraceLogIngestContentMaxLength:
     Description: Log content maximum byte size, longer logs will be trimmed
     Type: Number
@@ -61,6 +59,8 @@ Parameters:
     Description: E-mail address to send alarm notifications to.
     Type: String
     Default: ""
+    AllowedPattern: "(^$|^[a-zA-Z0-9._%+\\-]+@[a-zA-Z0-9.\\-]+\\.[a-zA-Z]{2,}$)"
+    ConstraintDescription: "Must be a valid e-mail address or left empty."
   DeploymentPackageType:
     Description: "Deployment package type for the Lambda function."
     Type: String
@@ -87,6 +87,8 @@ Parameters:
     Description: "If you're ingesting logs into a Dynatrace Managed cluster with no internet-facing Active Gates, specify a security group id to assign to your Lambda function. This security group should allow network access to the Environment Active Gates. This parameter is required if Lambda is deployed on a VPC (LambdaSubnetIds is specified)."
     Type: String
     Default: ""
+    AllowedPattern: "(^$|^sg-[0-9a-f]+$)"
+    ConstraintDescription: "Must be a valid security group ID (e.g. sg-0123456789abcdef0) or left empty."
   LambdaLoggingLevel:
     Description: Logging verbosity of the Lambda function
     Type: String
@@ -100,7 +102,7 @@ Parameters:
   LogForwarderConfigurationLocation:
     Description: Location from which to pull log forwarding and log processing rules (aws-appconfig or local)
     Type: String
-    Default: aws-appconfig
+    Default: local
     AllowedValues:
       - aws-appconfig
       - local
@@ -131,7 +133,7 @@ Parameters:
     Default: ""
     AllowedPattern: "($^|\\d{12})"
   MaximumLambdaConcurrency:
-    Description: Maximum number of Lambda functions running concurrently. The concurrency is reserved for the queue processing function, so it's guaranteed. 
+    Description: Maximum number of Lambda functions running concurrently. The concurrency is reserved for the queue processing function, so it's guaranteed.
     Type: Number
     Default: 30
   LambdaSQSMessageBatchSize:
@@ -156,7 +158,21 @@ Parameters:
   MaximumSQSMessageRetries:
     Type: Number
     Description: Maximum number of retries for failed processing of S3 Object Created notification messages
-    Default: 2
+    Default: 3
+  S3BucketNames:
+    Type: CommaDelimitedList
+    Description: "Optional list of S3 bucket names (e.g. my-bucket,another-bucket) to grant the Lambda function s3:GetObject access and create an EventBridge routing rule for. Use the per-bucket CloudFormation template for prefix filtering or cross-account/region buckets."
+    Default: ""
+  KmsKeyArns:
+    Type: CommaDelimitedList
+    Description: "Optional list of KMS Key ARNs (e.g. arn:aws:kms:us-east-1:123456789012:key/uuid) the Lambda function needs kms:Decrypt access to in order to read SSE-KMS encrypted S3 objects. Leave empty if your buckets are not encrypted with a customer-managed key."
+    Default: ""
+  IamRolePath:
+    Type: String
+    Description: "Optional IAM path for the Lambda execution role (e.g. /engineering/platform/). Some organizations require IAM roles to be created under a specific path for governance purposes."
+    Default: "/"
+    AllowedPattern: "^(/[a-zA-Z0-9+=,.@_-]+)*/$"
+    ConstraintDescription: "Must be a valid IAM path: starts and ends with '/' (e.g. / or /engineering/ or /engineering/platform/)."
 
 Rules:
   LayerArnRequiredForLayerDeployment:
@@ -164,10 +180,19 @@ Rules:
     Assertions:
       - Assert: !Not [!Equals [!Ref DynatraceS3LogForwarderLayerArn, ""]]
         AssertDescription: "DynatraceS3LogForwarderLayerArn must be provided when DeploymentPackageType is 'layer'. Specify a valid Lambda Layer Version ARN (e.g. arn:aws:lambda:us-east-1:123456789012:layer:dynatrace-aws-s3-log-forwarder:1)."
+  ApiKeyExactlyOneMustBeSet:
+    Assertions:
+      - Assert: !Or
+          - !Not [!Equals [!Ref DynatraceApiKey, ""]]
+          - !Not [!Equals [!Ref DynatraceApiKeySSMParameter, ""]]
+        AssertDescription: "Provide either DynatraceApiKey or DynatraceApiKeySSMParameter — at least one must be set."
+      - Assert: !Not
+          - !And
+            - !Not [!Equals [!Ref DynatraceApiKey, ""]]
+            - !Not [!Equals [!Ref DynatraceApiKeySSMParameter, ""]]
+        AssertDescription: "Provide either DynatraceApiKey or DynatraceApiKeySSMParameter — not both."
 
 Conditions:
-  SecondDTEnvironmentSpecified: !Not [!Equals [!Ref DynatraceEnvironment2URL, "" ]]
-
   CrossRegionCrossAccountForwardingIsEnabled: !Equals [ !Ref EnableCrossRegionCrossAccountForwarding, "true" ]
   AwsAccountListIsNotEmpty: !Not [ !Equals [!Join ["", !Ref AwsAccountsToReceiveLogsFrom ], ""] ]
   CreateEventBridgePolicy: !And [ !Condition AwsAccountListIsNotEmpty , !Condition CrossRegionCrossAccountForwardingIsEnabled ]
@@ -177,6 +202,9 @@ Conditions:
   CreateSNSTopicForS3Notifications: !Equals [ !Ref CreateS3NotificationsSNSTopic, "true" ]
   LambdaVpcConfigSpecified: !Not [!Equals [ !Join [ "", !Ref LambdaSubnetIds ], "" ]]
   LambdaVpcSecurityGroupSpecified: !Not [!Equals [!Ref LambdaSecurityGroupId, ""]]
+  S3BucketNamesProvided: !Not [!Equals [!Join ["", !Ref S3BucketNames], ""]]
+  KmsKeyArnsProvided: !Not [!Equals [!Join ["", !Ref KmsKeyArns], ""]]
+  DirectApiKeyProvided: !Not [!Equals [!Ref DynatraceApiKey, ""]]
 
 Globals:
   Function:
@@ -188,6 +216,52 @@ Globals:
 
 
 Resources:
+  QueueProcessingFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Path: !Ref IamRolePath
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - !If
+          - LambdaVpcConfigSpecified
+          - !Sub arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+          - !Ref AWS::NoValue
+      Policies:
+        - PolicyName: SQSPollerPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sqs:ReceiveMessage
+                  - sqs:DeleteMessage
+                  - sqs:GetQueueAttributes
+                  - sqs:ChangeMessageVisibility
+                  - sqs:ChangeMessageVisibilityBatch
+                  - sqs:DeleteMessageBatch
+                Resource: !GetAtt S3NotificationsQueue.Arn
+        - PolicyName: SSMParameterReadPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ssm:GetParameter
+                  - ssm:GetParameters
+                Resource:
+                  - !Sub arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/dynatrace/s3-log-forwarder/${AWS::StackName}/*
+                  - !If
+                    - DirectApiKeyProvided
+                    - !Ref AWS::NoValue
+                    - !Sub arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter${DynatraceApiKeySSMParameter}
+
   QueueProcessingFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -211,15 +285,17 @@ Resources:
       Environment:
         Variables:
           LD_LIBRARY_PATH: !If [IsLayerDeployment, !Ref "AWS::NoValue", "/var/task/lib"]
-          DYNATRACE_1_ENV_URL: !Ref DynatraceEnvironment1URL
-          DYNATRACE_1_API_KEY_PARAM: !Ref DynatraceEnvironment1ApiKeyParameter
-          DYNATRACE_2_ENV_URL: !If [ SecondDTEnvironmentSpecified, !Ref DynatraceEnvironment2URL, !Ref "AWS::NoValue"]
-          DYNATRACE_2_API_KEY_PARAM: !If [ SecondDTEnvironmentSpecified, !Ref DynatraceEnvironment2ApiKeyParameter, !Ref "AWS::NoValue"]
+          DYNATRACE_ENV_URL: !Ref DynatraceEnvironmentURL
+          DYNATRACE_API_KEY_SSM: !If
+            - DirectApiKeyProvided
+            - !Sub /dynatrace/s3-log-forwarder/${AWS::StackName}/api-key
+            - !Ref DynatraceApiKeySSMParameter
           QueueName: !GetAtt S3NotificationsQueue.QueueName
           LOGGING_LEVEL: !Ref LambdaLoggingLevel
           LOG_FORWARDER_CONFIGURATION_LOCATION: !Ref LogForwarderConfigurationLocation
           VERIFY_DT_SSL_CERT: !Ref VerifyLogEndpointSSLCerts
           DYNATRACE_LOG_INGEST_CONTENT_MAX_LENGTH: !Ref DynatraceLogIngestContentMaxLength
+      Role: !GetAtt QueueProcessingFunctionRole.Arn
       Events:
         SQSMessages:
           Type: SQS
@@ -232,19 +308,6 @@ Resources:
               - ReportBatchItemFailures
             ScalingConfig:
                MaximumConcurrency: !Ref MaximumLambdaConcurrency
-      Policies:
-        - SQSPollerPolicy:
-            QueueName: !GetAtt S3NotificationsQueue.QueueName
-        - SSMParameterReadPolicy:
-            ParameterName: !Sub dynatrace/s3-log-forwarder/${AWS::StackName}/*
-        - Statement:
-          - Effect: Allow
-            Resource:
-              - !Sub 'arn:aws:appconfig:${AWS::Region}:${AWS::AccountId}:application/${AppConfigApplication}'
-              - !Sub 'arn:aws:appconfig:${AWS::Region}:${AWS::AccountId}:application/${AppConfigApplication}/environment/${AppConfigEnvironment}/*'
-            Action:
-              - appconfig:StartConfigurationSession
-              - appconfig:GetLatestConfiguration
       ReservedConcurrentExecutions: !Ref MaximumLambdaConcurrency
       VpcConfig:
         SecurityGroupIds:
@@ -289,15 +352,30 @@ Resources:
             Condition:
               StringEquals:
                 "aws:SourceAccount": !Ref AWS::AccountId
-          - Sid: "Allow S3 buckets to Send Messages"
-            Effect: "Allow"
-            Principal:
-              Service: "s3.amazonaws.com"
-            Action: "sqs:SendMessage"
-            Resource: !GetAtt S3NotificationsQueue.Arn
-            Condition:
-              StringEquals:
-                "aws:SourceAccount": !Ref AWS::AccountId
+          - !If
+            - S3BucketNamesProvided
+            - Sid: "Allow S3 buckets to Send Messages"
+              Effect: "Allow"
+              Principal:
+                Service: "s3.amazonaws.com"
+              Action: "sqs:SendMessage"
+              Resource: !GetAtt S3NotificationsQueue.Arn
+              Condition:
+                ArnLike:
+                  "aws:SourceArn": !Split
+                    # Input: (string) arn:aws:s3:::bucket1,arn:aws:s3:::bucket2,arn:aws:s3:::bucket3
+                    # Output: a list of ARNs arn:aws:s3:::bucket1, arn:aws:s3:::bucket2, arn:aws:s3:::bucket3
+                    - ","
+                    - !Sub
+                      - "arn:aws:s3:::${BucketList}"
+                      # Input: bucket1,arn:aws:s3:::bucket2,arn:aws:s3:::bucket3
+                      # Output: arn:aws:s3:::bucket1,arn:aws:s3:::bucket2,arn:aws:s3:::bucket3 -> it just adds the arn:aws:s3::: prefix to first bucket
+                      - BucketList: !Join
+                          - ",arn:aws:s3:::"
+                          - !Ref S3BucketNames
+                          # Input: bucket1,bucket2,bucket3
+                          # Output: bucket1,arn:aws:s3:::bucket2,arn:aws:s3:::bucket3
+            - !Ref AWS::NoValue
       Queues:
         - !Ref S3NotificationsQueue
 
@@ -467,45 +545,6 @@ Resources:
             "aws:SourceArn": 
               - !Sub arn:aws:events:*:*:rule/dt-s3-log-fwd-to-${AWS::AccountId}-*
 
-  AppConfigApplication:
-    Type: AWS::AppConfig::Application
-    Properties:
-      Description: "dynatrace-aws-platform-monitoring-s3-log-forwarder application configuration"
-      Name: !Sub ${AWS::StackName}-app-config
-  
-  LogForwardingConfigurationProfile:
-    Type: AWS::AppConfig::ConfigurationProfile
-    Properties:
-      ApplicationId: !Ref AppConfigApplication
-      Description: "dynatrace-aws-s3-log-forwarding forwarding rules configuration profile"
-      LocationUri: hosted
-      Name: log-forwarding-rules
-      Type: AWS.Freeform
-  
-  LogProcessingConfigurationProfile:
-    Type: AWS::AppConfig::ConfigurationProfile
-    Properties:
-      ApplicationId: !Ref AppConfigApplication
-      Description: "dynatrace-aws-s3-log-forwarding processing rules configuration profile"
-      LocationUri: hosted
-      Name: log-processing-rules
-      Type: AWS.Freeform
-
-  AppConfigDeploymentStrategy:
-    Type: AWS::AppConfig::DeploymentStrategy
-    Properties:
-      Name: !Sub ${AWS::StackName}-AllAtOnce
-      DeploymentDurationInMinutes: 0
-      FinalBakeTimeInMinutes: 0
-      GrowthFactor: 100
-      ReplicateTo: NONE
-  
-  AppConfigEnvironment:
-    Type: AWS::AppConfig::Environment
-    Properties:
-      Name: !Sub ${AWS::StackName}
-      ApplicationId: !Ref AppConfigApplication
-  
   CloudWatchDashboard:
     Condition: DeployMonitoringDashboard
     Type: AWS::CloudWatch::Dashboard
@@ -1000,12 +1039,95 @@ Resources:
             ]
           }
 
+  S3BucketNamesEventBridgeRule:
+    Type: AWS::Events::Rule
+    Condition: S3BucketNamesProvided
+    Properties:
+      Name: !Sub "${AWS::StackName}-s3-notifications"
+      State: ENABLED
+      EventPattern:
+        source:
+          - "aws.s3"
+        detail-type:
+          - "Object Created"
+        detail:
+          bucket:
+            name: !Ref S3BucketNames
+      Targets:
+        - Id: "SQSQueue"
+          Arn: !GetAtt S3NotificationsQueue.Arn
+
+  S3GetObjectPolicy:
+    Type: AWS::IAM::Policy
+    Condition: S3BucketNamesProvided
+    Properties:
+      PolicyName: !Sub ${AWS::StackName}-s3-get-object
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action: s3:GetObject
+            Resource: !Split
+              # Input: (string) arn:aws:s3:::bucket1/*,arn:aws:s3:::bucket2/*,arn:aws:s3:::bucket3/*
+              # Output: a list of ARNs arn:aws:s3:::bucket1/*, arn:aws:s3:::bucket2/*, arn:aws:s3:::bucket3/*
+              - ","
+              - !Sub
+                - "arn:aws:s3:::${BucketList}/*"
+                # Input: bucket1/*,arn:aws:s3:::bucket2/*,arn:aws:s3:::bucket3
+                # Output: arn:aws:s3:::bucket1/*,arn:aws:s3:::bucket2/*,arn:aws:s3:::bucket3/* -> adds arn:aws:s3::: prefix to first bucket and /* suffix to last
+                - BucketList: !Join
+                    - "/*,arn:aws:s3:::"
+                    - !Ref S3BucketNames
+                    # Input: bucket1,bucket2,bucket3
+                    # Output: bucket1/*,arn:aws:s3:::bucket2/*,arn:aws:s3:::bucket3
+      Roles:
+        - !Ref QueueProcessingFunctionRole
+
+  KmsDecryptPolicy:
+    Type: AWS::IAM::Policy
+    Condition: KmsKeyArnsProvided
+    Properties:
+      PolicyName: !Sub ${AWS::StackName}-kms-decrypt
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action: kms:Decrypt
+            Resource: !Ref KmsKeyArns
+      Roles:
+        - !Ref QueueProcessingFunctionRole
+
+  SSMParameterDynatraceApiKey:
+    Type: AWS::SSM::Parameter
+    Condition: DirectApiKeyProvided
+    Properties:
+      Name: !Sub /dynatrace/s3-log-forwarder/${AWS::StackName}/api-key
+      Type: String
+      Value: !Ref DynatraceApiKey
+      Description: !Sub "Dynatrace API key for deployment ${AWS::StackName}"
+
+  SSMParameterSQSQueueArn:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /dynatrace/s3-log-forwarder/${AWS::StackName}/sqs-queue-arn
+      Type: String
+      Value: !GetAtt S3NotificationsQueue.Arn
+      Description: !Sub "ARN of the S3 notifications SQS queue for deployment ${AWS::StackName}"
+
+  SSMParameterLambdaRoleArn:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /dynatrace/s3-log-forwarder/${AWS::StackName}/lambda-role-arn
+      Type: String
+      Value: !GetAtt QueueProcessingFunctionRole.Arn
+      Description: !Sub "ARN of the Lambda IAM role for deployment ${AWS::StackName}"
+
 Outputs:
   QueueProcessingFunction:
     Description: "Queue Processing Lambda Function ARN"
     Value: !GetAtt QueueProcessingFunction.Arn
   QueueProcessingFunctionIamRole:
-    Description: "Implicit IAM Role created for QueueProcessingFunction"
+    Description: "IAM Role for QueueProcessingFunction"
     Value: !Ref QueueProcessingFunctionRole
     Export: 
       Name: !Sub "${AWS::StackName}:QueueProcessingFunctionIamRole"
@@ -1037,28 +1159,13 @@ Outputs:
     Description: "URL for the CloudWatch Dashboard to monitor the dynatrace-aws-s3-log-forwarder"
     Value: !Sub |
               https://${AWS::Region}.console.aws.amazon.com/cloudwatch/home#dashboards:name=${CloudWatchDashboard}
-  AppConfigApplicationId:
-    Description: AppConfig configuration application id
-    Value: !Ref AppConfigApplication
-    Export:
-      Name: !Sub ${AWS::StackName}:AppConfigApplicationId
-  AppConfigEnvironmentId:
-    Description: AppConfig configuration environment id
-    Value: !Ref AppConfigEnvironment
-    Export:
-      Name: !Sub ${AWS::StackName}:AppConfigEnvironmentId
-  LogForwardingConfigurationProfile:
-    Description: AppConfig Configuration Profile for log forwarding rules
-    Value: !Ref LogForwardingConfigurationProfile
-    Export:
-      Name: !Sub ${AWS::StackName}:LogForwardingConfigurationProfileId
-  LogProcessingConfigurationProfile: 
-    Description: AppConfig Configuration Profile for log forwarding rules
-    Value: !Ref LogProcessingConfigurationProfile
-    Export:
-      Name: !Sub ${AWS::StackName}:LogProcessingConfigurationProfileId
-  AppConfigAllAtOnceDeploymentStrategy:
-    Description: Deployment strategy for AWS AppConfig to deploy the log forwarding and processing configuration
-    Value: !Ref AppConfigDeploymentStrategy
-    Export: 
-      Name: !Sub ${AWS::StackName}:AppConfigDeploymentStrategyId
+  SSMParameterPathSQSQueueArn:
+    Description: "SSM Parameter path storing the SQS queue ARN"
+    Value: !Sub /dynatrace/s3-log-forwarder/${AWS::StackName}/sqs-queue-arn
+  SSMParameterPathLambdaRoleArn:
+    Description: "SSM Parameter path storing the Lambda IAM role ARN"
+    Value: !Sub /dynatrace/s3-log-forwarder/${AWS::StackName}/lambda-role-arn
+  SSMParameterPathDynatraceApiKey:
+    Condition: DirectApiKeyProvided
+    Description: "SSM Parameter path where the Dynatrace API key was stored by the stack"
+    Value: !Sub /dynatrace/s3-log-forwarder/${AWS::StackName}/api-key

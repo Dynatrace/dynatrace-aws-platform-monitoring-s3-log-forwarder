@@ -17,7 +17,6 @@ import logging
 import os
 import sys
 import json
-import re
 import gzip
 import time
 import requests
@@ -67,7 +66,7 @@ default_headers = {
 
 class DynatraceSink():
     def __init__(self, dt_url: str, dt_api_key_parameter: str, verify_ssl: bool = True):
-        self._environment_url = dt_url
+        self._environment_url = dt_url.rstrip('/')
         self._api_key_parameter = dt_api_key_parameter
         self._approx_buffered_messages_size = LIST_BRACKETS_LENGTH
         self._messages = []
@@ -191,7 +190,6 @@ class DynatraceSink():
         Returns a list of failed batch numbers.
         '''
 
-        # Pull API Key from SSM / Cache for 2 mins
         dt_api_key = parameters.get_parameter(
             self._api_key_parameter, max_age=120, decrypt=True)
 
@@ -253,38 +251,13 @@ class DynatraceSink():
                            unit=MetricUnit.Seconds, value=(end_time - start_time))
 
 
-def load_sinks():
+def load_sink() -> 'DynatraceSink':
     '''
-    Loads all configured sinks on environment variables. Returns a dict of sinks:
-    {
-        'sink1': DynatraceSink,
-        'sink2': DynatraceSink
-    }
+    Loads the configured Dynatrace sink. Reads DYNATRACE_API_KEY_SSM for the SSM parameter
+    path that stores the API key — always set by the CloudFormation template.
     '''
-
-    regex = r'^DYNATRACE_[A-Z0-9][A-Z0-9]*_ENV_URL$'
-    sinks = {}
-
     verify_ssl = False if os.environ['VERIFY_DT_SSL_CERT'] == "false" else True
-
-    for k, v in os.environ.items():
-        if re.match(regex, k):
-            sink_id = k.split('_')[1]
-            if os.environ.get(f'DYNATRACE_{sink_id}_API_KEY_PARAM'):
-                dt_url = v
-                dt_api_key_parameter = os.environ[f'DYNATRACE_{sink_id}_API_KEY_PARAM']
-                sinks[sink_id] = DynatraceSink(dt_url, dt_api_key_parameter, verify_ssl)
-            else:
-                logging.warning("No API key configured for sink id %s", sink_id)
-
-    return sinks
-
-def empty_sinks(sinks:list):
-    '''
-    Gets a list of DynatraceSink objects and empties its contents
-    '''
-    for _ , sink in sinks.items():
-        sink.empty_sink()
+    return DynatraceSink(os.environ['DYNATRACE_ENV_URL'], os.environ['DYNATRACE_API_KEY_SSM'], verify_ssl)
 
 
 def extract_tenant_id_from_url(environment_url: str):

@@ -33,7 +33,7 @@ Set the `VERSION_TAG` environment variable to the latest release version tag of 
 
 ```bash
 # Get the latest version
-export VERSION_TAG=$(curl -s https://api.github.com/repos/dynatrace/dynatrace-aws-s3-log-forwarder/releases/latest | grep tag_name | cut -d'"' -f4)
+export VERSION_TAG=$(curl -s https://api.github.com/repos/dynatrace/dynatrace-aws-platform-monitoring-s3-log-forwarder/releases/latest | grep tag_name | cut -d'"' -f4)
 ```
 
 > [!Note]
@@ -44,9 +44,9 @@ export VERSION_TAG=$(curl -s https://api.github.com/repos/dynatrace/dynatrace-aw
 > export VERSION_TAG=v0.5.8
 > ```
 
-### Step 4. Download the latest templates and Lambda package
+### Step 4. Download the latest templates
 
-Download the CloudFormation templates and the Lambda deployment package for the version you're updating to:
+Download the CloudFormation templates for the version you're updating to:
 
 ```bash
 mkdir -p dynatrace-aws-s3-log-forwarder-templates && cd "$_"
@@ -65,7 +65,7 @@ export LAYER_ARN=<new-layer-version-arn>
 
 aws cloudformation deploy --stack-name ${STACK_NAME} \
             --template-file template.yaml \
-            --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
+            --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
             --parameter-overrides \
                 DeploymentPackageType="layer" \
                 DynatraceS3LogForwarderLayerArn="$LAYER_ARN"
@@ -73,11 +73,17 @@ aws cloudformation deploy --stack-name ${STACK_NAME} \
 
 #### If using ZIP deployment
 
+Download the new Lambda deployment package:
+
+```bash
+wget https://dynatrace-aws-s3-log-forwarder-assets.s3.amazonaws.com/${VERSION_TAG}/lambda.zip
+```
+
 Update the CloudFormation stack:
 
 ```bash
 aws cloudformation deploy --stack-name ${STACK_NAME} \
-            --template-file template.yaml --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND
+            --template-file template.yaml --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND
 ```
 
 Then update the Lambda function code with the new deployment package:
