@@ -8,6 +8,8 @@ set -e
 DEPLOY_TYPE="${1:?Usage: $0 <layer|zip> [eventbridge|sns|sqs]}"
 NOTIFICATION_TYPE="${2:-eventbridge}"
 
+: "${E2E_TESTING_BUCKET_NAME:?E2E_TESTING_BUCKET_NAME must be set}"
+
 TIMESTAMP_FORMAT='+%Y-%m-%dT%H:%M:%SZ'
 log() {
     echo "[$(date -u "${TIMESTAMP_FORMAT}")] $*"
@@ -122,6 +124,7 @@ case "${NOTIFICATION_TYPE}" in
         SNS_TOPIC_ARN=$(aws cloudformation describe-stacks --stack-name "${STACK_NAME}" \
             --query 'Stacks[0].Outputs[?OutputKey==`S3NotificationsSNSTopic`].OutputValue' \
             --output text)
+        [[ "${SNS_TOPIC_ARN}" =~ ^arn:aws:sns: ]] || { echo "ERROR: could not retrieve a valid SNS topic ARN from stack ${STACK_NAME} (got: '${SNS_TOPIC_ARN}')" >&2; exit 1; }
 
         CURRENT=$(aws s3api get-bucket-notification-configuration --bucket "${E2E_TESTING_BUCKET_NAME}" 2>/dev/null || echo '{}')
         NEW_CONFIG=$(echo "${CURRENT}" | jq --arg arn "${SNS_TOPIC_ARN}" --arg prefix "${E2E_TEST_PREFIX}/" '
@@ -138,6 +141,7 @@ case "${NOTIFICATION_TYPE}" in
         QUEUE_ARN=$(aws cloudformation describe-stacks --stack-name "${STACK_NAME}" \
             --query 'Stacks[0].Outputs[?OutputKey==`SQSProcessingQueue`].OutputValue' \
             --output text)
+        [[ "${QUEUE_ARN}" =~ ^arn:aws:sqs: ]] || { echo "ERROR: could not retrieve a valid SQS queue ARN from stack ${STACK_NAME} (got: '${QUEUE_ARN}')" >&2; exit 1; }
 
         CURRENT=$(aws s3api get-bucket-notification-configuration --bucket "${E2E_TESTING_BUCKET_NAME}" 2>/dev/null || echo '{}')
         NEW_CONFIG=$(echo "${CURRENT}" | jq --arg arn "${QUEUE_ARN}" --arg prefix "${E2E_TEST_PREFIX}/" '
