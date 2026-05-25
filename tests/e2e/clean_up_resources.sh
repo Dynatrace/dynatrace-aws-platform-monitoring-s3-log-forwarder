@@ -1,5 +1,7 @@
 #!/bin/bash
 
+command -v jq &>/dev/null || { echo "ERROR: jq is required but not installed" >&2; exit 1; }
+
 # Settings for CloudWatch Log Export job
 PREFIX="test/${CI_RUN_ID}/lambda-logs"
 STACK_NAME=${STACK_NAME:-e2e-dt-aws-s3-log-forwarder-${CI_RUN_ID}}

@@ -9,6 +9,7 @@ DEPLOY_TYPE="${1:?Usage: $0 <layer|zip> [eventbridge|sns|sqs]}"
 NOTIFICATION_TYPE="${2:-eventbridge}"
 
 : "${E2E_TESTING_BUCKET_NAME:?E2E_TESTING_BUCKET_NAME must be set}"
+command -v jq &>/dev/null || { echo "ERROR: jq is required but not installed" >&2; exit 1; }
 
 TIMESTAMP_FORMAT='+%Y-%m-%dT%H:%M:%SZ'
 log() {

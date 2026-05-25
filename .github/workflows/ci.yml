@@ -80,6 +80,10 @@ jobs:
     if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
     strategy:
       fail-fast: false
+      # max-parallel: 1 is required because all matrix jobs mutate the same S3 bucket notification
+      # configuration (put-bucket-notification-configuration), and parallel runs would race and
+      # overwrite each other's changes. Remove max-parallel once each job uses a dedicated bucket.
+      max-parallel: 1
       matrix:
         deploy_type: [zip, layer]
         notification_type: [eventbridge, sns, sqs]
