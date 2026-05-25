@@ -80,16 +80,31 @@ jobs:
     if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
     strategy:
       fail-fast: false
-      # max-parallel: 1 is required because all matrix jobs mutate the same S3 bucket notification
-      # configuration (put-bucket-notification-configuration), and parallel runs would race and
-      # overwrite each other's changes. Remove max-parallel once each job uses a dedicated bucket.
-      max-parallel: 1
       matrix:
         deploy_type: [zip, layer]
         notification_type: [eventbridge, sns, sqs]
+        include:
+          - deploy_type: zip
+            notification_type: eventbridge
+            bucket: dynatrace-aws-s3-log-forwarder-e2e-testing #-zip-eventbridge
+          - deploy_type: zip
+            notification_type: sns
+            bucket: dynatrace-aws-s3-log-forwarder-e2e-testing #-zip-sns-fan-out
+          - deploy_type: zip
+            notification_type: sqs
+            bucket: dynatrace-aws-s3-log-forwarder-e2e-testing #-zip-direct-sqs
+          - deploy_type: layer
+            notification_type: eventbridge
+            bucket: dynatrace-aws-s3-log-forwarder-e2e-testing #-layer-eventbridge
+          - deploy_type: layer
+            notification_type: sns
+            bucket: dynatrace-aws-s3-log-forwarder-e2e-testing #-layer-sns-fan-out
+          - deploy_type: layer
+            notification_type: sqs
+            bucket: dynatrace-aws-s3-log-forwarder-e2e-testing #-layer-direct-sqs
     env:
       NOTIFICATION_TYPE: ${{ matrix.notification_type }}
-      E2E_TESTING_BUCKET_NAME: dynatrace-aws-s3-log-forwarder-e2e-testing
+      E2E_TESTING_BUCKET_NAME: ${{ matrix.bucket }}
       CI_RUN_ID: ${{ github.run_id }}
       DT_TENANT_URL: ${{ secrets.DT_TENANT_URL }}
       DT_TENANT_PLATFORM_TOKEN: ${{ secrets.DT_TENANT_PLATFORM_TOKEN }}
