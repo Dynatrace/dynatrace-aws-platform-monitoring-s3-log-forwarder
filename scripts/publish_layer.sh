@@ -15,57 +15,79 @@
 # Assumes the layer has already been built with build_docker.sh layer.
 #
 # Usage:
-#   ./scripts/publish_layer.sh <zip>                                             # All commercial regions
+#   ./scripts/publish_layer.sh <zip>                                              # All commercial regions
 #   ./scripts/publish_layer.sh <zip> --regions us-east-1,eu-west-1,eu-central-1  # Specific regions
+#   ./scripts/publish_layer.sh <zip> --no-update-files                            # Skip README/template.yaml updates
 
 set -e
 
+REPO_ROOT="$(git -C "$(dirname "$0")" rev-parse --show-toplevel)"
 LAYER_NAME="dynatrace-aws-platform-monitoring-s3-log-forwarder"
 ZIP_FILE="${1:?Usage: $0 <zip> [--regions r1,r2,...]}"
 REGIONS=()
-
-IDX=2
-while [[ $IDX -le $# ]]; do
-    case "${!IDX}" in
-        --regions)
-            IDX=$((IDX + 1))
-            IFS=',' read -ra REGIONS <<< "${!IDX:?--regions requires a value}"
-            ;;
-        *)
-            echo "Unknown option: ${!IDX}"
-            echo "Usage: $0 <zip> [--regions r1,r2,...]"
-            exit 1
-            ;;
-    esac
-    IDX=$((IDX + 1))
-done
-
-if [[ ! -f "$ZIP_FILE" ]]; then
-    echo "Error: $ZIP_FILE not found. Run build_docker.sh layer first." >&2
-    exit 1
-fi
-
-# Default to all enabled commercial regions if none specified
-if [[ ${#REGIONS[@]} -eq 0 ]]; then
-    echo "Querying available AWS regions..."
-    # me-* regions (Middle East) are excluded — currently defunct and publishing fails there
-    REGIONS=($(aws ec2 describe-regions \
-        --query "Regions[].RegionName" \
-        --output text | tr '\t' '\n' | grep -v '^me-'))
-fi
-
-echo "Publishing Lambda Layer: $LAYER_NAME"
-echo "ZIP: $ZIP_FILE"
-echo "Regions: ${REGIONS[*]}"
-echo ""
-
 FAILED_REGIONS=()
+PUBLISHED_ARNS=()  # Entries in the form "region=arn"
+UPDATE_FILES=true
 
-for REGION in "${REGIONS[@]}"; do
-    echo "--- Publishing to $REGION ---"
+# ---------------------------------------------------------------------------
+# Argument parsing
+# ---------------------------------------------------------------------------
 
-    LAYER_VERSION_ARN=$(aws lambda publish-layer-version \
-        --region "$REGION" \
+parse_args() {
+    local idx=2
+    while [[ $idx -le $# ]]; do
+        case "${!idx}" in
+            --regions)
+                idx=$((idx + 1))
+                IFS=',' read -ra REGIONS <<< "${!idx:?--regions requires a value}"
+                ;;
+            --no-update-files)
+                UPDATE_FILES=false
+                ;;
+            *)
+                echo "Unknown option: ${!idx}"
+                echo "Usage: $0 <zip> [--regions r1,r2,...]"
+                exit 1
+                ;;
+        esac
+        idx=$((idx + 1))
+    done
+}
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+# Look up the ARN for a given region from PUBLISHED_ARNS.
+# Returns empty string (exit 0) if not found — safe to use with set -e.
+lookup_arn() {
+    local region="$1"
+    local entry
+    for entry in "${PUBLISHED_ARNS[@]}"; do
+        if [[ "${entry%%=*}" == "$region" ]]; then
+            echo "${entry#*=}"
+            return 0
+        fi
+    done
+}
+
+# Check whether a region appears in a newline-separated string.
+is_seen() {
+    local region="$1" seen_list="$2"
+    echo "$seen_list" | grep -qxF "$region"
+}
+
+# ---------------------------------------------------------------------------
+# Publishing
+# ---------------------------------------------------------------------------
+
+publish_to_region() {
+    local region="$1"
+    echo "--- Publishing to $region ---"
+
+    local layer_version_arn
+    layer_version_arn=$(aws lambda publish-layer-version \
+        --region "$region" \
         --layer-name "$LAYER_NAME" \
         --zip-file "fileb://$ZIP_FILE" \
         --compatible-runtimes python3.14 \
@@ -73,36 +95,201 @@ for REGION in "${REGIONS[@]}"; do
         --description "Dynatrace AWS S3 Log Forwarder (x86_64)" \
         --query 'LayerVersionArn' \
         --output text 2>&1) || {
-        echo "  FAILED to publish in $REGION"
-        FAILED_REGIONS+=("$REGION")
-        echo ""
-        continue
+        echo "  FAILED to publish in $region"
+        FAILED_REGIONS+=("$region")
+        return
     }
 
-    LAYER_VERSION=$(echo "$LAYER_VERSION_ARN" | grep -o '[0-9]*$')
-    echo "  Published: $LAYER_VERSION_ARN"
+    local layer_version
+    layer_version=$(echo "$layer_version_arn" | grep -o '[0-9]*$')
+    echo "  Published: $layer_version_arn"
 
-    if aws lambda add-layer-version-permission \
-        --region "$REGION" \
+    aws lambda add-layer-version-permission \
+        --region "$region" \
         --layer-name "$LAYER_NAME" \
-        --version-number "$LAYER_VERSION" \
+        --version-number "$layer_version" \
         --statement-id allow-all-accounts \
         --principal "*" \
         --action lambda:GetLayerVersion \
-        --output json > /dev/null 2>&1; then
-        echo "  Public access granted."
-    else
-        echo "  FAILED to grant public access in $REGION"
-        FAILED_REGIONS+=("$REGION")
+        --output json > /dev/null 2>&1 || {
+        echo "  FAILED to grant public access in $region"
+        FAILED_REGIONS+=("$region")
+        return
+    }
+
+    echo "  Public access granted."
+    PUBLISHED_ARNS+=("$region=$layer_version_arn")
+}
+
+# ---------------------------------------------------------------------------
+# Update README.md — upsert rows in the "Lambda Layer ARNs" table
+# ---------------------------------------------------------------------------
+
+update_readme() {
+    local readme_file="$REPO_ROOT/README.md"
+    [[ -f "$readme_file" ]] || return
+
+    echo "Updating Lambda Layer ARNs table in $readme_file..."
+
+    local in_table=0 sep_found=0 seen="" output="" line stripped row_region row_arn entry r a
+
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        stripped="${line#"${line%%[![:space:]]*}"}"
+        stripped="${stripped%"${stripped##*[![:space:]]}"}"
+
+        # Detect table header
+        if [[ $in_table -eq 0 && "$stripped" == "| Region | Layer ARN |" ]]; then
+            in_table=1
+            output+="$line"$'\n'
+            continue
+        fi
+
+        # Detect separator row
+        if [[ $in_table -eq 1 && $sep_found -eq 0 && "$stripped" == \|---* ]]; then
+            sep_found=1
+            output+="$line"$'\n'
+            continue
+        fi
+
+        if [[ $in_table -eq 1 && $sep_found -eq 1 ]]; then
+            if [[ "$stripped" == \|*\| ]]; then
+                # Existing row — replace ARN if this region was published
+                row_region=$(echo "$stripped" | awk -F'|' '{gsub(/ /,"",$2); print $2}')
+                row_arn=$(lookup_arn "$row_region")
+                if [[ -n "$row_arn" ]]; then
+                    output+="| $row_region | $row_arn |"$'\n'
+                    seen+="$row_region"$'\n'
+                else
+                    output+="$line"$'\n'
+                fi
+                continue
+            else
+                # End of table — append any newly published regions not already present
+                for entry in "${PUBLISHED_ARNS[@]}"; do
+                    r="${entry%%=*}"; a="${entry#*=}"
+                    if ! is_seen "$r" "$seen"; then
+                        output+="| $r | $a |"$'\n'
+                        seen+="$r"$'\n'
+                    fi
+                done
+                in_table=0
+            fi
+        fi
+
+        output+="$line"$'\n'
+    done < "$readme_file"
+
+    # Handle table at end of file
+    if [[ $in_table -eq 1 ]]; then
+        for entry in "${PUBLISHED_ARNS[@]}"; do
+            r="${entry%%=*}"; a="${entry#*=}"
+            is_seen "$r" "$seen" || output+="| $r | $a |"$'\n'
+        done
     fi
 
+    # Preserve original trailing-newline behaviour
+    if [[ "$(tail -c1 "$readme_file")" != $'\n' ]]; then
+        printf '%s' "${output%$'\n'}" > "$readme_file"
+    else
+        printf '%s' "$output" > "$readme_file"
+    fi
+    echo "README.md updated."
+}
+
+# ---------------------------------------------------------------------------
+# Update template.yaml — replace Arn values in the LayerArns mapping
+# ---------------------------------------------------------------------------
+
+update_template() {
+    local template_file="$REPO_ROOT/template.yaml"
+    [[ -f "$template_file" ]] || return
+
+    echo "Updating LayerArns mappings in $template_file..."
+
+    local in_layer_arns=0 current_region="" output="" line stripped new_arn indent
+
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        stripped="${line#"${line%%[![:space:]]*}"}"
+        stripped="${stripped%"${stripped##*[![:space:]]}"}"
+
+        # Detect start of LayerArns block
+        if [[ "$stripped" == "LayerArns:" ]]; then
+            in_layer_arns=1
+            output+="$line"$'\n'
+            continue
+        fi
+
+        # Detect end of LayerArns block (next top-level key)
+        if [[ $in_layer_arns -eq 1 && "$line" =~ ^[A-Za-z] ]]; then
+            in_layer_arns=0
+            current_region=""
+        fi
+
+        if [[ $in_layer_arns -eq 1 ]]; then
+            # Region key (4-space indent)
+            if [[ "$line" =~ ^[[:space:]]{4}([a-z0-9-]+):$ ]]; then
+                current_region="${BASH_REMATCH[1]}"
+                output+="$line"$'\n'
+                continue
+            fi
+
+            # Arn value (6-space indent) — replace if this region was published
+            if [[ -n "$current_region" && "$line" =~ ^[[:space:]]{6}Arn: ]]; then
+                new_arn=$(lookup_arn "$current_region")
+                if [[ -n "$new_arn" ]]; then
+                    indent="${line%%Arn:*}"
+                    output+="${indent}Arn: $new_arn"$'\n'
+                    continue
+                fi
+            fi
+        fi
+
+        output+="$line"$'\n'
+    done < "$template_file"
+
+    # Preserve original trailing-newline behaviour
+    if [[ "$(tail -c1 "$template_file")" != $'\n' ]]; then
+        printf '%s' "${output%$'\n'}" > "$template_file"
+    else
+        printf '%s' "$output" > "$template_file"
+    fi
+    echo "template.yaml updated."
+}
+
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
+
+parse_args "$@"
+
+if [[ ! -f "$ZIP_FILE" ]]; then
+    echo "Error: $ZIP_FILE not found. Run build_docker.sh layer first." >&2
+    exit 1
+fi
+
+if [[ ${#REGIONS[@]} -eq 0 ]]; then
+    echo "Querying available AWS regions..."
+    REGIONS=($(aws ec2 describe-regions --query "Regions[].RegionName" --output text | tr '\t' '\n'))
+fi
+
+echo "Publishing Lambda Layer: $LAYER_NAME"
+echo "ZIP: $ZIP_FILE"
+echo "Regions: ${REGIONS[*]}"
+echo ""
+
+for REGION in "${REGIONS[@]}"; do
+    publish_to_region "$REGION"
     echo ""
 done
 
-# Summary
+if [[ ${#PUBLISHED_ARNS[@]} -gt 0 && "$UPDATE_FILES" == true ]]; then
+    update_readme
+    update_template
+fi
+
+echo ""
 echo "=== Publishing Summary ==="
-echo "Regions attempted: ${#REGIONS[@]}"
-echo "Failed: ${#FAILED_REGIONS[@]}"
+echo "Attempted: ${#REGIONS[@]}  |  Published: ${#PUBLISHED_ARNS[@]}  |  Failed: ${#FAILED_REGIONS[@]}"
 
 if [[ ${#FAILED_REGIONS[@]} -gt 0 ]]; then
     echo "Failed regions: ${FAILED_REGIONS[*]}"

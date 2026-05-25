@@ -30,6 +30,42 @@ Additionally, you can ingest any generic text and JSON logs. For more informatio
 > [!IMPORTANT]
 > Log events with timestamps older than 24 hours are dropped by Dynatrace.
 
+## Lambda Layer ARNs
+
+The following table lists the latest published Lambda Layer ARNs per AWS region:
+
+| Region | Layer ARN |
+|--------|-----------|
+| af-south-1 | Not Available |
+| ap-east-1 | Not Available |
+| ap-northeast-1 | Not Available |
+| ap-northeast-2 | Not Available |
+| ap-northeast-3 | Not Available |
+| ap-south-1 | Not Available |
+| ap-south-2 | Not Available |
+| ap-southeast-1 | Not Available |
+| ap-southeast-2 | Not Available |
+| ap-southeast-3 | Not Available |
+| ap-southeast-4 | Not Available |
+| ca-central-1 | Not Available |
+| ca-west-1 | Not Available |
+| eu-central-1 | Not Available |
+| eu-central-2 | Not Available |
+| eu-north-1 | Not Available |
+| eu-south-1 | Not Available |
+| eu-south-2 | Not Available |
+| eu-west-1 | Not Available |
+| eu-west-2 | Not Available |
+| eu-west-3 | Not Available |
+| il-central-1 | Not Available |
+| me-central-1 | Not Available |
+| me-south-1 | Not Available |
+| sa-east-1 | Not Available |
+| us-east-1 | Not Available |
+| us-east-2 | Not Available |
+| us-west-1 | Not Available |
+| us-west-2 | Not Available |
+
 ## Deployment
 
 To deploy `dynatrace-aws-platform-monitoring-s3-log-forwarder` in your AWS account, follow the [deployment guide](docs/deployment_guide.md).
