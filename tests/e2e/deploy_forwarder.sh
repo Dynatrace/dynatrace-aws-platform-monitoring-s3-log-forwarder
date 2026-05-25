@@ -135,9 +135,9 @@ case "${NOTIFICATION_TYPE}" in
         ;;
 
     sqs)
-        QUEUE_ARN=$(aws ssm get-parameter \
-            --name "/dynatrace/s3-log-forwarder/${STACK_NAME}/sqs-queue-arn" \
-            --query 'Parameter.Value' --output text)
+        QUEUE_ARN=$(aws cloudformation describe-stacks --stack-name "${STACK_NAME}" \
+            --query 'Stacks[0].Outputs[?OutputKey==`SQSProcessingQueue`].OutputValue' \
+            --output text)
 
         CURRENT=$(aws s3api get-bucket-notification-configuration --bucket "${E2E_TESTING_BUCKET_NAME}" 2>/dev/null || echo '{}')
         NEW_CONFIG=$(echo "${CURRENT}" | jq --arg arn "${QUEUE_ARN}" --arg prefix "${E2E_TEST_PREFIX}/" '
