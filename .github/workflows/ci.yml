@@ -132,7 +132,7 @@ jobs:
       NOTIFICATION_TYPE: sns
       CI_RUN_ID: ${{ github.run_id }}
       DT_TENANT_URL: ${{ secrets.DT_TENANT_URL }}
-      DT_TENANT_API_KEY: ${{ secrets.DT_TENANT_API_KEY }}
+      DT_TENANT_PLATFORM_TOKEN: ${{ secrets.DT_TENANT_PLATFORM_TOKEN }}
       CFN_ROLE_ARN: ${{ secrets.CFN_ROLE_ARN }}
       DT_TENANT_PLATFORM_URL: ${{ secrets.DT_TENANT_PLATFORM_URL }}
       DT_SSO_URL: ${{ secrets.DT_SSO_URL }}
@@ -180,7 +180,7 @@ jobs:
       NOTIFICATION_TYPE: sqs
       CI_RUN_ID: ${{ github.run_id }}
       DT_TENANT_URL: ${{ secrets.DT_TENANT_URL }}
-      DT_TENANT_API_KEY: ${{ secrets.DT_TENANT_API_KEY }}
+      DT_TENANT_PLATFORM_TOKEN: ${{ secrets.DT_TENANT_PLATFORM_TOKEN }}
       CFN_ROLE_ARN: ${{ secrets.CFN_ROLE_ARN }}
       DT_TENANT_PLATFORM_URL: ${{ secrets.DT_TENANT_PLATFORM_URL }}
       DT_SSO_URL: ${{ secrets.DT_SSO_URL }}
@@ -275,7 +275,7 @@ jobs:
       NOTIFICATION_TYPE: sqs
       CI_RUN_ID: ${{ github.run_id }}
       DT_TENANT_URL: ${{ secrets.DT_TENANT_URL }}
-      DT_TENANT_API_KEY: ${{ secrets.DT_TENANT_API_KEY }}
+      DT_TENANT_PLATFORM_TOKEN: ${{ secrets.DT_TENANT_PLATFORM_TOKEN }}
       CFN_ROLE_ARN: ${{ secrets.CFN_ROLE_ARN }}
       DT_TENANT_PLATFORM_URL: ${{ secrets.DT_TENANT_PLATFORM_URL }}
       DT_SSO_URL: ${{ secrets.DT_SSO_URL }}
@@ -323,7 +323,7 @@ jobs:
       NOTIFICATION_TYPE: sns
       CI_RUN_ID: ${{ github.run_id }}
       DT_TENANT_URL: ${{ secrets.DT_TENANT_URL }}
-      DT_TENANT_API_KEY: ${{ secrets.DT_TENANT_API_KEY }}
+      DT_TENANT_PLATFORM_TOKEN: ${{ secrets.DT_TENANT_PLATFORM_TOKEN }}
       CFN_ROLE_ARN: ${{ secrets.CFN_ROLE_ARN }}
       DT_TENANT_PLATFORM_URL: ${{ secrets.DT_TENANT_PLATFORM_URL }}
       DT_SSO_URL: ${{ secrets.DT_SSO_URL }}
