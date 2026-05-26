@@ -23,12 +23,14 @@ source: aws
 log_format: text
 
 annotations:
+  cloud.provider: aws
   aws.resource.type: "AWS::GlobalAccelerator::Accelerator"
   aws.arn.pattern: "arn:aws:globalaccelerator::{aws.account.id}:accelerator/{aws.resource.id}"
 
 attribute_extraction_from_key_name:
   # needed for ARN calculation
   aws.account.id: '{aws_account_id_pattern}'
+  aws.region: '{aws_region_pattern}'
   aws.resource.id: '{aws_global_accelerator_id_pattern}(?=_{year_pattern}{month_pattern}{day_pattern}T{hour_pattern}{minutes_pattern}Z_[a-fA-F0-9]{{8}}(\.log\.gz)$)'
 
 

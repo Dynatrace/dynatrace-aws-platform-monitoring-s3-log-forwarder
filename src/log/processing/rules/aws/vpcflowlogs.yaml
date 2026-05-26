@@ -24,6 +24,7 @@ source: aws
 log_format: text
 
 annotations:
+  cloud.provider: aws
   # should it be marked as VPC or vpc flow log
   aws.resource.type: "AWS::EC2::VPC"
   aws.arn.pattern: "arn:aws:ec2:{aws.region}:{aws.account.id}:vpc-flow-log/{aws.vpc.flow_log_id}"

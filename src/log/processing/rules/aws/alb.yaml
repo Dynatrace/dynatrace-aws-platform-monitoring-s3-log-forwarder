@@ -24,11 +24,11 @@ log_format: text
 
 # Attribute extractions
 annotations:
+  cloud.provider: aws
   aws.resource.type: "AWS::ElasticLoadBalancingV2::LoadBalancer"
   aws.arn.pattern: "arn:aws:elasticloadbalancing:{aws.region}:{aws.account.id}:loadbalancer/{elbv2_id}"
 
 attribute_extraction_from_key_name:
-  # needed for arn calculation
   aws.region: "{aws_region_pattern}"
   aws.account.id: "{aws_account_id_pattern}"
 

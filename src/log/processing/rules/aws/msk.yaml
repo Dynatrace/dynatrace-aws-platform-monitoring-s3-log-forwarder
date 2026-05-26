@@ -23,6 +23,7 @@ source: aws
 log_format: text
 
 annotations:
+  cloud.provider: aws
   aws.resource.type: "AWS::MSK::Cluster"
   # not sure
   aws.arn.pattern: "arn:aws:kafka:{aws.region}:{aws.account.id}:cluster/{aws.resource.id}"

@@ -24,6 +24,7 @@ source: aws
 log_format: text
 
 annotations:
+  cloud.provider: aws
   aws.resource.type: "AWS::ElasticLoadBalancingV2::LoadBalancer"
   aws.arn.pattern: "arn:aws:elasticloadbalancing:{aws.region}:{aws.account.id}:loadbalancer/{elbv2_id}"
 

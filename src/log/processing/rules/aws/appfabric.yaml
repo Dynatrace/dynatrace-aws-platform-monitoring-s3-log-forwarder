@@ -20,6 +20,7 @@ source: aws
 log_format: json_stream
 
 annotations:
+  cloud.provider: aws
   aws.resource.type: "AWS::AppFabric::Ingestion"
 
 attribute_extraction_jmespath_expression:

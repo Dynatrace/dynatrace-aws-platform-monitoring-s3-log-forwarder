@@ -23,6 +23,7 @@ log_format: json_stream
 
 
 annotations:
+  cloud.provider: aws
   # not sure
   aws.resource.type: "AWS::EC2::VPC"
   # not sure
