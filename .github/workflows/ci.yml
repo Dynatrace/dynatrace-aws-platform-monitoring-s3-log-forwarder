@@ -86,22 +86,22 @@ jobs:
         include:
           - deploy_type: zip
             notification_type: eventbridge
-            bucket: dynatrace-aws-s3-log-forwarder-e2e-testing #-zip-eventbridge
+            bucket: dynatrace-aws-s3-log-forwarder-e2e-testing-zip-eventbridge
           - deploy_type: zip
             notification_type: sns
-            bucket: dynatrace-aws-s3-log-forwarder-e2e-testing #-zip-sns-fan-out
+            bucket: dynatrace-aws-s3-log-forwarder-e2e-testing-zip-sns-fan-out
           - deploy_type: zip
             notification_type: sqs
-            bucket: dynatrace-aws-s3-log-forwarder-e2e-testing #-zip-direct-sqs
+            bucket: dynatrace-aws-s3-log-forwarder-e2e-testing-zip-direct-sqs
           - deploy_type: layer
             notification_type: eventbridge
-            bucket: dynatrace-aws-s3-log-forwarder-e2e-testing #-layer-eventbridge
+            bucket: dynatrace-aws-s3-log-forwarder-e2e-testing-layer-eventbridge
           - deploy_type: layer
             notification_type: sns
-            bucket: dynatrace-aws-s3-log-forwarder-e2e-testing #-layer-sns-fan-out
+            bucket: dynatrace-aws-s3-log-forwarder-e2e-testing-layer-sns-fan-out
           - deploy_type: layer
             notification_type: sqs
-            bucket: dynatrace-aws-s3-log-forwarder-e2e-testing #-layer-direct-sqs
+            bucket: dynatrace-aws-s3-log-forwarder-e2e-testing-layer-direct-sqs
     env:
       NOTIFICATION_TYPE: ${{ matrix.notification_type }}
       E2E_TESTING_BUCKET_NAME: ${{ matrix.bucket }}
