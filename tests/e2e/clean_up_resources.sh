@@ -56,7 +56,7 @@ if [ "${NOTIFICATION_TYPE:-eventbridge}" = "sns" ]; then
         --output text 2>/dev/null || true)
     if [ -n "${SNS_TOPIC_ARN}" ]; then
         CURRENT=$(aws s3api get-bucket-notification-configuration --bucket "${E2E_TESTING_BUCKET_NAME}" 2>/dev/null || echo '{}')
-        NEW_CONFIG=$(echo "${CURRENT}" | jq --arg arn "${SNS_TOPIC_ARN}" '
+        NEW_CONFIG=$(echo "${CURRENT:-{}}" | jq --arg arn "${SNS_TOPIC_ARN}" '
             .TopicConfigurations = ((.TopicConfigurations // []) | map(select(.TopicArn != $arn)))')
         aws s3api put-bucket-notification-configuration \
             --bucket "${E2E_TESTING_BUCKET_NAME}" \
@@ -68,13 +68,19 @@ elif [ "${NOTIFICATION_TYPE}" = "sqs" ]; then
         --output text 2>/dev/null || true)
     if [ -n "${QUEUE_ARN}" ]; then
         CURRENT=$(aws s3api get-bucket-notification-configuration --bucket "${E2E_TESTING_BUCKET_NAME}" 2>/dev/null || echo '{}')
-        NEW_CONFIG=$(echo "${CURRENT}" | jq --arg arn "${QUEUE_ARN}" '
+        NEW_CONFIG=$(echo "${CURRENT:-{}}" | jq --arg arn "${QUEUE_ARN}" '
             .QueueConfigurations = ((.QueueConfigurations // []) | map(select(.QueueArn != $arn)))')
         aws s3api put-bucket-notification-configuration \
             --bucket "${E2E_TESTING_BUCKET_NAME}" \
             --notification-configuration "${NEW_CONFIG}" || true
     fi
 else
+    CURRENT=$(aws s3api get-bucket-notification-configuration --bucket "${E2E_TESTING_BUCKET_NAME}" 2>/dev/null || echo '{}')
+    NEW_CONFIG=$(echo "${CURRENT:-{}}" | jq 'del(.EventBridgeConfiguration)')
+    aws s3api put-bucket-notification-configuration \
+        --bucket "${E2E_TESTING_BUCKET_NAME}" \
+        --notification-configuration "${NEW_CONFIG}" || true
+
     log "Deleting Cloudformation Stack ${STACK_NAME}-s3-bucket-configuration"
     aws cloudformation delete-stack --stack-name ${STACK_NAME}-s3-bucket-configuration
     aws cloudformation wait stack-delete-complete --stack-name ${STACK_NAME}-s3-bucket-configuration

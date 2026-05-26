@@ -109,6 +109,13 @@ esac
 
 case "${NOTIFICATION_TYPE}" in
     eventbridge)
+        log "Enabling EventBridge notifications on bucket ${E2E_TESTING_BUCKET_NAME}"
+        CURRENT=$(aws s3api get-bucket-notification-configuration --bucket "${E2E_TESTING_BUCKET_NAME}" 2>/dev/null || echo '{}')
+        NEW_CONFIG=$(echo "${CURRENT:-{}}" | jq '.EventBridgeConfiguration = {}')
+        aws s3api put-bucket-notification-configuration \
+            --bucket "${E2E_TESTING_BUCKET_NAME}" \
+            --notification-configuration "${NEW_CONFIG}"
+
         log "Deploying the S3 bucket configuration template"
         aws cloudformation deploy --stack-name ${STACK_NAME}-s3-bucket-configuration --parameter-overrides \
                         DynatraceAwsS3LogForwarderStackName=${STACK_NAME} \
@@ -128,7 +135,7 @@ case "${NOTIFICATION_TYPE}" in
         [[ "${SNS_TOPIC_ARN}" =~ ^arn:aws:sns: ]] || { echo "ERROR: could not retrieve a valid SNS topic ARN from stack ${STACK_NAME} (got: '${SNS_TOPIC_ARN}')" >&2; exit 1; }
 
         CURRENT=$(aws s3api get-bucket-notification-configuration --bucket "${E2E_TESTING_BUCKET_NAME}" 2>/dev/null || echo '{}')
-        NEW_CONFIG=$(echo "${CURRENT}" | jq --arg arn "${SNS_TOPIC_ARN}" --arg prefix "${E2E_TEST_PREFIX}/" '
+        NEW_CONFIG=$(echo "${CURRENT:-{}}" | jq --arg arn "${SNS_TOPIC_ARN}" --arg prefix "${E2E_TEST_PREFIX}/" '
             .TopicConfigurations = ((.TopicConfigurations // []) | map(select(.TopicArn != $arn))) + [{
                 "TopicArn": $arn, "Events": ["s3:ObjectCreated:*"],
                 "Filter": {"Key": {"FilterRules": [{"Name": "prefix", "Value": $prefix}]}}
@@ -145,7 +152,7 @@ case "${NOTIFICATION_TYPE}" in
         [[ "${QUEUE_ARN}" =~ ^arn:aws:sqs: ]] || { echo "ERROR: could not retrieve a valid SQS queue ARN from stack ${STACK_NAME} (got: '${QUEUE_ARN}')" >&2; exit 1; }
 
         CURRENT=$(aws s3api get-bucket-notification-configuration --bucket "${E2E_TESTING_BUCKET_NAME}" 2>/dev/null || echo '{}')
-        NEW_CONFIG=$(echo "${CURRENT}" | jq --arg arn "${QUEUE_ARN}" --arg prefix "${E2E_TEST_PREFIX}/" '
+        NEW_CONFIG=$(echo "${CURRENT:-{}}" | jq --arg arn "${QUEUE_ARN}" --arg prefix "${E2E_TEST_PREFIX}/" '
             .QueueConfigurations = ((.QueueConfigurations // []) | map(select(.QueueArn != $arn))) + [{
                 "QueueArn": $arn, "Events": ["s3:ObjectCreated:*"],
                 "Filter": {"Key": {"FilterRules": [{"Name": "prefix", "Value": $prefix}]}}
