@@ -199,7 +199,6 @@ aws sns subscribe \
 
 Alternatively, deploy the main stack with `CreateS3NotificationsSNSTopic=true` to create a dedicated SNS topic (`${StackName}-S3Notifications`) and subscribe your S3 buckets to it. This is useful for fan-out architectures where multiple consumers process the same S3 events.
 
-For more details on all notification methods see [log_forwarding.md](log_forwarding.md).
 
 > [!NOTE]
 >

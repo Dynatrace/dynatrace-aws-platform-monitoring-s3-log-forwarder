@@ -9,6 +9,8 @@ DEPLOY_TYPE="${1:?Usage: $0 <layer|zip> [eventbridge|sns|sqs]}"
 NOTIFICATION_TYPE="${2:-eventbridge}"
 
 : "${E2E_TESTING_BUCKET_NAME:?E2E_TESTING_BUCKET_NAME must be set}"
+: "${STACK_NAME:?STACK_NAME must be set}"
+: "${E2E_TEST_PREFIX:?E2E_TEST_PREFIX must be set}"
 command -v jq &>/dev/null || { echo "ERROR: jq is required but not installed" >&2; exit 1; }
 
 TIMESTAMP_FORMAT='+%Y-%m-%dT%H:%M:%SZ'
@@ -144,10 +146,11 @@ case "${NOTIFICATION_TYPE}" in
 
         CURRENT=$(aws s3api get-bucket-notification-configuration --bucket "${E2E_TESTING_BUCKET_NAME}" 2>/dev/null || echo '{}')
         NEW_CONFIG=$(echo "${CURRENT:-{}}" | jq --arg arn "${SNS_TOPIC_ARN}" --arg prefix "${E2E_TEST_PREFIX}/" '
-            .TopicConfigurations = ((.TopicConfigurations // []) | map(select(.TopicArn != $arn))) + [{
+            .TopicConfigurations = [{
                 "TopicArn": $arn, "Events": ["s3:ObjectCreated:*"],
                 "Filter": {"Key": {"FilterRules": [{"Name": "prefix", "Value": $prefix}]}}
             }]')
+        log "Configuring S3 SNS notification: topic=${SNS_TOPIC_ARN} prefix=${E2E_TEST_PREFIX}/"
         aws s3api put-bucket-notification-configuration \
             --bucket "${E2E_TESTING_BUCKET_NAME}" \
             --notification-configuration "${NEW_CONFIG}"
@@ -161,10 +164,11 @@ case "${NOTIFICATION_TYPE}" in
 
         CURRENT=$(aws s3api get-bucket-notification-configuration --bucket "${E2E_TESTING_BUCKET_NAME}" 2>/dev/null || echo '{}')
         NEW_CONFIG=$(echo "${CURRENT:-{}}" | jq --arg arn "${QUEUE_ARN}" --arg prefix "${E2E_TEST_PREFIX}/" '
-            .QueueConfigurations = ((.QueueConfigurations // []) | map(select(.QueueArn != $arn))) + [{
+            .QueueConfigurations = [{
                 "QueueArn": $arn, "Events": ["s3:ObjectCreated:*"],
                 "Filter": {"Key": {"FilterRules": [{"Name": "prefix", "Value": $prefix}]}}
             }]')
+        log "Configuring S3 SQS notification: queue=${QUEUE_ARN} prefix=${E2E_TEST_PREFIX}/"
         aws s3api put-bucket-notification-configuration \
             --bucket "${E2E_TESTING_BUCKET_NAME}" \
             --notification-configuration "${NEW_CONFIG}"
