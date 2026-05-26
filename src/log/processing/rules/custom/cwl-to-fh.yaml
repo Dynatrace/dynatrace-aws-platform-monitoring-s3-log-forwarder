@@ -25,7 +25,7 @@ filter_json_objects_value: DATA_MESSAGE
 
 log_entries_key: logEvents
 
-# map message keys to DT LogsV2 API format
+# map message keys to Dynatrace log ingest format
 attribute_extraction_jmespath_expression:
   timestamp: timestamp
   content: message

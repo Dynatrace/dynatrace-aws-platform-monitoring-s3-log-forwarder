@@ -185,7 +185,7 @@ class DynatraceSink():
                     batch_num: int = -1):
         '''
         POSTs list of messages to the generic log ingress Dynatrace API.
-        Creates batches if messages exceed LogV2 specifications.
+        Creates batches if messages exceed the ingest API limits.
         Returns a list of failed batch numbers.
         '''
 

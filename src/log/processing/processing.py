@@ -125,7 +125,7 @@ def get_log_entry_size(log_entry):
 def process_log_object(log_processing_rule: LogProcessingRule, bucket: str, key: str, bucket_region: str, log_sinks: list,
                        lambda_context, user_defined_annotations: dict = None, session: boto3.Session = None):
     '''
-    Downloads a log from S3, decompresses and reads log messages within it and transforms the messages to Dynatrace LogV2 API format.
+    Downloads a log from S3, decompresses and reads log messages within it and transforms the messages to the Dynatrace log ingest format.
     Can read JSON logs (list of dicts) or text line by line (both gzipped or plain).
     The function also adds context, inferred and user-defined log attributes. Returns a the number of log entries processed.
     '''
