@@ -78,7 +78,7 @@ docker run --rm \
         cp -r /src/config ${APP_DIR}/
 
         # Copy license files
-        cp /src/LICENSE /src/NOTICE /src/THIRD_PARTY_LICENSES ${APP_DIR}/ 2>/dev/null || trueCan
+        cp /src/LICENSE /src/NOTICE /src/THIRD_PARTY_LICENSES ${APP_DIR}/ 2>/dev/null || true
 
         # Copy yajl shared library and create symlink for compatibility
         cp /usr/lib64/libyajl.so.2 ${APP_DIR}/lib/
