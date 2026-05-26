@@ -22,6 +22,7 @@ source: aws
 log_format: text
 
 annotations:
+  cloud.provider: aws
   aws.resource.type: "AWS::Redshift::Cluster"
   aws.arn.pattern: "arn:aws:redshift:{aws.region}:{aws.account.id}:cluster:{aws.resource.id}"
 

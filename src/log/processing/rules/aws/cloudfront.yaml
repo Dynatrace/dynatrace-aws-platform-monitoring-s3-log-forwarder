@@ -24,6 +24,8 @@ source: aws
 log_format: text
 
 annotations:
+  cloud.provider: aws
+  aws.region: global
   aws.resource.type: "AWS::CloudFront::Distribution"
 
 attribute_extraction_grok_expression: "%{CLOUDFRONTTIMESTAMP:timestamp_to_transform}"

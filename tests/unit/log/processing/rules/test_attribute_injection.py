@@ -56,14 +56,20 @@ vpcdnsquery_log_entry = {
 class TestAWSAttributeInjection(unittest.TestCase):
     def test_cloudtrail_attributes(self):
         cloudtrail_processing_rule = processing_rules['aws']['CloudTrail']
-        expected_attributes = {}
+        expected_attributes = {
+            'aws.account.id': '012345678910',
+            'aws.region': 'us-east-1',
+        }
 
         attributes = cloudtrail_processing_rule.get_attributes_from_s3_key_name(cloudtrail_key_name)
         self.assertEqual(attributes,expected_attributes)
 
     def test_cloudtrail_with_org_id_attributes(self):
         cloudtrail_processing_rule = processing_rules['aws']['CloudTrail']
-        expected_attributes = {}
+        expected_attributes = {
+            'aws.account.id': '012345678910',
+            'aws.region': 'us-east-1',
+        }
 
         attributes = cloudtrail_processing_rule.get_attributes_from_s3_key_name(cloudtrail_key_with_org_name)
         self.assertEqual(attributes, expected_attributes)
@@ -101,7 +107,10 @@ class TestAWSAttributeInjection(unittest.TestCase):
     def test_waf_attributes(self):
         waf_processing_rule = processing_rules['aws']['waf']
         attributes = waf_processing_rule.get_attributes_from_s3_key_name(waf_key_name)
-        expected_attributes = {}
+        expected_attributes = {
+            'aws.account.id': '012345678910',
+            'aws.region': 'eu-west-1',
+        }
 
         self.assertEqual(attributes,expected_attributes)
 
@@ -149,6 +158,7 @@ class TestAWSAttributeInjection(unittest.TestCase):
     def test_global_accelerator_attributes(self):
         expected_attributes = {
             'aws.account.id': '012345678910',
+            'aws.region': 'us-west-2',
             'aws.resource.id': 'f0154cf1-4ac0-451b-87a2-5b2ce89142e6'
         }
 
@@ -211,6 +221,21 @@ class TestAWSAttributeInjection(unittest.TestCase):
     def test_appfabric_annotations_include_resource_type(self):
         annotations = processing_rules['aws']['appfabric-ocsf-json'].get_processing_log_annotations()
         self.assertEqual(annotations['aws.resource.type'], 'AWS::AppFabric::Ingestion')
+
+    def test_all_aws_rules_have_cloud_provider_annotation(self):
+        rules = [
+            'ALB', 'NLB', 'Classic-ELB', 'CloudTrail', 'cloudfront',
+            'global-accelerator', 'msk', 'network-firewall', 'redshift',
+            's3', 'vpcflowlogs', 'vpcdnsquerylogs', 'waf', 'appfabric-ocsf-json',
+        ]
+        for rule_name in rules:
+            with self.subTest(rule=rule_name):
+                annotations = processing_rules['aws'][rule_name].get_processing_log_annotations()
+                self.assertEqual(annotations.get('cloud.provider'), 'aws')
+
+    def test_cloudfront_annotations_include_static_region(self):
+        annotations = processing_rules['aws']['cloudfront'].get_processing_log_annotations()
+        self.assertEqual(annotations.get('aws.region'), 'global')
 
     def test_aws_arn_pattern_resolution_from_yaml_rules(self):
         cases = {

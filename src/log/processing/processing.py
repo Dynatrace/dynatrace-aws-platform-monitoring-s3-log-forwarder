@@ -63,6 +63,9 @@ def _get_context_log_attributes(bucket: str, key: str):
 def _get_output_message_with_reduced_fields(attributes: dict) -> dict:
     """Keep only attributes that should be sent to sinks."""
     allowed_keys = (
+        'cloud.provider',
+        'aws.account.id',
+        'aws.region',
         'dt.da.aws.s3.bucket.name',
         'dt.da.aws.s3.key.name',
         'aws.arn',

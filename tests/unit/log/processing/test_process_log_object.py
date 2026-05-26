@@ -381,6 +381,9 @@ class TestProcessLogObject(unittest.TestCase):
         call_args = self.mock_log_sink.push.call_args[0][0]
 
         expected_keys = {
+            'cloud.provider',
+            'aws.account.id',
+            'aws.region',
             'dt.da.aws.s3.bucket.name',
             'dt.da.aws.s3.key.name',
             'aws.arn',

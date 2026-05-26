@@ -21,11 +21,11 @@ source: aws
 log_format: text
 
 annotations:
+  cloud.provider: aws
   aws.resource.type: "AWS::ElasticLoadBalancing::LoadBalancer"
   aws.arn.pattern: "arn:aws:elasticloadbalancing:{aws.region}:{aws.account.id}:loadbalancer/{elb_id}"
 
 attribute_extraction_from_key_name:
-  # needed for ARN calculation
   aws.account.id: '{aws_account_id_pattern}'
   aws.region: '{aws_region_pattern}'
 
