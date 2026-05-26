@@ -66,17 +66,21 @@ jobs:
         run: ./scripts/update_version.sh
       - name: Build Lambda ZIP
         run: ./scripts/build_docker.sh zip dist/lambda.zip
-      - name: Upload Lambda ZIP artifact
+      - name: Build Lambda Layer
+        run: ./scripts/build_docker.sh layer dist/layer.zip
+      - name: Upload build artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: lambda-zip
-          path: dist/lambda.zip
+          name: lambda-artifacts
+          path: |
+            dist/lambda.zip
+            dist/layer.zip
           retention-days: 7
 
   e2e-test:
     name: End-to-end deployment test (${{ matrix.deploy_type }}, ${{ matrix.notification_type }})
     runs-on: ubuntu-latest
-    needs: unit-tests
+    needs: [unit-tests, build]
     if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
     strategy:
       fail-fast: false
@@ -127,17 +131,18 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
+      - name: Download build artifacts
+        uses: actions/download-artifact@v7
+        with:
+          name: lambda-artifacts
+          path: dist/
       - uses: actions/setup-python@v6
         with:
           python-version: '3.14'
       - name: Install dependencies
         run: pip install requests
-      - name: Update version and deploy forwarder
-        env:
-          GIT_COMMIT: ${{ github.sha }}
-        run: |
-          ./scripts/update_version.sh
-          ./tests/e2e/deploy_forwarder.sh ${{ matrix.deploy_type }} ${{ matrix.notification_type }}
+      - name: Deploy forwarder
+        run: ./tests/e2e/deploy_forwarder.sh ${{ matrix.deploy_type }} ${{ matrix.notification_type }}
       - name: Write test log to S3 and wait for ingestion
         run: |
           echo "[$(date -u '+%Y-%m-%dT%H:%M:%SZ')] E2E testing validation log entry" > ${{ github.run_id }}.log
