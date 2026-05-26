@@ -28,9 +28,9 @@ Metadata:
 
 Parameters:
   DynatraceEnvironmentURL:
-    Description: URL of your Dynatrace environment. If you're deploying to Dynatrace Managed tenant, enter here the URL of your tenant AG without the trailing API endpoint, e.g. https://{your-activegate-domain}:9999/e/{your-environment-id}
+    Description: URL of your Dynatrace environment (e.g. https://{your-environment-id}.live.dynatrace.com or https://{your-environment-id}.apps.dynatrace.com).
     Type: String
-    AllowedPattern: "^https:\\/\\/[a-zA-Z0-9-]{2,}(\\.[a-zA-Z0-9-]{2,})(\\.[a-zA-Z0-9-]{2,})*(:9999\\/e\\/.[a-z0-9-]*)?$"
+    AllowedPattern: "^https:\\/\\/[a-zA-Z0-9-]{2,}(\\.[a-zA-Z0-9-]{2,})(\\.[a-zA-Z0-9-]{2,})*$"
   DynatraceApiKeySSMParameter:
     Description: "Path of the SecureString Parameter in AWS Systems Manager Parameter Store that stores the Dynatrace platform token (scope: data-acquisition:logs:ingest) used to authenticate against the generic S3 logs ingest API (e.g. /dynatrace/s3-log-forwarder/my-stack/api-key). Use this or DynatraceApiKey, not both."
     Type: String
@@ -49,7 +49,7 @@ Parameters:
     MinValue: 8192
     MaxValue: 1048576
   VerifyLogEndpointSSLCerts:
-    Description: Leave the default value unless you're ingesting logs via an Environment Active Gate with a self-signed SSL certificate, then set this to false to disable SSL certificate verification
+    Description: Leave the default value unless you need to disable SSL certificate verification when posting logs to the Dynatrace endpoint (e.g. when routing traffic through an intercepting proxy with a custom CA).
     Type: String
     AllowedValues: 
       - "true"
@@ -80,11 +80,11 @@ Parameters:
     MinValue: 128
     MaxValue: 10240
   LambdaSubnetIds:
-    Description: "If you're ingesting logs into a Dynatrace Managed cluster with no internet-facing Active Gates, specify a list of Subnet Ids of a VPC with network connectivity to the AGs where the AWS Lambda function needs to be deployed (for HA purposes select at least 2 subnets on different Availability Zones)."
+    Description: "Optional list of Subnet Ids if the Lambda function needs to run inside a VPC to reach the Dynatrace ingest endpoint (for HA purposes select at least 2 subnets on different Availability Zones). The subnets must have outbound network connectivity to the Dynatrace endpoint."
     Type: CommaDelimitedList
     Default: ""
   LambdaSecurityGroupId:
-    Description: "If you're ingesting logs into a Dynatrace Managed cluster with no internet-facing Active Gates, specify a security group id to assign to your Lambda function. This security group should allow network access to the Environment Active Gates. This parameter is required if Lambda is deployed on a VPC (LambdaSubnetIds is specified)."
+    Description: "Security group id to assign to the Lambda function when deploying it inside a VPC. The security group must allow outbound network access to the Dynatrace ingest endpoint. This parameter is required if LambdaSubnetIds is specified."
     Type: String
     Default: ""
     AllowedPattern: "(^$|^sg-[0-9a-f]+$)"

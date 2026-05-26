@@ -28,7 +28,7 @@ The `dynatrace-aws-platform-monitoring-s3-log-forwarder` supports out-of-the-box
 Additionally, you can ingest any generic text and JSON logs. For more information, visit [docs/log_forwarding.md](docs/log_forwarding.md).
 
 > [!IMPORTANT]
-> Log events with timestamps older than 24 hours are dropped by Dynatrace (see [docs](https://docs.dynatrace.com/docs/dynatrace-api/environment-api/log-monitoring-v2/post-ingest-logs#request-body-objects))
+> Log events with timestamps older than 24 hours are dropped by Dynatrace.
 
 ## Deployment
 

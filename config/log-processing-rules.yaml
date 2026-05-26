@@ -25,7 +25,7 @@ annotations:
   cloud.provider: aws
 
 
-# map message keys to DT LogsV2 API format  
+# map message keys to Dynatrace log ingest format
 attribute_extraction_jmespath_expression:
   timestamp: query_timestamp
   aws.account.id: account_id

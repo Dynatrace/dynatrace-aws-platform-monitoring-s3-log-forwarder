@@ -28,7 +28,7 @@ annotations:
   # not sure
   aws.arn.pattern: "arn:aws:ec2:{aws.region}:{aws.account.id}:vpc/{aws.resource.id}"
 
-# map message keys to DT LogsV2 API format  
+# map message keys to Dynatrace log ingest format
 attribute_extraction_jmespath_expression:
   timestamp: query_timestamp
   aws.account.id: account_id
