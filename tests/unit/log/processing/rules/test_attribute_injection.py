@@ -29,6 +29,7 @@ classic_elb_key_name = 'random_prefix/AWSLogs/012345678910/elasticloadbalancing/
 nlb_key_name = 'random_prefix/AWSLogs/012345678910/elasticloadbalancing/us-east-1/2022/09/23/012345678910_elasticloadbalancing_us-east-1_net.k8s-podinfo-frontend-352ef7564b.809b86b470cfa0ff_20220927T1715Z_bbb0861d.log.gz'
 waf_key_name = 'random_prefix/AWSLogs/012345678910/WAFLogs/eu-west-1/my-web-acl/2023/02/15/14/30/012345678910_waflogs_us-east-1_my-web-acl_20230215T1430Z_ec507835.log.gz'
 cloudfront_key_name = 'example/E1SFLUZKKLSP61.2023-02-16-14.e519cdee.gz'
+cloudfront_short_dist_key_name = 'cloudfront/EI40887JFNMEK.2026-05-27-08.b7c58fd5.gz'
 vpcflowlog_key_name = 'optional_prefix/AWSLogs/012345678910/vpcflowlogs/us-east-1/2023/02/14/012345678910_vpcflowlogs_us-east-1_fl-07f38b767c7cd46e3_20230214T0000Z_129a0cf7.log.gz'
 network_firewall_key_name = 'random_prefix/AWSLogs/012345678910/network-firewall/flow/us-east-1/my-test-firewall/2023/02/20/16/012345678910_network-firewall_flow_us-east-1_my-test-firewall_202302201610_e5c84094.log.gz'
 msk_key_name = 'AWSLogs/012345678910/KafkaBrokerLogs/us-east-1/demo-cluster-2-043b6d76-352c-494a-9eee-fbff5cc1687d-20/2023-02-20-17/Broker-1_17-05_5b17f696.log.gz'
@@ -325,6 +326,9 @@ class TestS3KeyMatchingExpression(unittest.TestCase):
 
     def test_cloudfront_s3_key(self):
         self.assertTrue(processing_rules['aws']['cloudfront'].match_s3_key(cloudfront_key_name))
+
+    def test_cloudfront_short_distribution_id_s3_key(self):
+        self.assertTrue(processing_rules['aws']['cloudfront'].match_s3_key(cloudfront_short_dist_key_name))
 
     def test_vpcflowlogs_s3_key(self):
         self.assertTrue(processing_rules['aws']['vpcflowlogs'].match_s3_key(vpcflowlog_key_name))

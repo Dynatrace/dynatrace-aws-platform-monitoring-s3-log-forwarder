@@ -15,7 +15,9 @@
 name: cloudfront
 
 # File Name format:  <optional prefix>/<distribution ID>.YYYY-MM-DD-HH.unique-ID.gz
-# File Name example: example/E1SFLUZKKLSP61.2023-02-16-14.e519cdee.gz
+# File Name examples:
+#     example/E1SFLUZKKLSP61.2023-02-16-14.e519cdee.gz
+#  cloudfront/EI40887JFNMEK.2026-05-27-08.b7c58fd5.gz
 # Random string is 11 uppercase chars?
 known_key_path_pattern: '^.*?{cloudfront_distribution_id_pattern}\.{year_pattern}-{month_pattern}-{day_pattern}-{hour_pattern}\.[a-fA-F0-9]{{8}}\.gz$'
 

@@ -35,7 +35,7 @@ helper_regexes = {
     'ipv4_address_pattern' : r'(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)',
     'aws_resource_name_pattern': r'[a-zA-Z0-9-_]{1,128}',
     'vpc_id_pattern': r'vpc-[0-9a-f]{8}(?:[0-9a-f]{9})?',
-    'cloudfront_distribution_id_pattern': r'E[A-Z0-9]{13}',
+    'cloudfront_distribution_id_pattern': r'E[A-Z0-9]{12,13}',
     'vpc_flow_id_pattern': r'fl-[0-9a-f]{8}(?:[0-9a-f]{9})?',
     'aws_global_accelerator_id_pattern': r'[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}',
     'redshift_cluster_name_pattern': r'[a-z][a-z0-9-]{1,61}[a-z0-9]?',
