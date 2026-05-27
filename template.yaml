@@ -193,63 +193,63 @@ Rules:
 Mappings:
   LayerArns:
     af-south-1:
-      Arn: null
+      Arn: arn:aws:lambda:af-south-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
     ap-east-1:
-      Arn: null
+      Arn: arn:aws:lambda:ap-east-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
     ap-northeast-1:
-      Arn: null
+      Arn: arn:aws:lambda:ap-northeast-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
     ap-northeast-2:
-      Arn: null
+      Arn: arn:aws:lambda:ap-northeast-2:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
     ap-northeast-3:
-      Arn: null
+      Arn: arn:aws:lambda:ap-northeast-3:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
     ap-south-1:
-      Arn: null
+      Arn: arn:aws:lambda:ap-south-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
     ap-south-2:
-      Arn: null
+      Arn: arn:aws:lambda:ap-south-2:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
     ap-southeast-1:
-      Arn: null
+      Arn: arn:aws:lambda:ap-southeast-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
     ap-southeast-2:
-      Arn: null
+      Arn: arn:aws:lambda:ap-southeast-2:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
     ap-southeast-3:
-      Arn: null
+      Arn: arn:aws:lambda:ap-southeast-3:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
     ap-southeast-4:
-      Arn: null
+      Arn: arn:aws:lambda:ap-southeast-4:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
     ca-central-1:
-      Arn: null
+      Arn: arn:aws:lambda:ca-central-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
     ca-west-1:
-      Arn: null
+      Arn: arn:aws:lambda:ca-west-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
     eu-central-1:
-      Arn: null
+      Arn: arn:aws:lambda:eu-central-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
     eu-central-2:
-      Arn: null
+      Arn: arn:aws:lambda:eu-central-2:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
     eu-north-1:
-      Arn: null
+      Arn: arn:aws:lambda:eu-north-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
     eu-south-1:
-      Arn: null
+      Arn: arn:aws:lambda:eu-south-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
     eu-south-2:
-      Arn: null
+      Arn: arn:aws:lambda:eu-south-2:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
     eu-west-1:
-      Arn: null
+      Arn: arn:aws:lambda:eu-west-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
     eu-west-2:
-      Arn: null
+      Arn: arn:aws:lambda:eu-west-2:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
     eu-west-3:
-      Arn: null
+      Arn: arn:aws:lambda:eu-west-3:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
     il-central-1:
-      Arn: null
+      Arn: arn:aws:lambda:il-central-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
     me-central-1:
-      Arn: null
+      Arn: arn:aws:lambda:me-central-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
     me-south-1:
-      Arn: null
+      Arn: arn:aws:lambda:me-south-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
     sa-east-1:
-      Arn: null
+      Arn: arn:aws:lambda:sa-east-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
     us-east-1:
-      Arn: null
+      Arn: arn:aws:lambda:us-east-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
     us-east-2:
-      Arn: null
+      Arn: arn:aws:lambda:us-east-2:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
     us-west-1:
-      Arn: null
+      Arn: arn:aws:lambda:us-west-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
     us-west-2:
-      Arn: null
+      Arn: arn:aws:lambda:us-west-2:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
 
 Conditions:
   CrossRegionCrossAccountForwardingIsEnabled: !Equals [ !Ref EnableCrossRegionCrossAccountForwarding, "true" ]

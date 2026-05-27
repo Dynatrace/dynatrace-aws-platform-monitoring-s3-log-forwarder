@@ -187,11 +187,12 @@ update_readme() {
         done
     fi
 
-    # Preserve original trailing-newline behaviour
-    if [[ "$(tail -c1 "$readme_file")" != $'\n' ]]; then
-        printf '%s' "${output%$'\n'}" > "$readme_file"
-    else
+    # Preserve original trailing-newline behaviour.
+    # Note: $(...) strips trailing newlines, so check the last byte via od instead.
+    if [[ "$(tail -c1 "$readme_file" | od -An -tx1 | tr -d ' \n')" == "0a" ]]; then
         printf '%s' "$output" > "$readme_file"
+    else
+        printf '%s' "${output%$'\n'}" > "$readme_file"
     fi
     echo "README.md updated."
 }
@@ -247,11 +248,12 @@ update_template() {
         output+="$line"$'\n'
     done < "$template_file"
 
-    # Preserve original trailing-newline behaviour
-    if [[ "$(tail -c1 "$template_file")" != $'\n' ]]; then
-        printf '%s' "${output%$'\n'}" > "$template_file"
-    else
+    # Preserve original trailing-newline behaviour.
+    # Note: $(...) strips trailing newlines, so check the last byte via od instead.
+    if [[ "$(tail -c1 "$template_file" | od -An -tx1 | tr -d ' \n')" == "0a" ]]; then
         printf '%s' "$output" > "$template_file"
+    else
+        printf '%s' "${output%$'\n'}" > "$template_file"
     fi
     echo "template.yaml updated."
 }
