@@ -55,31 +55,21 @@ if [ "${NOTIFICATION_TYPE:-eventbridge}" = "sns" ]; then
         --query 'Stacks[0].Outputs[?OutputKey==`S3NotificationsSNSTopic`].OutputValue' \
         --output text 2>/dev/null || true)
     if [ -n "${SNS_TOPIC_ARN}" ]; then
-        CURRENT=$(aws s3api get-bucket-notification-configuration --bucket "${E2E_TESTING_BUCKET_NAME}" 2>/dev/null || echo '{}')
-        NEW_CONFIG=$(echo "${CURRENT:-{}}" | jq --arg arn "${SNS_TOPIC_ARN}" '
-            .TopicConfigurations = ((.TopicConfigurations // []) | map(select(.TopicArn != $arn)))')
+        log "Clearing bucket notification configuration for ${E2E_TESTING_BUCKET_NAME}"
         aws s3api put-bucket-notification-configuration \
             --bucket "${E2E_TESTING_BUCKET_NAME}" \
-            --notification-configuration "${NEW_CONFIG}" || true
+            --notification-configuration '{}' || true
     fi
 elif [ "${NOTIFICATION_TYPE}" = "sqs" ]; then
-    QUEUE_ARN=$(aws cloudformation describe-stacks --stack-name "${STACK_NAME}" \
-        --query 'Stacks[0].Outputs[?OutputKey==`SQSProcessingQueue`].OutputValue' \
-        --output text 2>/dev/null || true)
-    if [ -n "${QUEUE_ARN}" ]; then
-        CURRENT=$(aws s3api get-bucket-notification-configuration --bucket "${E2E_TESTING_BUCKET_NAME}" 2>/dev/null || echo '{}')
-        NEW_CONFIG=$(echo "${CURRENT:-{}}" | jq --arg arn "${QUEUE_ARN}" '
-            .QueueConfigurations = ((.QueueConfigurations // []) | map(select(.QueueArn != $arn)))')
-        aws s3api put-bucket-notification-configuration \
-            --bucket "${E2E_TESTING_BUCKET_NAME}" \
-            --notification-configuration "${NEW_CONFIG}" || true
-    fi
-else
-    CURRENT=$(aws s3api get-bucket-notification-configuration --bucket "${E2E_TESTING_BUCKET_NAME}" 2>/dev/null || echo '{}')
-    NEW_CONFIG=$(echo "${CURRENT:-{}}" | jq 'del(.EventBridgeConfiguration)')
+    log "Clearing bucket notification configuration for ${E2E_TESTING_BUCKET_NAME}"
     aws s3api put-bucket-notification-configuration \
         --bucket "${E2E_TESTING_BUCKET_NAME}" \
-        --notification-configuration "${NEW_CONFIG}" || true
+        --notification-configuration '{}' || true
+else
+    log "Clearing bucket notification configuration for ${E2E_TESTING_BUCKET_NAME}"
+    aws s3api put-bucket-notification-configuration \
+        --bucket "${E2E_TESTING_BUCKET_NAME}" \
+        --notification-configuration '{}' || true
 
     log "Deleting Cloudformation Stack ${STACK_NAME}-s3-bucket-configuration"
     aws cloudformation delete-stack --stack-name ${STACK_NAME}-s3-bucket-configuration

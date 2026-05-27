@@ -120,11 +120,9 @@ esac
 case "${NOTIFICATION_TYPE}" in
     eventbridge)
         log "Enabling EventBridge notifications on bucket ${E2E_TESTING_BUCKET_NAME}"
-        CURRENT=$(aws s3api get-bucket-notification-configuration --bucket "${E2E_TESTING_BUCKET_NAME}" 2>/dev/null || echo '{}')
-        NEW_CONFIG=$(echo "${CURRENT:-{}}" | jq '.EventBridgeConfiguration = {}')
         aws s3api put-bucket-notification-configuration \
             --bucket "${E2E_TESTING_BUCKET_NAME}" \
-            --notification-configuration "${NEW_CONFIG}"
+            --notification-configuration '{"EventBridgeConfiguration":{}}'
 
         log "Deploying the S3 bucket configuration template"
         aws cloudformation deploy --stack-name ${STACK_NAME}-s3-bucket-configuration --parameter-overrides \
@@ -144,13 +142,9 @@ case "${NOTIFICATION_TYPE}" in
             --output text)
         [[ "${SNS_TOPIC_ARN}" =~ ^arn:aws:sns: ]] || { echo "ERROR: could not retrieve a valid SNS topic ARN from stack ${STACK_NAME} (got: '${SNS_TOPIC_ARN}')" >&2; exit 1; }
 
-        CURRENT=$(aws s3api get-bucket-notification-configuration --bucket "${E2E_TESTING_BUCKET_NAME}" 2>/dev/null || echo '{}')
-        NEW_CONFIG=$(echo "${CURRENT:-{}}" | jq --arg arn "${SNS_TOPIC_ARN}" --arg prefix "${E2E_TEST_PREFIX}/" '
-            .TopicConfigurations = [{
-                "TopicArn": $arn, "Events": ["s3:ObjectCreated:*"],
-                "Filter": {"Key": {"FilterRules": [{"Name": "prefix", "Value": $prefix}]}}
-            }]')
-        log "Configuring S3 SNS notification: topic=${SNS_TOPIC_ARN} prefix=${E2E_TEST_PREFIX}/"
+        NEW_CONFIG=$(jq -n --arg arn "${SNS_TOPIC_ARN}" \
+            '{"TopicConfigurations":[{"TopicArn":$arn,"Events":["s3:ObjectCreated:*"]}]}')
+        log "Configuring S3 SNS notification: topic=${SNS_TOPIC_ARN}"
         aws s3api put-bucket-notification-configuration \
             --bucket "${E2E_TESTING_BUCKET_NAME}" \
             --notification-configuration "${NEW_CONFIG}"
@@ -162,12 +156,8 @@ case "${NOTIFICATION_TYPE}" in
             --output text)
         [[ "${QUEUE_ARN}" =~ ^arn:aws:sqs: ]] || { echo "ERROR: could not retrieve a valid SQS queue ARN from stack ${STACK_NAME} (got: '${QUEUE_ARN}')" >&2; exit 1; }
 
-        CURRENT=$(aws s3api get-bucket-notification-configuration --bucket "${E2E_TESTING_BUCKET_NAME}" 2>/dev/null || echo '{}')
-        NEW_CONFIG=$(echo "${CURRENT:-{}}" | jq --arg arn "${QUEUE_ARN}" --arg prefix "${E2E_TEST_PREFIX}/" '
-            .QueueConfigurations = [{
-                "QueueArn": $arn, "Events": ["s3:ObjectCreated:*"],
-                "Filter": {"Key": {"FilterRules": [{"Name": "prefix", "Value": $prefix}]}}
-            }]')
+        NEW_CONFIG=$(jq -n --arg arn "${QUEUE_ARN}" --arg prefix "${E2E_TEST_PREFIX}/" \
+            '{"QueueConfigurations":[{"QueueArn":$arn,"Events":["s3:ObjectCreated:*"],"Filter":{"Key":{"FilterRules":[{"Name":"prefix","Value":$prefix}]}}}]}')
         log "Configuring S3 SQS notification: queue=${QUEUE_ARN} prefix=${E2E_TEST_PREFIX}/"
         aws s3api put-bucket-notification-configuration \
             --bucket "${E2E_TESTING_BUCKET_NAME}" \
