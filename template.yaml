@@ -413,8 +413,8 @@ Resources:
             Action: "sqs:SendMessage"
             Resource: !GetAtt S3NotificationsQueue.Arn
             Condition:
-              StringEquals:
-                "aws:SourceAccount": !Ref AWS::AccountId
+              ArnLike:
+                "aws:SourceArn": !Sub "arn:aws:sns:*:${AWS::AccountId}:*"
           - !If
             - S3BucketNamesProvided
             - Sid: "Allow S3 buckets to Send Messages"
@@ -506,6 +506,7 @@ Resources:
   S3NotificationsSNSSubscription:
     Type: AWS::SNS::Subscription
     Condition: CreateSNSTopicForS3Notifications
+    DependsOn: S3NotificationsQueuePolicy
     Properties:
       TopicArn: !Ref S3NotificationsSNSTopic
       Protocol: sqs
@@ -524,11 +525,13 @@ Resources:
             Effect: Allow
             Principal:
               Service: "s3.amazonaws.com"
-            Action: "sns:Publish"
+            Action: "SNS:Publish"
             Resource: !Ref S3NotificationsSNSTopic
             Condition:
               StringEquals:
                 "aws:SourceAccount": !Ref AWS::AccountId
+              ArnLike:
+                "aws:SourceArn": "arn:aws:s3:::*"
       Topics:
         - !Ref S3NotificationsSNSTopic
 
