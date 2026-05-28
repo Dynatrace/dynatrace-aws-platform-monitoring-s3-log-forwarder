@@ -34,7 +34,7 @@ attribute_extraction_from_key_name:
   aws.region: '{aws_region_pattern}'
   aws.vpc.flow_log_id: '{vpc_flow_id_pattern}'
 
-# Standar log format: version account-id interface-id srcaddr dstaddr srcport dstport protocol packets bytes start end action log-status
+# Standard log format: version account-id interface-id srcaddr dstaddr srcport dstport protocol packets bytes start end action log-status
 attribute_extraction_grok_expression: '^(?:\S+\s+){10}(?P<timestamp_to_transform>\S+).*$'
 
 skip_header_lines: 1
