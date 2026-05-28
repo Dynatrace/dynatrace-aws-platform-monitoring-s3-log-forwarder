@@ -26,7 +26,10 @@ export_cloudwatch_logs () {
                         --destination-prefix ${PREFIX} \
                         --log-group-name "/aws/lambda/${LAMBDA_FUNCTION_NAME}" \
                         --from ${FROM_TIME} \
-                        --to ${TO_TIME} --query 'taskId' --output text)
+                        --to ${TO_TIME} --query 'taskId' --output text 2>&1) || {
+        log "WARNING: Failed to create CloudWatch Logs export task (bucket policy may be missing). Lambda logs will not be archived."
+        return
+    }
 
     log "Exporting logs of AWS Lambda Function ${LAMBDA_FUNCTION_NAME}. Task: ${EXPORT_TASK_ID}"
 
