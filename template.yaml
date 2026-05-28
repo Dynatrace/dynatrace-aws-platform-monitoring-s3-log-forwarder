@@ -398,12 +398,47 @@ Resources:
               - !Ref AWS::AccountId
               - !Sub ${AWS::StackName}-S3NotificationsQueue
 
+  S3NotificationsSNSTopicKey:
+    Type: AWS::KMS::Key
+    Condition: CreateSNSTopicForS3Notifications
+    Properties:
+      Description: CMK for S3 notifications SNS topic — allows S3 to publish to an encrypted topic
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowAccountAdministration
+            Effect: Allow
+            Principal:
+              AWS: !Sub arn:aws:iam::${AWS::AccountId}:root
+            Action: kms:*
+            Resource: "*"
+          - Sid: AllowSNSToUseKey
+            Effect: Allow
+            Principal:
+              Service: sns.amazonaws.com
+            Action:
+              - kms:GenerateDataKey
+              - kms:Decrypt
+            Resource: "*"
+          - Sid: AllowS3ToPublishToEncryptedTopic
+            Effect: Allow
+            Principal:
+              Service: s3.amazonaws.com
+            Action:
+              - kms:GenerateDataKey
+              - kms:Decrypt
+            Resource: "*"
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+
   S3NotificationsSNSTopic:
     Type: AWS::SNS::Topic
     Condition: CreateSNSTopicForS3Notifications
     Properties:
       TopicName: !Sub ${AWS::StackName}-S3Notifications
-      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: !Ref S3NotificationsSNSTopicKey
 
   S3NotificationsSNSSubscription:
     Type: AWS::SNS::Subscription
