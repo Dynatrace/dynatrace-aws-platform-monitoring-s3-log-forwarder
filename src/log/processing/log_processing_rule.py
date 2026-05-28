@@ -16,6 +16,7 @@ from dataclasses import dataclass, field
 from typing import Optional, List
 import logging
 import re
+import datetime as stdlib_datetime
 from pygrok import Grok
 import jmespath
 import dateutil.parser as dateparser
@@ -25,8 +26,16 @@ logger = logging.getLogger(__name__)
 
 def parse_date_from_string(date_string: str):
     '''
-    Uses dateutil to parse a date from a given str
+    Uses dateutil to parse a date from a given str.
+    Also handles pure-integer strings as Unix epoch (seconds if 10 digits, milliseconds if 13+).
     '''
+    # Unix epoch seconds (10 digits) or milliseconds (13 digits)
+    if date_string.isdigit():
+        epoch_val = int(date_string)
+        if len(date_string) >= 13:
+            epoch_val = epoch_val / 1000
+        return stdlib_datetime.datetime.fromtimestamp(epoch_val, tz=stdlib_datetime.timezone.utc).isoformat()
+
     datetime = date_string
 
     try:

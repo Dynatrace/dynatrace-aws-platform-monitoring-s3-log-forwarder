@@ -277,7 +277,7 @@ class testGlobalAcceleratorLogs(unittest.TestCase):
     log_entry = '2.0 012345678910 f0154cf1-4ac0-451b-87a2-5b2ce89142e6 1.2.3.4 57825 5.6.7.8 80 172.31.25.4 80 TCP IPV4 0 0 1676984801 1676984809 ACCEPT OK - 0 us-east-1 JFK6-2 INGRESS vpc-01234567891abcdef'
 
     expected_attributes = {
-        'timestamp': '1676984801'
+        'timestamp': '2023-02-21T13:06:41+00:00'
     }
 
     global_accelerator_processing_rule = processing_rules['aws']['global-accelerator']
@@ -290,7 +290,7 @@ class testVpcFlowLogs(unittest.TestCase):
     log_entry = '2 012345678910 eni-02454058ae64a0b4e 172.31.6.100 67.220.242.48 59308 443 6 15 5338 1677665646 1677665674 ACCEPT OK'
 
     expected_attributes = {
-        'timestamp': '1677665646'
+        'timestamp': '2023-03-01T10:14:06+00:00'
     }
 
     vpc_flow_logs_processing_rule = processing_rules['aws']['vpcflowlogs']

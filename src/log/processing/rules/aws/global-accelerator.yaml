@@ -35,6 +35,6 @@ attribute_extraction_from_key_name:
 
 
 # https://docs.aws.amazon.com/global-accelerator/latest/dg/monitoring-global-accelerator.flow-logs.html#monitoring-global-accelerator.flow-logs.records.syntax
-attribute_extraction_grok_expression: '^(?:\S+\s+){13}(?P<timestamp>\S+).*$'
+attribute_extraction_grok_expression: '^(?:\S+\s+){13}(?P<timestamp_to_transform>\S+).*$'
 
 skip_header_lines: 1
