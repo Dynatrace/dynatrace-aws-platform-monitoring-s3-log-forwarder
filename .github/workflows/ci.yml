@@ -135,7 +135,6 @@ jobs:
         uses: actions/download-artifact@v7
         with:
           name: lambda-artifacts
-          path: dist/
       - uses: actions/setup-python@v6
         with:
           python-version: '3.14'

@@ -1,7 +1,5 @@
 #!/bin/bash
 
-command -v jq &>/dev/null || { echo "ERROR: jq is required but not installed" >&2; exit 1; }
-
 # Settings for CloudWatch Log Export job
 PREFIX="test/${CI_RUN_ID}/lambda-logs"
 STACK_NAME=${STACK_NAME:-e2e-dt-aws-s3-log-forwarder-${CI_RUN_ID}}
@@ -57,12 +55,11 @@ if [ "${NOTIFICATION_TYPE:-eventbridge}" = "sns" ]; then
     SNS_TOPIC_ARN=$(aws cloudformation describe-stacks --stack-name "${STACK_NAME}" \
         --query 'Stacks[0].Outputs[?OutputKey==`S3NotificationsSNSTopic`].OutputValue' \
         --output text 2>/dev/null || true)
-    if [ -n "${SNS_TOPIC_ARN}" ]; then
-        log "Clearing bucket notification configuration for ${E2E_TESTING_BUCKET_NAME}"
-        aws s3api put-bucket-notification-configuration \
-            --bucket "${E2E_TESTING_BUCKET_NAME}" \
-            --notification-configuration '{}' || true
-    fi
+    [ -z "${SNS_TOPIC_ARN}" ] && log "WARNING: could not retrieve SNS topic ARN from stack ${STACK_NAME}, clearing bucket notifications anyway"
+    log "Clearing bucket notification configuration for ${E2E_TESTING_BUCKET_NAME}"
+    aws s3api put-bucket-notification-configuration \
+        --bucket "${E2E_TESTING_BUCKET_NAME}" \
+        --notification-configuration '{}' || true
 elif [ "${NOTIFICATION_TYPE}" = "sqs" ]; then
     log "Clearing bucket notification configuration for ${E2E_TESTING_BUCKET_NAME}"
     aws s3api put-bucket-notification-configuration \
