@@ -142,9 +142,9 @@ case "${NOTIFICATION_TYPE}" in
             --output text)
         [[ "${SNS_TOPIC_ARN}" =~ ^arn:aws:sns: ]] || { echo "ERROR: could not retrieve a valid SNS topic ARN from stack ${STACK_NAME} (got: '${SNS_TOPIC_ARN}')" >&2; exit 1; }
 
-        NEW_CONFIG=$(jq -n --arg arn "${SNS_TOPIC_ARN}" \
-            '{"TopicConfigurations":[{"TopicArn":$arn,"Events":["s3:ObjectCreated:*"]}]}')
-        log "Configuring S3 SNS notification: topic=${SNS_TOPIC_ARN}"
+        NEW_CONFIG=$(jq -n --arg arn "${SNS_TOPIC_ARN}" --arg prefix "${E2E_TEST_PREFIX}/" \
+            '{"TopicConfigurations":[{"TopicArn":$arn,"Events":["s3:ObjectCreated:*"],"Filter":{"Key":{"FilterRules":[{"Name":"prefix","Value":$prefix}]}}}]}')
+        log "Configuring S3 SNS notification: topic=${SNS_TOPIC_ARN} prefix=${E2E_TEST_PREFIX}/"
         aws s3api put-bucket-notification-configuration \
             --bucket "${E2E_TESTING_BUCKET_NAME}" \
             --notification-configuration "${NEW_CONFIG}"
