@@ -52,7 +52,7 @@ case "${DEPLOY_TYPE}" in
 
         FUNCTION_NAME=$(aws cloudformation describe-stacks --stack-name ${STACK_NAME} \
             --query 'Stacks[0].Outputs[?OutputKey==`QueueProcessingFunction`].OutputValue' \
-            --output text | rev | cut -d':' -f1 | rev)
+            --output text | cut -d':' -f7)
 
         log "Updating Lambda function code for ${FUNCTION_NAME}"
         aws lambda update-function-code --function-name ${FUNCTION_NAME} \
