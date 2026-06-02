@@ -169,3 +169,6 @@ case "${NOTIFICATION_TYPE}" in
         exit 1
         ;;
 esac
+
+# Wait for notification config to propagate
+sleep 15
