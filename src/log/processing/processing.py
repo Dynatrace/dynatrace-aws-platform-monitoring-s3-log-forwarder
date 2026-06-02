@@ -125,21 +125,41 @@ def get_log_entry_size(log_entry):
 
     return size
 
+MAX_MULTILINE_LINES = 1000
+
+
 def _iter_multiline_records(raw_iter, start_regex: re.Pattern):
     '''
     Wraps a line iterator and yields one bytes blob per logical record.
     A new record starts whenever a line matches start_regex.
+    If MAX_MULTILINE_LINES is reached before the pattern matches even once,
+    the pattern is assumed to be wrong for this file and the function falls back
+    to yielding every line (buffered and remaining) as individual records.
     '''
     buffer = []
+    ever_matched = False
     for line in raw_iter:
         if isinstance(line, bytes):
             decoded = line.decode(ENCODING)
         else:
             decoded = line
-        if start_regex.match(decoded) and buffer:
-            yield b'\n'.join(buffer)
-            buffer = []
+        if start_regex.match(decoded):
+            if buffer:
+                yield b'\n'.join(buffer)
+                buffer = []
+            ever_matched = True
         buffer.append(line if isinstance(line, bytes) else line.encode(ENCODING))
+        if not ever_matched and len(buffer) >= MAX_MULTILINE_LINES:
+            logger.warning(
+                "Multiline start pattern never matched in first %d lines; falling back to line-by-line.",
+                MAX_MULTILINE_LINES,
+            )
+            for buffered_line in buffer:
+                yield buffered_line
+            buffer = []
+            for remaining_line in raw_iter:
+                yield remaining_line
+            return
     if buffer:
         yield b'\n'.join(buffer)
 

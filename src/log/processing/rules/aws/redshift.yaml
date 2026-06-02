@@ -33,5 +33,5 @@ attribute_extraction_from_key_name:
   aws.resource.id: '(?<=_){redshift_cluster_name_pattern}(?=_(connectionlog|userlog|useractivitylog)_{year_pattern}-{month_pattern}-{day_pattern}T{hour_pattern}:{minutes_pattern}(\.gz)$)'
 
 
-multiline_record_start_pattern: "^'\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z UTC "
+multiline_record_start_pattern: "^'.+"
 attribute_extraction_grok_expression: '%{REDSHIFTTIMESTAMP:timestamp_to_transform}'
