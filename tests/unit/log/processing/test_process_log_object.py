@@ -458,7 +458,7 @@ class TestProcessLogObject(unittest.TestCase):
             known_key_path_pattern='.*',
             log_format='text',
             skip_header_lines=0,
-            multiline_record_start_pattern=r"^'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z UTC "
+            multiline_record_start_pattern=r"^'.+"
         )
 
         result = process_log_object(
@@ -478,6 +478,84 @@ class TestProcessLogObject(unittest.TestCase):
         second_content = self.mock_log_sink.push.call_args_list[1][0][0]['content']
         self.assertIn('SELECT 1', second_content)
         self.assertNotIn('WITH', second_content)
+
+    @patch('boto3._get_default_session')
+    def test_multiline_legacy_timestamp_records_combined(self, mock_session):
+        """Legacy day-of-week timestamp records are also split correctly."""
+        test_data = (
+            b"'Tue, 21 Feb 2023 16:58:20:471 UTC [ db=dev user=rdsdb pid=1 xid=1 ]' LOG: WITH res AS\n"
+            b"(\n"
+            b"   SELECT 1\n"
+            b")\n"
+            b"SELECT * FROM res;\n"
+            b"'Tue, 21 Feb 2023 16:58:21:000 UTC [ db=dev user=rdsdb pid=2 xid=2 ]' LOG: SELECT 1\n"
+        )
+
+        mock_s3_client = Mock()
+        mock_s3_client.get_object.return_value = self._create_s3_response(test_data, compressed=True)
+        mock_session_instance = Mock()
+        mock_session_instance.client.return_value = mock_s3_client
+        mock_session.return_value = mock_session_instance
+
+        log_rule = LogProcessingRule(
+            name='test_multiline_legacy',
+            source='aws',
+            known_key_path_pattern='.*',
+            log_format='text',
+            skip_header_lines=0,
+            multiline_record_start_pattern=r"^'.+"
+        )
+
+        result = process_log_object(
+            log_processing_rule=log_rule,
+            bucket='test-bucket',
+            key='test.log.gz',
+            bucket_region='us-east-1',
+            log_sinks=[self.mock_log_sink],
+            lambda_context=self.mock_lambda_context
+        )
+
+        self.assertEqual(result, 2)
+        first_content = self.mock_log_sink.push.call_args_list[0][0][0]['content']
+        self.assertIn('WITH res AS', first_content)
+        self.assertIn('SELECT * FROM res', first_content)
+        second_content = self.mock_log_sink.push.call_args_list[1][0][0]['content']
+        self.assertIn('SELECT 1', second_content)
+        self.assertNotIn('WITH', second_content)
+
+    @patch('boto3._get_default_session')
+    def test_multiline_falls_back_to_line_by_line_when_pattern_never_matches(self, mock_session):
+        """If the start pattern never matches in the first MAX_MULTILINE_LINES lines,
+        every line (buffered and remaining) is yielded individually."""
+        from log.processing.processing import MAX_MULTILINE_LINES
+        total_lines = MAX_MULTILINE_LINES + 10
+        lines = b'\n'.join(b"continuation line" for _ in range(total_lines)) + b'\n'
+
+        mock_s3_client = Mock()
+        mock_s3_client.get_object.return_value = self._create_s3_response(lines, compressed=True)
+        mock_session_instance = Mock()
+        mock_session_instance.client.return_value = mock_s3_client
+        mock_session.return_value = mock_session_instance
+
+        log_rule = LogProcessingRule(
+            name='test_multiline_cap',
+            source='aws',
+            known_key_path_pattern='.*',
+            log_format='text',
+            skip_header_lines=0,
+            multiline_record_start_pattern=r"^'.+"
+        )
+
+        result = process_log_object(
+            log_processing_rule=log_rule,
+            bucket='test-bucket',
+            key='test.log.gz',
+            bucket_region='us-east-1',
+            log_sinks=[self.mock_log_sink],
+            lambda_context=self.mock_lambda_context
+        )
+
+        self.assertEqual(result, total_lines)
 
     @patch('boto3._get_default_session')
     def test_multiline_disabled_processes_line_by_line(self, mock_session):
