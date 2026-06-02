@@ -149,7 +149,8 @@ class TestAWSAttributeInjection(unittest.TestCase):
         expected_attributes = {
             'aws.account.id': '012345678910',
             'aws.region': 'us-east-1',
-            'aws.resource.id': 'demo-cluster-2-043b6d76-352c-494a-9eee-fbff5cc1687d-20',
+            'aws.resource.id': 'demo-cluster-2',
+            'aws.msk.cluster.uuid': '043b6d76-352c-494a-9eee-fbff5cc1687d-20',
         }
 
         msk_processing_rule = processing_rules['aws']['msk']
@@ -209,7 +210,7 @@ class TestAWSAttributeInjection(unittest.TestCase):
 
     def test_vpcflowlogs_annotations_include_resource_type(self):
         annotations = processing_rules['aws']['vpcflowlogs'].get_processing_log_annotations()
-        self.assertEqual(annotations['aws.resource.type'], 'AWS::EC2::VPC')
+        self.assertEqual(annotations['aws.resource.type'], 'AWS::EC2::FlowLog')
 
     def test_vpcdnsquerylogs_annotations_include_resource_type(self):
         annotations = processing_rules['aws']['vpcdnsquerylogs'].get_processing_log_annotations()
@@ -263,7 +264,7 @@ class TestAWSAttributeInjection(unittest.TestCase):
             'msk': {
                 'key': msk_key_name,
                 'message': '',
-                'expected_arn': 'arn:aws:kafka:us-east-1:012345678910:cluster/demo-cluster-2-043b6d76-352c-494a-9eee-fbff5cc1687d-20'
+                'expected_arn': 'arn:aws:kafka:us-east-1:012345678910:cluster/demo-cluster-2/043b6d76-352c-494a-9eee-fbff5cc1687d-20'
             },
             'network-firewall': {
                 'key': network_firewall_key_name,
