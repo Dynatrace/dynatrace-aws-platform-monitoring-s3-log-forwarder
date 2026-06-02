@@ -435,6 +435,87 @@ class TestProcessLogObject(unittest.TestCase):
         self.assertNotIn('aws.arn.pattern', call_args)
 
     @patch('boto3._get_default_session')
+    def test_multiline_text_records_combined(self, mock_session):
+        """Multiline records are joined into a single content blob."""
+        test_data = (
+            b"'2026-06-01T08:59:05Z UTC [ db=dev user=rdsdb pid=1 xid=1 ]' LOG: WITH res AS\n"
+            b"(\n"
+            b"   SELECT 1\n"
+            b")\n"
+            b"SELECT * FROM res;\n"
+            b"'2026-06-01T08:59:07Z UTC [ db=dev user=rdsdb pid=2 xid=2 ]' LOG: SELECT 1\n"
+        )
+
+        mock_s3_client = Mock()
+        mock_s3_client.get_object.return_value = self._create_s3_response(test_data, compressed=True)
+        mock_session_instance = Mock()
+        mock_session_instance.client.return_value = mock_s3_client
+        mock_session.return_value = mock_session_instance
+
+        log_rule = LogProcessingRule(
+            name='test_multiline',
+            source='aws',
+            known_key_path_pattern='.*',
+            log_format='text',
+            skip_header_lines=0,
+            multiline_record_start_pattern=r"^'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z UTC "
+        )
+
+        result = process_log_object(
+            log_processing_rule=log_rule,
+            bucket='test-bucket',
+            key='test.log.gz',
+            bucket_region='us-east-1',
+            log_sinks=[self.mock_log_sink],
+            lambda_context=self.mock_lambda_context
+        )
+
+        self.assertEqual(result, 2)
+        self.assertEqual(self.mock_log_sink.push.call_count, 2)
+        first_content = self.mock_log_sink.push.call_args_list[0][0][0]['content']
+        self.assertIn('WITH res AS', first_content)
+        self.assertIn('SELECT * FROM res', first_content)
+        second_content = self.mock_log_sink.push.call_args_list[1][0][0]['content']
+        self.assertIn('SELECT 1', second_content)
+        self.assertNotIn('WITH', second_content)
+
+    @patch('boto3._get_default_session')
+    def test_multiline_disabled_processes_line_by_line(self, mock_session):
+        """Without multiline_record_start_pattern, each physical line is its own record."""
+        test_data = (
+            b"'2026-06-01T08:59:05Z UTC [ db=dev user=rdsdb pid=1 xid=1 ]' LOG: WITH res AS\n"
+            b"(\n"
+            b"   SELECT 1\n"
+            b")\n"
+            b"SELECT * FROM res;\n"
+        )
+
+        mock_s3_client = Mock()
+        mock_s3_client.get_object.return_value = self._create_s3_response(test_data, compressed=True)
+        mock_session_instance = Mock()
+        mock_session_instance.client.return_value = mock_s3_client
+        mock_session.return_value = mock_session_instance
+
+        log_rule = LogProcessingRule(
+            name='test_no_multiline',
+            source='aws',
+            known_key_path_pattern='.*',
+            log_format='text',
+            skip_header_lines=0,
+        )
+
+        result = process_log_object(
+            log_processing_rule=log_rule,
+            bucket='test-bucket',
+            key='test.log.gz',
+            bucket_region='us-east-1',
+            log_sinks=[self.mock_log_sink],
+            lambda_context=self.mock_lambda_context
+        )
+
+        self.assertEqual(result, 5)
+
+    @patch('boto3._get_default_session')
     def test_large_json_array(self, mock_session):
         """Test processing large JSON array to ensure streaming works"""
         # Create large test data (1000 entries)

@@ -401,6 +401,28 @@ class testAppFabricLogs(unittest.TestCase):
         extracted_attributes = processing_rules['aws']['appfabric-ocsf-json'].get_extracted_log_attributes(log_entry)
         self.assertEqual(extracted_attributes,expected_attributes)
 
+class TestRedshiftTimestampExtraction(unittest.TestCase):
+
+    def test_iso_timestamp_extracted(self):
+        line = "'2026-06-01T08:59:05Z UTC [ db=dev user=rdsdb pid=1073955200 userid=1 xid=1823 ]' LOG: select pg_backend_pid()"
+        attrs = processing_rules['aws']['redshift'].get_extracted_log_attributes(line)
+        self.assertIn('timestamp', attrs)
+        self.assertNotIn('timestamp_to_transform', attrs)
+        self.assertIn('2026-06-01', attrs['timestamp'])
+
+    def test_legacy_timestamp_extracted(self):
+        line = "authenticated |Tue, 21 Feb 2023 16:58:20:471|[local]|rdsdb|dev|0|1|0|Authentication succeeded"
+        attrs = processing_rules['aws']['redshift'].get_extracted_log_attributes(line)
+        self.assertIn('timestamp', attrs)
+        self.assertNotIn('timestamp_to_transform', attrs)
+        self.assertIn('2023', attrs['timestamp'])
+
+    def test_no_timestamp_returns_empty(self):
+        line = "   SELECT 1"
+        attrs = processing_rules['aws']['redshift'].get_extracted_log_attributes(line)
+        self.assertNotIn('timestamp', attrs)
+
+
 if __name__ == '__main__':
     unittest.main()
 

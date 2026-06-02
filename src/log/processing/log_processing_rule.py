@@ -75,6 +75,8 @@ class LogProcessingRule:
     attribute_extraction_from_key_name_regex: re.Pattern = field(init=False)
     attribute_extraction_grok_object: Grok = field(init=False)
     skip_header_lines: Optional[int] = None
+    multiline_record_start_pattern: Optional[str] = None
+    multiline_record_start_regex: Optional[re.Pattern] = field(init=False)
 
     def validate(self):
         '''
@@ -139,6 +141,13 @@ class LogProcessingRule:
         elif self.skip_header_lines and self.skip_header_lines != 0:
             raise ValueError("skip_header_lines is only valid for text log format")
 
+        # validate multiline_record_start_pattern is only for text log format
+        if self.multiline_record_start_pattern is not None:
+            if self.log_format != "text":
+                raise ValueError("multiline_record_start_pattern is only valid for text log format")
+            if not isinstance(self.multiline_record_start_pattern, str):
+                raise ValueError("multiline_record_start_pattern must be a string")
+
     def __post_init__(self):
         self.validate()
         # Compile Regular expression here using defined helper patterns
@@ -164,6 +173,12 @@ class LogProcessingRule:
                 self.attribute_extraction_grok_expression,custom_patterns=custom_grok_expressions))
         else:
             object.__setattr__(self, "attribute_extraction_grok_object", None)
+
+        if self.multiline_record_start_pattern is not None:
+            object.__setattr__(self, "multiline_record_start_regex",
+                               re.compile(self.multiline_record_start_pattern))
+        else:
+            object.__setattr__(self, "multiline_record_start_regex", None)
 
     def get_attributes_from_s3_key_name(self, key: str):
         '''

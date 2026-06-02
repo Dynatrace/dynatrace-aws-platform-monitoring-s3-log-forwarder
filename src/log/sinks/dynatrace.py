@@ -73,7 +73,7 @@ class DynatraceSink():
 
         retry_strategy = Retry(
             total = 3,
-            status_forcelist = [429, 503],
+            status_forcelist = [429, 500, 503],
             allowed_methods =['POST'],
             raise_on_status = False,
             backoff_factor = .5
