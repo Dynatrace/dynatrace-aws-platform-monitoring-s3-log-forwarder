@@ -46,7 +46,7 @@ helper_regexes = {
 custom_grok_expressions = {
     # grab timestamp from CloudFront log (YYY-mm-dd\tHH:MM:SS)
     'CLOUDFRONTTIMESTAMP' : '%{YEAR}-%{MONTHNUM}-%{MONTHDAY}%{SPACE}%{TIME}',
-    'REDSHIFTTIMESTAMP': '%{DAY}, %{MONTHDAY} %{MONTH} %{YEAR} %{TIME}'
+    'REDSHIFTTIMESTAMP': '(?:%{TIMESTAMP_ISO8601}|%{DAY}, %{MONTHDAY} %{MONTH} %{YEAR} %{TIME})'
 }
 
 def get_split_member(params,name):

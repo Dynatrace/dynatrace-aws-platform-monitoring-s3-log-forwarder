@@ -125,6 +125,25 @@ def get_log_entry_size(log_entry):
 
     return size
 
+def _iter_multiline_records(raw_iter, start_regex: re.Pattern):
+    '''
+    Wraps a line iterator and yields one bytes blob per logical record.
+    A new record starts whenever a line matches start_regex.
+    '''
+    buffer = []
+    for line in raw_iter:
+        if isinstance(line, bytes):
+            decoded = line.decode(ENCODING)
+        else:
+            decoded = line
+        if start_regex.match(decoded) and buffer:
+            yield b'\n'.join(buffer)
+            buffer = []
+        buffer.append(line if isinstance(line, bytes) else line.encode(ENCODING))
+    if buffer:
+        yield b'\n'.join(buffer)
+
+
 def process_log_object(log_processing_rule: LogProcessingRule, bucket: str, key: str, bucket_region: str, log_sinks: list,
                        lambda_context, user_defined_annotations: dict = None, session: boto3.Session = None):
     '''
@@ -187,6 +206,9 @@ def process_log_object(log_processing_rule: LogProcessingRule, bucket: str, key:
             log_entries = log_stream
         else:
             log_entries = log_stream.iter_lines()
+
+        if log_processing_rule.multiline_record_start_regex is not None:
+            log_entries = _iter_multiline_records(log_entries, log_processing_rule.multiline_record_start_regex)
 
     # catch-all? this should never happen
     else:
