@@ -25,13 +25,13 @@ log_format: text
 annotations:
   cloud.provider: aws
   aws.resource.type: "AWS::MSK::Cluster"
-  # not sure
-  aws.arn.pattern: "arn:aws:kafka:{aws.region}:{aws.account.id}:cluster/{aws.resource.id}"
+  aws.arn.pattern: "arn:aws:kafka:{aws.region}:{aws.account.id}:cluster/{aws.resource.id}/{aws.msk.cluster.uuid}"
 
 attribute_extraction_from_key_name:
   aws.account.id: '{aws_account_id_pattern}'
   aws.region: '{aws_region_pattern}'
-  aws.resource.id: '{aws_resource_name_pattern}(?=\/{year_pattern}-{month_pattern}-{day_pattern}-{hour_pattern})'
+  aws.resource.id: '[a-zA-Z0-9][a-zA-Z0-9-_]*?(?=-[0-9a-f]{{8}}-[0-9a-f]{{4}}-[0-9a-f]{{4}}-[0-9a-f]{{4}}-[0-9a-f]{{12}}-\d{{1,3}}\/)'
+  aws.msk.cluster.uuid: '[0-9a-f]{{8}}-[0-9a-f]{{4}}-[0-9a-f]{{4}}-[0-9a-f]{{4}}-[0-9a-f]{{12}}-\d{{1,3}}(?=\/{year_pattern}-{month_pattern})'
 
 attribute_extraction_grok_expression: '\[%{TIMESTAMP_ISO8601:timestamp_to_transform}\] %{GREEDYDATA}'
 
