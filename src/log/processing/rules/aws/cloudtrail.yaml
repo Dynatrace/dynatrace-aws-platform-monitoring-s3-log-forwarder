@@ -31,4 +31,5 @@ attribute_extraction_from_key_name:
 
 attribute_extraction_jmespath_expression:
   timestamp: eventTime
+  aws.arn: userIdentity.arn
 
