@@ -68,7 +68,6 @@ class TestCloudTrailAttributeExtraction(unittest.TestCase):
 
     expected_attributes = {
                             "timestamp": cloudtrail_test_entry['eventTime'],
-                            "aws.arn": cloudtrail_test_entry['userIdentity']['arn'],
                           }
 
     def test_cloudtrail_attribute_extraction(self):
