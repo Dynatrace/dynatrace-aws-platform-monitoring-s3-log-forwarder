@@ -25,3 +25,4 @@ annotations:
 
 attribute_extraction_jmespath_expression:
   timestamp: time
+  aws.account.id: cloud.account_uid

@@ -67,6 +67,7 @@ class TestCloudTrailAttributeExtraction(unittest.TestCase):
 
     expected_attributes = {
                             "timestamp": cloudtrail_test_entry['eventTime'],
+                            "aws.arn": cloudtrail_test_entry['userIdentity']['arn'],
                           }
 
     def test_cloudtrail_attribute_extraction(self):
@@ -400,6 +401,43 @@ class testAppFabricLogs(unittest.TestCase):
 
         extracted_attributes = processing_rules['aws']['appfabric-ocsf-json'].get_extracted_log_attributes(log_entry)
         self.assertEqual(extracted_attributes,expected_attributes)
+
+    def test_appfabric_logs_with_cloud_account(self):
+        log_entry = {
+          "activity_id": 1,
+          "activity_name": "Create",
+          "actor": {
+            "user": {
+              "name": "test-user",
+              "type": "User",
+              "type_id": 1,
+              "uid": "arn:aws:iam::123456789012:user/test-user"
+            }
+          },
+          "cloud": {
+            "account_uid": "123456789012",
+            "provider": "AWS"
+          },
+          "class_name": "Account Change",
+          "class_uid": 3001,
+          "metadata": {
+            "product": {
+              "name": "AWS",
+              "vendor_name": "AWS"
+            },
+            "version": "v1.0.0-rc.3"
+          },
+          "severity_id": 0,
+          "time": 1688429599000,
+          "type_uid": 300101
+        }
+        expected_attributes = {
+            "timestamp": 1688429599000,
+            "aws.account.id": "123456789012",
+        }
+
+        extracted_attributes = processing_rules['aws']['appfabric-ocsf-json'].get_extracted_log_attributes(log_entry)
+        self.assertEqual(extracted_attributes, expected_attributes)
 
 class TestRedshiftTimestampExtraction(unittest.TestCase):
 
