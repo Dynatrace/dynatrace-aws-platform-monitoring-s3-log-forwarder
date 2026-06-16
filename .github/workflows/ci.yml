@@ -1,6 +1,5 @@
 # Required GitHub Actions secrets:
-#   AWS_ACCESS_KEY_ID            - AWS access key with permissions for CloudFormation, S3, Lambda, SSM
-#   AWS_SECRET_ACCESS_KEY        - Corresponding AWS secret key
+#   AWS_CICD_ROLE_ARN            - IAM role ARN for OIDC authentication
 #   CFN_ROLE_ARN                 - IAM role ARN passed to CloudFormation deploy for E2E tests
 #   DT_TENANT_URL                - Dynatrace tenant URL for the log forwarder (e.g. https://abc1234.live.dynatrace.com)
 #   DT_TENANT_PLATFORM_TOKEN     - Dynatrace platform token used to create the SSM parameter during E2E deployment
@@ -20,6 +19,10 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   validate-cfn-templates:
     name: Validate CloudFormation Templates
@@ -29,8 +32,7 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          role-to-assume: ${{ secrets.AWS_CICD_ROLE_ARN }}
           aws-region: us-east-1
       - name: Validate CloudFormation templates
         run: |
@@ -128,8 +130,7 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          role-to-assume: ${{ secrets.AWS_CICD_ROLE_ARN }}
           aws-region: us-east-1
       - name: Download build artifacts
         uses: actions/download-artifact@v7
