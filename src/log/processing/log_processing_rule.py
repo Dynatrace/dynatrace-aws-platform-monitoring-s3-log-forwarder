@@ -190,6 +190,8 @@ class LogProcessingRule:
                 attrib = re.search(regex, key)
                 if attrib is not None:
                     injected_attributes.update({dt_attribute: attrib.group()})
+                else:
+                    logger.debug('No matches for key name regex %s on key %s', regex, key)
         return injected_attributes
 
     def get_extracted_log_attributes(self, message) -> dict:
@@ -236,7 +238,7 @@ class LogProcessingRule:
                     if k != v:
                         attributes_dict.pop(v,'')
                 else:
-                    logger.warning('No matches for JMESPATH expression %s', v)
+                    logger.debug('No matches for JMESPATH expression %s', v)
 
         if self.attribute_mapping_from_json_keys is not None:
             _prefix = self.attribute_mapping_from_json_keys.get('prefix')
