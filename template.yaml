@@ -811,7 +811,7 @@ Resources:
                 "properties": {
                   "metrics": [
                     [
-                      "dynatrace-aws-s3-log-forwarder",
+                      "dynatrace-aws-platform-monitoring-s3-log-forwarder",
                       "LogProcessingTime",
                       "deployment",
                       "${AWS::StackName}",
@@ -893,7 +893,7 @@ Resources:
                 "properties": {
                   "metrics": [
                     [
-                      "dynatrace-aws-s3-log-forwarder",
+                      "dynatrace-aws-platform-monitoring-s3-log-forwarder",
                       "UncompressedLogDTPayloadSize",
                       "deployment",
                       "${AWS::StackName}",
@@ -955,7 +955,7 @@ Resources:
                       "."
                     ],
                     [
-                      "dynatrace-aws-s3-log-forwarder",
+                      "dynatrace-aws-platform-monitoring-s3-log-forwarder",
                       "NotEnoughExecutionTimeRemainingErrors",
                       "deployment",
                       "${AWS::StackName}",
@@ -1126,7 +1126,7 @@ Resources:
                 "properties": {
                   "metrics": [
                     [
-                      "dynatrace-aws-s3-log-forwarder",
+                      "dynatrace-aws-platform-monitoring-s3-log-forwarder",
                       "ReceivedUncompressedLogFileSize",
                       "deployment",
                       "${AWS::StackName}"
