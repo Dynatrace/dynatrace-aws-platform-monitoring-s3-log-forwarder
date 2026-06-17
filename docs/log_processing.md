@@ -36,6 +36,7 @@ For some AWS services, certain attributes cannot be extracted because the data i
 | Service | Field | Reason |
 |---------|-------|--------|
 | CloudTrail | `aws.arn` | The trail ARN is not present in log records. `userIdentity.arn` is the caller's ARN (actor identity), not the trail ARN — it belongs in `audit.identity` via the OpenPipeline firehose parser instead. |
+| AppFabric | `aws.account.id` | Extracted from `cloud.account_uid` in the OCSF record when present. Absent for SaaS app sources (e.g. Zendesk, Okta) as those events do not carry an AWS account identifier. |
 | AppFabric | `aws.arn` | AppFabric normalizes SaaS audit logs to OCSF. Actors are SaaS platform users identified by a SaaS-specific UID, not AWS principals — no AWS ARN exists in the log content or S3 key path. |
 | CloudFront | `aws.account.id` | The S3 key format (`<distribution-id>.YYYY-MM-DD-HH.<hash>.gz`) does not include the account ID, and CloudFront access log records do not contain it. |
 | CloudFront | `aws.arn` | Cannot construct `arn:aws:cloudfront::<account_id>:distribution/<distribution_id>` without the account ID (see above). |
