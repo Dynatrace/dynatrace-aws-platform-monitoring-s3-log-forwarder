@@ -14,18 +14,28 @@
 # Build a Lambda Layer or Lambda deployment ZIP inside a Docker container.
 # This ensures binary compatibility with the Lambda runtime, and bundles the yajl
 # native library required by ijson's yajl2_c backend.
-# Usage: ./scripts/build_docker.sh <layer|zip> <output_path>
+# Usage: ./scripts/build_docker.sh <layer|zip> <output_path> [x86_64|arm64]
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-BUILD_TYPE="${1:?Usage: $0 <layer|zip> <output_path>}"
-OUTPUT_PATH="${2:?Usage: $0 <layer|zip> <output_path>}"
+BUILD_TYPE="${1:?Usage: $0 <layer|zip> <output_path> [x86_64|arm64]}"
+OUTPUT_PATH="${2:?Usage: $0 <layer|zip> <output_path> [x86_64|arm64]}"
+ARCH="${3:-x86_64}"
+
+case "${ARCH}" in
+    x86_64) DOCKER_PLATFORM="linux/amd64" ;;
+    arm64)  DOCKER_PLATFORM="linux/arm64" ;;
+    *)
+        echo "ERROR: unknown architecture '${ARCH}'. Use 'x86_64' or 'arm64'." >&2
+        exit 1
+        ;;
+esac
 
 DOCKERFILE="${SCRIPT_DIR}/Dockerfile.build"
-LAMBDA_RUNTIME_IMAGE="lambda-build-env"
+LAMBDA_RUNTIME_IMAGE="lambda-build-env-${ARCH}"
 
 OUTPUT_DIR="$(dirname "${OUTPUT_PATH}")"
 OUTPUT_FILENAME="$(basename "${OUTPUT_PATH}")"
@@ -49,10 +59,15 @@ case "${BUILD_TYPE}" in
         ;;
 esac
 
-echo "Building ${BUILD_TYPE} using ${DOCKERFILE}..."
-docker build -q -f "${DOCKERFILE}" -t "${LAMBDA_RUNTIME_IMAGE}" "${REPO_ROOT}"
+echo "Building ${BUILD_TYPE} (${ARCH}) using ${DOCKERFILE}..."
+docker build -q -f "${DOCKERFILE}" \
+    --build-arg ARCH="${ARCH}" \
+    --platform "${DOCKER_PLATFORM}" \
+    -t "${LAMBDA_RUNTIME_IMAGE}" \
+    "${REPO_ROOT}"
 
 docker run --rm \
+    --platform "${DOCKER_PLATFORM}" \
     -v "${REPO_ROOT}:/src:ro" \
     -v "${OUTPUT_DIR}:/output" \
     --entrypoint bash \

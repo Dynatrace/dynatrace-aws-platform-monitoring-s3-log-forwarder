@@ -3,5 +3,6 @@
 #   - build_docker.sh builds from this file — image/lib changes here apply to the build automatically.
 #   - snyk.yml scans this image for vulnerabilities (including yajl).
 #   - Renovate tracks the FROM image tag via a custom manager in renovate.json (needed for the non-semver tag format).
-FROM public.ecr.aws/lambda/python:3.14.2026.06.05.12-x86_64
+ARG ARCH=x86_64
+FROM public.ecr.aws/lambda/python:3.14.2026.06.05.12-${ARCH}
 RUN dnf install -y zip yajl && dnf clean all && rm -rf /var/cache/dnf
