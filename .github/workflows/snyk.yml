@@ -20,6 +20,33 @@ permissions:
   id-token: write  # required for dynatrace-apps/actions/metadata OIDC auth
 
 jobs:
+  snyk-container:
+    name: Snyk Container (build environment / native libs)
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Collect metadata
+        uses: dynatrace-apps/actions/metadata@v0
+        with:
+          sdlc-host: ${{ secrets.DT_TENANT_URL }}
+      - name: Build build environment image
+        run: docker build -f scripts/Dockerfile.build -t lambda-build-env .
+      - name: Set up Snyk CLI
+        uses: snyk/actions/setup@master
+      - name: Snyk container test
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: snyk container test lambda-build-env --file=scripts/Dockerfile.build --severity-threshold=high --org=${{ vars.SNYK_ORG_ID }}
+      - name: Snyk container monitor (main only)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: snyk container monitor lambda-build-env --file=scripts/Dockerfile.build --org=${{ vars.SNYK_ORG_ID }}
+
   snyk-open-source:
     name: Snyk Open Source (Python deps)
     # Skip on PRs from forks — they don't get id-token: write.
