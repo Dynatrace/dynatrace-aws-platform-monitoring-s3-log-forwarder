@@ -24,7 +24,8 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 BUILD_TYPE="${1:?Usage: $0 <layer|zip> <output_path>}"
 OUTPUT_PATH="${2:?Usage: $0 <layer|zip> <output_path>}"
 
-LAMBDA_RUNTIME_IMAGE="public.ecr.aws/lambda/python:3.14.2026.03.31.12-x86_64"
+DOCKERFILE="${SCRIPT_DIR}/Dockerfile.build"
+LAMBDA_RUNTIME_IMAGE="lambda-build-env"
 
 OUTPUT_DIR="$(dirname "${OUTPUT_PATH}")"
 OUTPUT_FILENAME="$(basename "${OUTPUT_PATH}")"
@@ -48,7 +49,8 @@ case "${BUILD_TYPE}" in
         ;;
 esac
 
-echo "Building ${BUILD_TYPE} using ${LAMBDA_RUNTIME_IMAGE}..."
+echo "Building ${BUILD_TYPE} using ${DOCKERFILE}..."
+docker build -q -f "${DOCKERFILE}" -t "${LAMBDA_RUNTIME_IMAGE}" "${REPO_ROOT}"
 
 docker run --rm \
     -v "${REPO_ROOT}:/src:ro" \
@@ -59,9 +61,6 @@ docker run --rm \
         set -euo pipefail
 
         mkdir -p ${APP_DIR}/lib
-
-        # Install build tools and yajl
-        dnf install -y zip yajl > /dev/null 2>&1
 
         # Install Python dependencies
         python3.14 -m pip install --upgrade pip > /dev/null

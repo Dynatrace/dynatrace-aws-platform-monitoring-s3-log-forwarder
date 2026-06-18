@@ -1,0 +1,7 @@
+# Build environment for the Lambda Layer and ZIP.
+# Single source of truth for the Lambda runtime image and native dependencies:
+#   - build_docker.sh builds from this file — image/lib changes here apply to the build automatically.
+#   - snyk.yml scans this image for vulnerabilities (including yajl).
+#   - Renovate tracks the FROM image tag via its native Docker manager — no custom Renovate config needed.
+FROM public.ecr.aws/lambda/python:3.14.2026.03.31.12-x86_64
+RUN dnf install -y zip yajl
