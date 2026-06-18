@@ -11,6 +11,20 @@
       "/(^|/)([\\w-]*)requirements(-dev)?\\.(txt|pip)$/"
     ]
   },
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Update Lambda Python image tag in scripts/Dockerfile.build",
+      "managerFilePatterns": [
+        "/^scripts/Dockerfile\\.build$/"
+      ],
+      "matchStrings": [
+        "FROM (?<depName>public\\.ecr\\.aws/lambda/python):(?<currentValue>[^\\s]+)"
+      ],
+      "datasourceTemplate": "docker",
+      "versioningTemplate": "regex:^(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+(?:\\.\\d+)*)(?:-(?<build>.+))?$"
+    }
+  ],
   "vulnerabilityAlerts": {
     "enabled": true
   }
