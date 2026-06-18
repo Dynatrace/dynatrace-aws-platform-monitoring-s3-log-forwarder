@@ -22,7 +22,7 @@
         "FROM (?<depName>public\\.ecr\\.aws/lambda/python):(?<currentValue>[^\\s]+)"
       ],
       "datasourceTemplate": "docker",
-      "versioningTemplate": "regex:^(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+(?:\\.\\d+)*)(?:-(?<build>.+))?$"
+      "versioningTemplate": "regex:^(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+(?:\\.\\d+)*)(?:-(?<compatibility>.+))?$"
     }
   ],
   "vulnerabilityAlerts": {
