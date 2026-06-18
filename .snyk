@@ -1,4 +1,31 @@
-# Snyk (https://snyk.io) policy file, patches or ignores known vulnerabilities.
+# Snyk (https://snyk.io) policy file
 version: v1.25.1
-ignore: {}
-patch: {}
+ignore:
+  SNYK-AMZN2023-LIBSOLV-17288582:
+    - '*':
+        reason: >-
+          libsolv Heap-based Buffer Overflow introduced by AWS Lambda base image
+          (public.ecr.aws/lambda/python). Fix available in libsolv
+          0.7.22-1.amzn2023.0.4 — pending next AWS Lambda image release.
+        expires: '2026-12-31T00:00:00.000Z'
+  SNYK-AMZN2023-LIBSOLV-17289937:
+    - '*':
+        reason: >-
+          libsolv Stack-based Buffer Overflow introduced by AWS Lambda base image
+          (public.ecr.aws/lambda/python). Fix available in libsolv
+          0.7.22-1.amzn2023.0.4 — pending next AWS Lambda image release.
+        expires: '2026-12-31T00:00:00.000Z'
+  SNYK-AMZN2023-LIBSOLV-17289989:
+    - '*':
+        reason: >-
+          libsolv Out-of-bounds Write introduced by AWS Lambda base image
+          (public.ecr.aws/lambda/python). Fix available in libsolv
+          0.7.22-1.amzn2023.0.4 — pending next AWS Lambda image release.
+        expires: '2026-12-31T00:00:00.000Z'
+  SNYK-AMZN2023-LIBSOLV-17290186:
+    - '*':
+        reason: >-
+          libsolv Stack-based Buffer Overflow introduced by AWS Lambda base image
+          (public.ecr.aws/lambda/python). Fix available in libsolv
+          0.7.22-1.amzn2023.0.4 — pending next AWS Lambda image release.
+        expires: '2026-12-31T00:00:00.000Z'
