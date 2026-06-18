@@ -414,7 +414,9 @@ class testAppFabricLogs(unittest.TestCase):
             }
           },
           "cloud": {
-            "account_uid": "123456789012",
+            "account": {
+              "uid": "123456789012"
+            },
             "provider": "AWS"
           },
           "class_name": "Account Change",
