@@ -176,6 +176,13 @@ Parameters:
     Default: "/"
     AllowedPattern: "^(/[a-zA-Z0-9+=,.@_-]+)*/$"
     ConstraintDescription: "Must be a valid IAM path: starts and ends with '/' (e.g. / or /engineering/ or /engineering/platform/)."
+  Architecture:
+    Type: String
+    Description: "Instruction set architecture for the Lambda function."
+    Default: x86_64
+    AllowedValues:
+      - x86_64
+      - arm64
 
 Rules:
   ApiKeyExactlyOneMustBeSet:
@@ -344,7 +351,7 @@ Resources:
         - !Ref AWS::NoValue
       MemorySize: !Ref LambdaFunctionMemorySize
       Architectures:
-        - x86_64
+        - !Ref Architecture
       Environment:
         Variables:
           LD_LIBRARY_PATH: !If [IsLayerDeployment, !Ref "AWS::NoValue", "/var/task/lib"]
