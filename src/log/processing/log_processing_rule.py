@@ -24,6 +24,12 @@ from utils.helpers import helper_regexes, custom_grok_expressions, get_attribute
 
 logger = logging.getLogger(__name__)
 
+# Maximum number of characters passed to the grok (regex) engine for attribute extraction.
+# Timestamps always appear near the start of a log line, so scanning beyond this limit
+# provides no value and risks catastrophic backtracking when a large JSON payload
+# (e.g. a json_array file) is mismatched to a text-format processing rule.
+GROK_MAX_INPUT_LENGTH = 8192
+
 def parse_date_from_string(date_string: str):
     '''
     Uses dateutil to parse a date from a given str.
@@ -206,13 +212,21 @@ class LogProcessingRule:
 
         if self.attribute_extraction_grok_object is not None:
             if isinstance(message, str):
-                grok_attributes = self.attribute_extraction_grok_object.match(
-                    message)
+                truncated = len(message) > GROK_MAX_INPUT_LENGTH
+                grok_input = message[:GROK_MAX_INPUT_LENGTH]
+                grok_attributes = self.attribute_extraction_grok_object.match(grok_input)
                 if grok_attributes is not None:
                     attributes_dict.update(grok_attributes)
                     # Create JSON message, in case we need to apply also
                     # JMESPATH to new extracted attributes
                     json_message.update(grok_attributes)
+                elif truncated:
+                    logger.warning(
+                        "Input truncated from %d to %d characters and no attributes extracted. "
+                        "This may indicate a log format mismatch.",
+                        len(message),
+                        GROK_MAX_INPUT_LENGTH,
+                    )
                 else:
                     logger.debug(
                         'Grok expression did not match log message: %s --> No attributes extracted.',
