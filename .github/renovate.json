@@ -19,10 +19,10 @@
         "/^scripts/Dockerfile\\.build$/"
       ],
       "matchStrings": [
-        "FROM (?<depName>public\\.ecr\\.aws/lambda/python):(?<currentValue>[^\\s]+)"
+        "FROM (?<depName>public\\.ecr\\.aws/lambda/python):(?<currentValue>[^-\\s]+)-\\$\\{ARCH\\}"
       ],
       "datasourceTemplate": "docker",
-      "versioningTemplate": "regex:^(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+(?:\\.\\d+)*)(?:-(?<compatibility>.+))?$"
+      "versioningTemplate": "regex:^(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+(?:\\.\\d+)*)$"
     }
   ],
   "vulnerabilityAlerts": {
