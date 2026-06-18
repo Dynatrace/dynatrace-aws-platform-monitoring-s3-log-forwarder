@@ -40,7 +40,7 @@ jobs:
       - name: Snyk container test
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        run: snyk container test lambda-build-env --file=scripts/Dockerfile.build --severity-threshold=high --org=${{ vars.SNYK_ORG_ID }}
+        run: snyk container test lambda-build-env --file=scripts/Dockerfile.build --severity-threshold=high --policy-path=.snyk --org=${{ vars.SNYK_ORG_ID }}
       - name: Snyk container monitor (main only)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
