@@ -25,8 +25,9 @@ from utils.helpers import helper_regexes, custom_grok_expressions, get_attribute
 logger = logging.getLogger(__name__)
 
 # Maximum number of characters passed to the grok (regex) engine for attribute extraction.
-# Timestamps always appear near the start of a log line, so scanning beyond this limit
-# provides no value and risks catastrophic backtracking when a large JSON payload
+# All attributes to extract appear at the beginning of the log record; the remainder is log content.
+# 8 KiB provides enough room to cover all extractable attributes while avoiding overly aggressive
+# truncation and limiting the risk of catastrophic backtracking when a large JSON payload
 # (e.g. a json_array file) is mismatched to a text-format processing rule.
 GROK_MAX_INPUT_LENGTH = 8192
 
