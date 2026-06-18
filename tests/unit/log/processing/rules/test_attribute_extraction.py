@@ -15,6 +15,7 @@
 import unittest
 import os
 from log.processing import log_processing_rules
+from log.processing.log_processing_rule import GROK_MAX_INPUT_LENGTH
 
 os.environ['LOG_FORWARDER_CONFIGURATION_LOCATION'] = 'local'
 os.environ['DEPLOYMENT_NAME'] = 'test'
@@ -423,7 +424,53 @@ class TestRedshiftTimestampExtraction(unittest.TestCase):
         self.assertNotIn('timestamp', attrs)
 
 
+
+class TestGrokInputLengthLimit(unittest.TestCase):
+
+    _generic_rule = processing_rules['generic']['generic']
+
+    def _large_json_array_string(self, prefix: str = "") -> str:
+        """Return a string longer than GROK_MAX_INPUT_LENGTH that looks like a minified json_array."""
+        record = '{"eventVersion":"1.08","eventTime":"2023-01-01T00:00:00Z","eventSource":"s3.amazonaws.com"}'
+        body = '{"Records":[' + (record + ",") * 200 + "]}"
+        return prefix + body
+
+    def test_oversized_entry_does_not_raise(self):
+        large = self._large_json_array_string()
+        self.assertGreater(len(large), GROK_MAX_INPUT_LENGTH)
+        result = self._generic_rule.get_extracted_log_attributes(large)
+        self.assertIsInstance(result, dict)
+
+    def test_no_warning_when_attributes_extracted_despite_truncation(self):
+        """No warning should be logged when truncation occurs but attributes are still extracted."""
+        large = self._large_json_array_string(prefix="2023-06-01T10:30:00Z ")
+        self.assertGreater(len(large), GROK_MAX_INPUT_LENGTH)
+        with self.assertLogs("log.processing.log_processing_rule", level="WARNING") as cm:
+            # emit a dummy warning so assertLogs doesn't fail when no warning is produced
+            import logging
+            logging.getLogger("log.processing.log_processing_rule").warning("sentinel")
+            result = self._generic_rule.get_extracted_log_attributes(large)
+        truncation_warnings = [m for m in cm.output if "truncated" in m]
+        self.assertEqual(truncation_warnings, [], "Expected no truncation warning when attributes were extracted")
+        self.assertIn("timestamp", result)
+        self.assertIn("2023-06-01", result["timestamp"])
+
+    def test_warning_logged_when_truncation_causes_no_match(self):
+        """A warning should be logged when the input is truncated and grok finds no attributes.
+        Uses a string with no timestamp so the generic grok cannot match."""
+        large = "x" * (GROK_MAX_INPUT_LENGTH + 1)
+        with self.assertLogs("log.processing.log_processing_rule", level="WARNING") as cm:
+            self._generic_rule.get_extracted_log_attributes(large)
+        self.assertTrue(any("truncated" in m for m in cm.output))
+
+    def test_timestamp_not_extracted_when_beyond_limit(self):
+        """A timestamp that appears only after GROK_MAX_INPUT_LENGTH chars is not extracted,
+        confirming the grok engine never scans past the limit."""
+        padding = "x" * GROK_MAX_INPUT_LENGTH
+        large = padding + " 2023-06-01T10:30:00Z rest-of-entry"
+        result = self._generic_rule.get_extracted_log_attributes(large)
+        self.assertNotIn("timestamp", result)
+
+
 if __name__ == '__main__':
     unittest.main()
-
-    
