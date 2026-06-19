@@ -2,11 +2,13 @@
 
 # Deploy the dynatrace-aws-platform-monitoring-s3-log-forwarder for e2e validation.
 # Usage: ./tests/e2e/deploy_forwarder.sh <layer|zip> [eventbridge|sns|sqs]
+# Env: ARCH — target Lambda architecture, x86_64 (default) or arm64
 
 set -e
 
 DEPLOY_TYPE="${1:?Usage: $0 <layer|zip> [eventbridge|sns|sqs]}"
 NOTIFICATION_TYPE="${2:-eventbridge}"
+ARCH="${ARCH:-x86_64}"
 
 : "${E2E_TESTING_BUCKET_NAME:?E2E_TESTING_BUCKET_NAME must be set}"
 : "${STACK_NAME:?STACK_NAME must be set}"
@@ -34,7 +36,7 @@ case "${DEPLOY_TYPE}" in
             log "Using pre-built Lambda ZIP"
         else
             log "Building Lambda ZIP"
-            ./scripts/build_docker.sh zip "dist/lambda.zip"
+            ./scripts/build_docker.sh zip "dist/lambda.zip" "${ARCH}"
         fi
 
         log "Deploying the log forwarder template"
@@ -43,6 +45,7 @@ case "${DEPLOY_TYPE}" in
                         DynatraceApiKeySSMParameter="${SSM_PARAMETER_NAME}" \
                         EnableCrossRegionCrossAccountForwarding=true \
                         DeploymentPackageType=zip \
+                        Architecture="${ARCH}" \
                         $([ "${NOTIFICATION_TYPE}" = "sns" ] && echo "CreateS3NotificationsSNSTopic=true S3BucketNames=${E2E_TESTING_BUCKET_NAME}") \
                         $([ "${NOTIFICATION_TYPE}" = "sqs" ] && echo "S3BucketNames=${E2E_TESTING_BUCKET_NAME}") \
                         --template-file template.yaml --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
@@ -69,7 +72,7 @@ case "${DEPLOY_TYPE}" in
             log "Using pre-built Lambda Layer"
         else
             log "Building Lambda Layer"
-            ./scripts/build_docker.sh layer "dist/layer.zip"
+            ./scripts/build_docker.sh layer "dist/layer.zip" "${ARCH}"
         fi
 
         log "Packaging the Lambda Layer template"
@@ -84,7 +87,8 @@ case "${DEPLOY_TYPE}" in
             --template-file packaged-layer.yaml \
             --stack-name "${LAYER_STACK_NAME}" \
             --parameter-overrides \
-                LayerName="dynatrace-aws-s3-log-forwarder-e2e" \
+                LayerName="dynatrace-aws-s3-log-forwarder-e2e-${ARCH}" \
+                Architecture="${ARCH}" \
             --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
             --no-fail-on-empty-changeset \
             --role-arn ${CFN_ROLE_ARN}
@@ -103,6 +107,7 @@ case "${DEPLOY_TYPE}" in
                         EnableCrossRegionCrossAccountForwarding=true \
                         DeploymentPackageType=layer \
                         DynatraceS3LogForwarderLayerArn="${LAYER_ARN}" \
+                        Architecture="${ARCH}" \
                         $([ "${NOTIFICATION_TYPE}" = "sns" ] && echo "CreateS3NotificationsSNSTopic=true S3BucketNames=${E2E_TESTING_BUCKET_NAME}") \
                         $([ "${NOTIFICATION_TYPE}" = "sqs" ] && echo "S3BucketNames=${E2E_TESTING_BUCKET_NAME}") \
                         --template-file template.yaml --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
