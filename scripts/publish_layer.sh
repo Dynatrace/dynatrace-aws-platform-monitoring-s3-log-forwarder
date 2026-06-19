@@ -11,19 +11,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Publish the Lambda Layer (x86_64) to one or more AWS regions with public access.
+# Publish the Lambda Layer to one or more AWS regions with public access.
 # Assumes the layer has already been built with build_docker.sh layer.
 #
 # Usage:
-#   ./scripts/publish_layer.sh <zip>                                              # All commercial regions
+#   ./scripts/publish_layer.sh <zip>                                              # All commercial regions (x86_64)
+#   ./scripts/publish_layer.sh <zip> --arch arm64                                 # arm64 layer
 #   ./scripts/publish_layer.sh <zip> --regions us-east-1,eu-west-1,eu-central-1  # Specific regions
 #   ./scripts/publish_layer.sh <zip> --no-update-files                            # Skip README/template.yaml updates
 
 set -e
 
 REPO_ROOT="$(git -C "$(dirname "$0")" rev-parse --show-toplevel)"
-LAYER_NAME="dynatrace-aws-platform-monitoring-s3-log-forwarder"
-ZIP_FILE="${1:?Usage: $0 <zip> [--regions r1,r2,...]}"
+ZIP_FILE="${1:?Usage: $0 <zip> [--arch x86_64|arm64] [--regions r1,r2,...]}"
+ARCH="x86_64"
 REGIONS=()
 FAILED_REGIONS=()
 PUBLISHED_ARNS=()  # Entries in the form "region=arn"
@@ -37,6 +38,10 @@ parse_args() {
     local idx=2
     while [[ $idx -le $# ]]; do
         case "${!idx}" in
+            --arch)
+                idx=$((idx + 1))
+                ARCH="${!idx:?--arch requires a value}"
+                ;;
             --regions)
                 idx=$((idx + 1))
                 IFS=',' read -ra REGIONS <<< "${!idx:?--regions requires a value}"
@@ -46,7 +51,7 @@ parse_args() {
                 ;;
             *)
                 echo "Unknown option: ${!idx}"
-                echo "Usage: $0 <zip> [--regions r1,r2,...]"
+                echo "Usage: $0 <zip> [--arch x86_64|arm64] [--regions r1,r2,...]"
                 exit 1
                 ;;
         esac
@@ -91,8 +96,8 @@ publish_to_region() {
         --layer-name "$LAYER_NAME" \
         --zip-file "fileb://$ZIP_FILE" \
         --compatible-runtimes python3.14 \
-        --compatible-architectures x86_64 \
-        --description "Dynatrace AWS S3 Log Forwarder (x86_64)" \
+        --compatible-architectures "$ARCH" \
+        --description "$LAYER_DESCRIPTION" \
         --query 'LayerVersionArn' \
         --output text 2>&1) || {
         echo "  FAILED to publish in $region"
@@ -138,7 +143,7 @@ update_readme() {
         stripped="${stripped%"${stripped##*[![:space:]]}"}"
 
         # Detect table header
-        if [[ $in_table -eq 0 && "$stripped" == "| Region | Layer ARN |" ]]; then
+        if [[ $in_table -eq 0 && "$stripped" == "$README_TABLE_HEADER" ]]; then
             in_table=1
             output+="$line"$'\n'
             continue
@@ -214,7 +219,7 @@ update_template() {
         stripped="${stripped%"${stripped##*[![:space:]]}"}"
 
         # Detect start of LayerArns block
-        if [[ "$stripped" == "LayerArns:" ]]; then
+        if [[ "$stripped" == "${TEMPLATE_MAPPING_KEY}:" ]]; then
             in_layer_arns=1
             output+="$line"$'\n'
             continue
@@ -263,6 +268,25 @@ update_template() {
 # ---------------------------------------------------------------------------
 
 parse_args "$@"
+
+case "${ARCH}" in
+    x86_64)
+        LAYER_NAME="dynatrace-aws-platform-monitoring-s3-log-forwarder"
+        LAYER_DESCRIPTION="Dynatrace AWS S3 Log Forwarder (x86_64)"
+        README_TABLE_HEADER="| Region | Layer ARN |"
+        TEMPLATE_MAPPING_KEY="LayerArns"
+        ;;
+    arm64)
+        LAYER_NAME="dynatrace-aws-platform-monitoring-s3-log-forwarder-arm64"
+        LAYER_DESCRIPTION="Dynatrace AWS S3 Log Forwarder (arm64)"
+        README_TABLE_HEADER="| Region | Layer ARN (arm64) |"
+        TEMPLATE_MAPPING_KEY="LayerArnsArm64"
+        ;;
+    *)
+        echo "ERROR: unknown architecture '${ARCH}'. Use 'x86_64' or 'arm64'." >&2
+        exit 1
+        ;;
+esac
 
 if [[ ! -f "$ZIP_FILE" ]]; then
     echo "Error: $ZIP_FILE not found. Run build_docker.sh layer first." >&2
