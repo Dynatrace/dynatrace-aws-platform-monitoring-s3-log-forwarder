@@ -45,7 +45,7 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        run: snyk container monitor lambda-build-env --file=scripts/Dockerfile.build --org=${{ vars.SNYK_ORG_ID }}
+        run: snyk container monitor lambda-build-env --file=scripts/Dockerfile.build --policy-path=.snyk --org=${{ vars.SNYK_ORG_ID }}
 
   snyk-open-source:
     name: Snyk Open Source (Python deps)
