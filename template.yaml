@@ -257,13 +257,9 @@ Mappings:
       Arn: arn:aws:lambda:us-west-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}:1
     us-west-2:
       Arn: arn:aws:lambda:us-west-2:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}:1
-  ArchSuffixes:
-    x86_64:
-      Suffix: "-x86_64"
-    arm64:
-      Suffix: "-arm64"
 
 Conditions:
+  IsArm64: !Equals [!Ref Architecture, arm64]
   CrossRegionCrossAccountForwardingIsEnabled: !Equals [ !Ref EnableCrossRegionCrossAccountForwarding, "true" ]
   AwsAccountListIsNotEmpty: !Not [ !Equals [!Join ["", !Ref AwsAccountsToReceiveLogsFrom ], ""] ]
   CreateEventBridgePolicy: !And [ !Condition AwsAccountListIsNotEmpty , !Condition CrossRegionCrossAccountForwardingIsEnabled ]
@@ -352,11 +348,10 @@ Resources:
         - - !If
             - IsLayerArnProvided
             - !Ref DynatraceS3LogForwarderLayerArn
-            - !Join
-              - !FindInMap [ArchSuffixes, !Ref Architecture, Suffix]
-              - !Split
-                - "{arch}"
-                - !FindInMap [LayerArns, !Ref AWS::Region, Arn]
+            - !If
+              - IsArm64
+              - !Join ["-arm64", !Split ["{arch}", !FindInMap [LayerArns, !Ref AWS::Region, Arn]]]
+              - !Join ["", !Split ["{arch}", !FindInMap [LayerArns, !Ref AWS::Region, Arn]]]
         - !Ref AWS::NoValue
       MemorySize: !Ref LambdaFunctionMemorySize
       Architectures:
