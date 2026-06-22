@@ -200,92 +200,68 @@ Rules:
 Mappings:
   LayerArns:
     af-south-1:
-      x86_64: arn:aws:lambda:af-south-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
-      arm64: arn:aws:lambda:af-south-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder-arm64:1
+      Arn: arn:aws:lambda:af-south-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}:1
     ap-east-1:
-      x86_64: arn:aws:lambda:ap-east-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
-      arm64: arn:aws:lambda:ap-east-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder-arm64:1
+      Arn: arn:aws:lambda:ap-east-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}:1
     ap-northeast-1:
-      x86_64: arn:aws:lambda:ap-northeast-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
-      arm64: arn:aws:lambda:ap-northeast-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder-arm64:1
+      Arn: arn:aws:lambda:ap-northeast-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}:1
     ap-northeast-2:
-      x86_64: arn:aws:lambda:ap-northeast-2:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
-      arm64: arn:aws:lambda:ap-northeast-2:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder-arm64:1
+      Arn: arn:aws:lambda:ap-northeast-2:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}:1
     ap-northeast-3:
-      x86_64: arn:aws:lambda:ap-northeast-3:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
-      arm64: arn:aws:lambda:ap-northeast-3:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder-arm64:1
+      Arn: arn:aws:lambda:ap-northeast-3:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}:1
     ap-south-1:
-      x86_64: arn:aws:lambda:ap-south-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
-      arm64: arn:aws:lambda:ap-south-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder-arm64:1
+      Arn: arn:aws:lambda:ap-south-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}:1
     ap-south-2:
-      x86_64: arn:aws:lambda:ap-south-2:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
-      arm64: arn:aws:lambda:ap-south-2:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder-arm64:1
+      Arn: arn:aws:lambda:ap-south-2:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}:1
     ap-southeast-1:
-      x86_64: arn:aws:lambda:ap-southeast-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
-      arm64: arn:aws:lambda:ap-southeast-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder-arm64:1
+      Arn: arn:aws:lambda:ap-southeast-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}:1
     ap-southeast-2:
-      x86_64: arn:aws:lambda:ap-southeast-2:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
-      arm64: arn:aws:lambda:ap-southeast-2:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder-arm64:1
+      Arn: arn:aws:lambda:ap-southeast-2:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}:1
     ap-southeast-3:
-      x86_64: arn:aws:lambda:ap-southeast-3:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
-      arm64: arn:aws:lambda:ap-southeast-3:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder-arm64:1
+      Arn: arn:aws:lambda:ap-southeast-3:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}:1
     ap-southeast-4:
-      x86_64: arn:aws:lambda:ap-southeast-4:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
-      arm64: arn:aws:lambda:ap-southeast-4:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder-arm64:1
+      Arn: arn:aws:lambda:ap-southeast-4:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}:1
     ca-central-1:
-      x86_64: arn:aws:lambda:ca-central-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
-      arm64: arn:aws:lambda:ca-central-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder-arm64:1
+      Arn: arn:aws:lambda:ca-central-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}:1
     ca-west-1:
-      x86_64: arn:aws:lambda:ca-west-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
-      arm64: arn:aws:lambda:ca-west-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder-arm64:1
+      Arn: arn:aws:lambda:ca-west-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}:1
     eu-central-1:
-      x86_64: arn:aws:lambda:eu-central-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
-      arm64: arn:aws:lambda:eu-central-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder-arm64:1
+      Arn: arn:aws:lambda:eu-central-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}:1
     eu-central-2:
-      x86_64: arn:aws:lambda:eu-central-2:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
-      arm64: arn:aws:lambda:eu-central-2:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder-arm64:1
+      Arn: arn:aws:lambda:eu-central-2:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}:1
     eu-north-1:
-      x86_64: arn:aws:lambda:eu-north-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
-      arm64: arn:aws:lambda:eu-north-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder-arm64:1
+      Arn: arn:aws:lambda:eu-north-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}:1
     eu-south-1:
-      x86_64: arn:aws:lambda:eu-south-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
-      arm64: arn:aws:lambda:eu-south-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder-arm64:1
+      Arn: arn:aws:lambda:eu-south-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}:1
     eu-south-2:
-      x86_64: arn:aws:lambda:eu-south-2:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
-      arm64: arn:aws:lambda:eu-south-2:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder-arm64:1
+      Arn: arn:aws:lambda:eu-south-2:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}:1
     eu-west-1:
-      x86_64: arn:aws:lambda:eu-west-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
-      arm64: arn:aws:lambda:eu-west-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder-arm64:1
+      Arn: arn:aws:lambda:eu-west-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}:1
     eu-west-2:
-      x86_64: arn:aws:lambda:eu-west-2:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
-      arm64: arn:aws:lambda:eu-west-2:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder-arm64:1
+      Arn: arn:aws:lambda:eu-west-2:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}:1
     eu-west-3:
-      x86_64: arn:aws:lambda:eu-west-3:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
-      arm64: arn:aws:lambda:eu-west-3:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder-arm64:1
+      Arn: arn:aws:lambda:eu-west-3:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}:1
     il-central-1:
-      x86_64: arn:aws:lambda:il-central-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
-      arm64: arn:aws:lambda:il-central-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder-arm64:1
+      Arn: arn:aws:lambda:il-central-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}:1
     me-central-1:
-      x86_64: arn:aws:lambda:me-central-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
-      arm64: arn:aws:lambda:me-central-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder-arm64:1
+      Arn: arn:aws:lambda:me-central-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}:1
     me-south-1:
-      x86_64: arn:aws:lambda:me-south-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
-      arm64: arn:aws:lambda:me-south-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder-arm64:1
+      Arn: arn:aws:lambda:me-south-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}:1
     sa-east-1:
-      x86_64: arn:aws:lambda:sa-east-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
-      arm64: arn:aws:lambda:sa-east-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder-arm64:1
+      Arn: arn:aws:lambda:sa-east-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}:1
     us-east-1:
-      x86_64: arn:aws:lambda:us-east-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
-      arm64: arn:aws:lambda:us-east-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder-arm64:1
+      Arn: arn:aws:lambda:us-east-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}:1
     us-east-2:
-      x86_64: arn:aws:lambda:us-east-2:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
-      arm64: arn:aws:lambda:us-east-2:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder-arm64:1
+      Arn: arn:aws:lambda:us-east-2:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}:1
     us-west-1:
-      x86_64: arn:aws:lambda:us-west-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
-      arm64: arn:aws:lambda:us-west-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder-arm64:1
+      Arn: arn:aws:lambda:us-west-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}:1
     us-west-2:
-      x86_64: arn:aws:lambda:us-west-2:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
-      arm64: arn:aws:lambda:us-west-2:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder-arm64:1
+      Arn: arn:aws:lambda:us-west-2:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}:1
+  ArchSuffixes:
+    x86_64:
+      Suffix: "-x86_64"
+    arm64:
+      Suffix: "-arm64"
 
 Conditions:
   CrossRegionCrossAccountForwardingIsEnabled: !Equals [ !Ref EnableCrossRegionCrossAccountForwarding, "true" ]
@@ -376,7 +352,11 @@ Resources:
         - - !If
             - IsLayerArnProvided
             - !Ref DynatraceS3LogForwarderLayerArn
-            - !FindInMap [LayerArns, !Ref AWS::Region, !Ref Architecture]
+            - !Join
+              - !FindInMap [ArchSuffixes, !Ref Architecture, Suffix]
+              - !Split
+                - "{arch}"
+                - !FindInMap [LayerArns, !Ref AWS::Region, Arn]
         - !Ref AWS::NoValue
       MemorySize: !Ref LambdaFunctionMemorySize
       Architectures:
