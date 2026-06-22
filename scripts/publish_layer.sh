@@ -127,7 +127,7 @@ publish_to_region() {
 }
 
 # ---------------------------------------------------------------------------
-# Update README.md — upsert rows in the "Lambda Layer ARNs" table
+# Update README.md — upsert ARNs in the merged "Lambda Layer ARNs" table
 # ---------------------------------------------------------------------------
 
 update_readme() {
@@ -136,14 +136,16 @@ update_readme() {
 
     echo "Updating Lambda Layer ARNs table in $readme_file..."
 
-    local in_table=0 sep_found=0 seen="" output="" line stripped row_region row_arn entry r a
+    local table_header="$README_TABLE_HEADER"
+    local in_table=0 sep_found=0 output="" line stripped
+    local row_region row_x86_arn row_arm_arn new_arn
 
     while IFS= read -r line || [[ -n "$line" ]]; do
         stripped="${line#"${line%%[![:space:]]*}"}"
         stripped="${stripped%"${stripped##*[![:space:]]}"}"
 
         # Detect table header
-        if [[ $in_table -eq 0 && "$stripped" == "$README_TABLE_HEADER" ]]; then
+        if [[ $in_table -eq 0 && "$stripped" == "$table_header" ]]; then
             in_table=1
             output+="$line"$'\n'
             continue
@@ -158,39 +160,28 @@ update_readme() {
 
         if [[ $in_table -eq 1 && $sep_found -eq 1 ]]; then
             if [[ "$stripped" == \|*\| ]]; then
-                # Existing row — replace ARN if this region was published
+                # Parse 3-column row: | region | x86_64_arn | arm64_arn |
                 row_region=$(echo "$stripped" | awk -F'|' '{gsub(/ /,"",$2); print $2}')
-                row_arn=$(lookup_arn "$row_region")
-                if [[ -n "$row_arn" ]]; then
-                    output+="| $row_region | $row_arn |"$'\n'
-                    seen+="$row_region"$'\n'
-                else
-                    output+="$line"$'\n'
+                row_x86_arn=$(echo "$stripped" | awk -F'|' '{gsub(/^ +| +$/, "", $3); print $3}')
+                row_arm_arn=$(echo "$stripped" | awk -F'|' '{gsub(/^ +| +$/, "", $4); print $4}')
+
+                new_arn=$(lookup_arn "$row_region")
+                if [[ -n "$new_arn" ]]; then
+                    if [[ "$ARCH" == "x86_64" ]]; then
+                        row_x86_arn="$new_arn"
+                    else
+                        row_arm_arn="$new_arn"
+                    fi
                 fi
+                output+="| $row_region | $row_x86_arn | $row_arm_arn |"$'\n'
                 continue
             else
-                # End of table — append any newly published regions not already present
-                for entry in "${PUBLISHED_ARNS[@]}"; do
-                    r="${entry%%=*}"; a="${entry#*=}"
-                    if ! is_seen "$r" "$seen"; then
-                        output+="| $r | $a |"$'\n'
-                        seen+="$r"$'\n'
-                    fi
-                done
                 in_table=0
             fi
         fi
 
         output+="$line"$'\n'
     done < "$readme_file"
-
-    # Handle table at end of file
-    if [[ $in_table -eq 1 ]]; then
-        for entry in "${PUBLISHED_ARNS[@]}"; do
-            r="${entry%%=*}"; a="${entry#*=}"
-            is_seen "$r" "$seen" || output+="| $r | $a |"$'\n'
-        done
-    fi
 
     # Preserve original trailing-newline behaviour.
     # Note: $(...) strips trailing newlines, so check the last byte via od instead.
@@ -203,7 +194,7 @@ update_readme() {
 }
 
 # ---------------------------------------------------------------------------
-# Update template.yaml — replace Arn values in the LayerArns mapping
+# Update template.yaml — replace ARN values in the LayerArns mapping
 # ---------------------------------------------------------------------------
 
 update_template() {
@@ -219,7 +210,7 @@ update_template() {
         stripped="${stripped%"${stripped##*[![:space:]]}"}"
 
         # Detect start of LayerArns block
-        if [[ "$stripped" == "${TEMPLATE_MAPPING_KEY}:" ]]; then
+        if [[ "$stripped" == "LayerArns:" ]]; then
             in_layer_arns=1
             output+="$line"$'\n'
             continue
@@ -239,12 +230,12 @@ update_template() {
                 continue
             fi
 
-            # Arn value (6-space indent) — replace if this region was published
-            if [[ -n "$current_region" && "$line" =~ ^[[:space:]]{6}Arn: ]]; then
+            # Architecture ARN value (6-space indent) — replace if this region was published
+            if [[ -n "$current_region" && "$line" =~ ^[[:space:]]{6}${ARCH}: ]]; then
                 new_arn=$(lookup_arn "$current_region")
                 if [[ -n "$new_arn" ]]; then
-                    indent="${line%%Arn:*}"
-                    output+="${indent}Arn: $new_arn"$'\n'
+                    indent="${line%%${ARCH}:*}"
+                    output+="${indent}${ARCH}: $new_arn"$'\n'
                     continue
                 fi
             fi
@@ -269,18 +260,16 @@ update_template() {
 
 parse_args "$@"
 
+README_TABLE_HEADER="| Region | Layer ARN (x86_64) | Layer ARN (arm64) |"
+
 case "${ARCH}" in
     x86_64)
         LAYER_NAME="dynatrace-aws-platform-monitoring-s3-log-forwarder"
         LAYER_DESCRIPTION="Dynatrace AWS S3 Log Forwarder (x86_64)"
-        README_TABLE_HEADER="| Region | Layer ARN |"
-        TEMPLATE_MAPPING_KEY="LayerArns"
         ;;
     arm64)
         LAYER_NAME="dynatrace-aws-platform-monitoring-s3-log-forwarder-arm64"
         LAYER_DESCRIPTION="Dynatrace AWS S3 Log Forwarder (arm64)"
-        README_TABLE_HEADER="| Region | Layer ARN (arm64) |"
-        TEMPLATE_MAPPING_KEY="LayerArnsArm64"
         ;;
     *)
         echo "ERROR: unknown architecture '${ARCH}'. Use 'x86_64' or 'arm64'." >&2
