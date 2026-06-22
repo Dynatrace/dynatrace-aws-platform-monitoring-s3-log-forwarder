@@ -173,7 +173,11 @@ Resources:
               - !If
                   - SixthS3PrefixSpecified
                   - prefix: !Ref LogsBucketPrefix6
-                  - !Ref AWS::NoValue  
+                  - !Ref AWS::NoValue
+              - !If
+                  - SeventhS3PrefixSpecified
+                  - prefix: !Ref LogsBucketPrefix7
+                  - !Ref AWS::NoValue
               - !If
                   - EighthS3PrefixSpecified
                   - prefix: !Ref LogsBucketPrefix8

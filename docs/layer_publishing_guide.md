@@ -47,7 +47,7 @@ Alternatively, you can publish manually:
 
 ```bash
 aws lambda publish-layer-version \
-    --layer-name dynatrace-aws-platform-monitoring-s3-log-forwarder-x86_64 \
+    --layer-name dynatrace-aws-platform-monitoring-s3-log-forwarder \
     --zip-file fileb://dist/layer.zip \
     --compatible-runtimes python3.14 \
     --compatible-architectures x86_64 \

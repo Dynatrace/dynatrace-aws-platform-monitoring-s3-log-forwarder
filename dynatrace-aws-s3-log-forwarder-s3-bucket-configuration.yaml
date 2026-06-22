@@ -230,7 +230,7 @@ Resources:
                         - s3
                         - ""
                         - ""
-                        - !Sub ${LogsBucketName}/${LogsBucketPrefix9}/*
+                        - !Sub ${LogsBucketName}/${LogsBucketPrefix9}*
                   - !Ref "AWS::NoValue"
               - !If 
                   - TenthS3PrefixSpecified

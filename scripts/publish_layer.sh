@@ -266,7 +266,7 @@ README_TABLE_HEADER="| Region | Layer ARN (x86_64) | Layer ARN (arm64) |"
 
 case "${ARCH}" in
     x86_64)
-        LAYER_NAME="dynatrace-aws-platform-monitoring-s3-log-forwarder-x86_64"
+        LAYER_NAME="dynatrace-aws-platform-monitoring-s3-log-forwarder"
         LAYER_DESCRIPTION="Dynatrace AWS S3 Log Forwarder (x86_64)"
         ;;
     arm64)
