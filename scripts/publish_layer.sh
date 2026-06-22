@@ -216,8 +216,8 @@ update_template() {
             continue
         fi
 
-        # Detect end of LayerArns block (next top-level key)
-        if [[ $in_layer_arns -eq 1 && "$line" =~ ^[A-Za-z] ]]; then
+        # Detect end of LayerArns block (sibling mapping key at 2-space indent, or any 0-indent key)
+        if [[ $in_layer_arns -eq 1 && "$line" =~ ^[[:space:]]{0,2}[A-Za-z] ]]; then
             in_layer_arns=0
             current_region=""
         fi
@@ -230,12 +230,14 @@ update_template() {
                 continue
             fi
 
-            # Architecture ARN value (6-space indent) — replace if this region was published
-            if [[ -n "$current_region" && "$line" =~ ^[[:space:]]{6}${ARCH}: ]]; then
+            # ARN template value (6-space indent) — update version if this region was published
+            if [[ -n "$current_region" && "$line" =~ ^[[:space:]]{6}Arn: ]]; then
                 new_arn=$(lookup_arn "$current_region")
                 if [[ -n "$new_arn" ]]; then
-                    indent="${line%%${ARCH}:*}"
-                    output+="${indent}${ARCH}: $new_arn"$'\n'
+                    new_version="${new_arn##*:}"
+                    existing_arn="${line#*Arn: }"
+                    indent="${line%%Arn:*}"
+                    output+="${indent}Arn: ${existing_arn%:*}:${new_version}"$'\n'
                     continue
                 fi
             fi
@@ -264,7 +266,7 @@ README_TABLE_HEADER="| Region | Layer ARN (x86_64) | Layer ARN (arm64) |"
 
 case "${ARCH}" in
     x86_64)
-        LAYER_NAME="dynatrace-aws-platform-monitoring-s3-log-forwarder"
+        LAYER_NAME="dynatrace-aws-platform-monitoring-s3-log-forwarder-x86_64"
         LAYER_DESCRIPTION="Dynatrace AWS S3 Log Forwarder (x86_64)"
         ;;
     arm64)
