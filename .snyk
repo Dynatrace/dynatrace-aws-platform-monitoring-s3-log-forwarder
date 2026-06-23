@@ -29,3 +29,249 @@ ignore:
           (public.ecr.aws/lambda/python). Fix available in libsolv
           0.7.22-1.amzn2023.0.4 — pending next AWS Lambda image release.
         expires: '2026-12-31T00:00:00.000Z'
+  SNYK-AMZN2023-OPENSSLSNAPSAFELIBS-17414377:
+    - '*':
+        reason: >-
+          openssl-snapsafe-libs Integer Overflow or Wraparound introduced by AWS
+          Lambda base image (public.ecr.aws/lambda/python) — pending next AWS
+          Lambda image release. Renovate tracks the image tag and will open a PR
+          when a fix is available.
+        expires: '2026-12-31T00:00:00.000Z'
+  SNYK-AMZN2023-OPENSSLSNAPSAFELIBS-17414426:
+    - '*':
+        reason: >-
+          openssl-snapsafe-libs Integer Overflow or Wraparound introduced by AWS
+          Lambda base image (public.ecr.aws/lambda/python) — pending next AWS
+          Lambda image release. Renovate tracks the image tag and will open a PR
+          when a fix is available.
+        expires: '2026-12-31T00:00:00.000Z'
+  SNYK-AMZN2023-OPENSSLSNAPSAFELIBS-17414944:
+    - '*':
+        reason: >-
+          openssl-snapsafe-libs Improper Handling of Length Parameter
+          Inconsistency introduced by AWS Lambda base image
+          (public.ecr.aws/lambda/python) — pending next AWS Lambda image release.
+          Renovate tracks the image tag and will open a PR when a fix is
+          available.
+        expires: '2026-12-31T00:00:00.000Z'
+  SNYK-AMZN2023-OPENSSLSNAPSAFELIBS-17415215:
+    - '*':
+        reason: >-
+          openssl-snapsafe-libs NULL Pointer Dereference introduced by AWS Lambda
+          base image (public.ecr.aws/lambda/python) — pending next AWS Lambda
+          image release. Renovate tracks the image tag and will open a PR when a
+          fix is available.
+        expires: '2026-12-31T00:00:00.000Z'
+  SNYK-AMZN2023-OPENSSLSNAPSAFELIBS-17415690:
+    - '*':
+        reason: >-
+          openssl-snapsafe-libs Information Exposure introduced by AWS Lambda base
+          image (public.ecr.aws/lambda/python) — pending next AWS Lambda image
+          release. Renovate tracks the image tag and will open a PR when a fix is
+          available.
+        expires: '2026-12-31T00:00:00.000Z'
+  SNYK-AMZN2023-OPENSSLSNAPSAFELIBS-17415696:
+    - '*':
+        reason: >-
+          openssl-snapsafe-libs NULL Pointer Dereference introduced by AWS Lambda
+          base image (public.ecr.aws/lambda/python) — pending next AWS Lambda
+          image release. Renovate tracks the image tag and will open a PR when a
+          fix is available.
+        expires: '2026-12-31T00:00:00.000Z'
+  SNYK-AMZN2023-OPENSSLSNAPSAFELIBS-17415704:
+    - '*':
+        reason: >-
+          openssl-snapsafe-libs Improper Verification of Cryptographic Signature
+          introduced by AWS Lambda base image (public.ecr.aws/lambda/python) —
+          pending next AWS Lambda image release. Renovate tracks the image tag and
+          will open a PR when a fix is available.
+        expires: '2026-12-31T00:00:00.000Z'
+  SNYK-AMZN2023-OPENSSLSNAPSAFELIBS-17415719:
+    - '*':
+        reason: >-
+          openssl-snapsafe-libs NULL Pointer Dereference introduced by AWS Lambda
+          base image (public.ecr.aws/lambda/python) — pending next AWS Lambda
+          image release. Renovate tracks the image tag and will open a PR when a
+          fix is available.
+        expires: '2026-12-31T00:00:00.000Z'
+  SNYK-AMZN2023-OPENSSLSNAPSAFELIBS-17415720:
+    - '*':
+        reason: >-
+          openssl-snapsafe-libs Improper Certificate Validation introduced by AWS
+          Lambda base image (public.ecr.aws/lambda/python) — pending next AWS
+          Lambda image release. Renovate tracks the image tag and will open a PR
+          when a fix is available.
+        expires: '2026-12-31T00:00:00.000Z'
+  SNYK-AMZN2023-OPENSSLSNAPSAFELIBS-17415789:
+    - '*':
+        reason: >-
+          openssl-snapsafe-libs Allocation of Resources Without Limits or
+          Throttling introduced by AWS Lambda base image
+          (public.ecr.aws/lambda/python) — pending next AWS Lambda image release.
+          Renovate tracks the image tag and will open a PR when a fix is
+          available.
+        expires: '2026-12-31T00:00:00.000Z'
+  SNYK-AMZN2023-OPENSSLSNAPSAFELIBS-17415814:
+    - '*':
+        reason: >-
+          openssl-snapsafe-libs Expired Pointer Dereference introduced by AWS
+          Lambda base image (public.ecr.aws/lambda/python) — pending next AWS
+          Lambda image release. Renovate tracks the image tag and will open a PR
+          when a fix is available.
+        expires: '2026-12-31T00:00:00.000Z'
+  SNYK-AMZN2023-OPENSSLSNAPSAFELIBS-17415818:
+    - '*':
+        reason: >-
+          openssl-snapsafe-libs Incorrect Calculation of Buffer Size introduced by
+          AWS Lambda base image (public.ecr.aws/lambda/python) — pending next AWS
+          Lambda image release. Renovate tracks the image tag and will open a PR
+          when a fix is available.
+        expires: '2026-12-31T00:00:00.000Z'
+  SNYK-AMZN2023-OPENSSLSNAPSAFELIBS-17415847:
+    - '*':
+        reason: >-
+          openssl-snapsafe-libs Improper Validation of Integrity Check Value
+          introduced by AWS Lambda base image (public.ecr.aws/lambda/python) —
+          pending next AWS Lambda image release. Renovate tracks the image tag and
+          will open a PR when a fix is available.
+        expires: '2026-12-31T00:00:00.000Z'
+  SNYK-AMZN2023-OPENSSLSNAPSAFELIBS-17415852:
+    - '*':
+        reason: >-
+          openssl-snapsafe-libs Generation of Weak Initialization Vector (IV)
+          introduced by AWS Lambda base image (public.ecr.aws/lambda/python) —
+          pending next AWS Lambda image release. Renovate tracks the image tag and
+          will open a PR when a fix is available.
+        expires: '2026-12-31T00:00:00.000Z'
+  SNYK-AMZN2023-OPENSSLSNAPSAFELIBS-17415858:
+    - '*':
+        reason: >-
+          openssl-snapsafe-libs Improper Verification of Cryptographic Signature
+          introduced by AWS Lambda base image (public.ecr.aws/lambda/python) —
+          pending next AWS Lambda image release. Renovate tracks the image tag and
+          will open a PR when a fix is available.
+        expires: '2026-12-31T00:00:00.000Z'
+  SNYK-AMZN2023-OPENSSLFIPSPROVIDERLATEST-17414358:
+    - '*':
+        reason: >-
+          openssl-fips-provider-latest NULL Pointer Dereference introduced by AWS
+          Lambda base image (public.ecr.aws/lambda/python) — pending next AWS
+          Lambda image release. Renovate tracks the image tag and will open a PR
+          when a fix is available.
+        expires: '2026-12-31T00:00:00.000Z'
+  SNYK-AMZN2023-OPENSSLFIPSPROVIDERLATEST-17414399:
+    - '*':
+        reason: >-
+          openssl-fips-provider-latest Improper Handling of Length Parameter
+          Inconsistency introduced by AWS Lambda base image
+          (public.ecr.aws/lambda/python) — pending next AWS Lambda image release.
+          Renovate tracks the image tag and will open a PR when a fix is
+          available.
+        expires: '2026-12-31T00:00:00.000Z'
+  SNYK-AMZN2023-OPENSSLFIPSPROVIDERLATEST-17414434:
+    - '*':
+        reason: >-
+          openssl-fips-provider-latest Generation of Weak Initialization Vector
+          (IV) introduced by AWS Lambda base image (public.ecr.aws/lambda/python)
+          — pending next AWS Lambda image release. Renovate tracks the image tag
+          and will open a PR when a fix is available.
+        expires: '2026-12-31T00:00:00.000Z'
+  SNYK-AMZN2023-OPENSSLFIPSPROVIDERLATEST-17414436:
+    - '*':
+        reason: >-
+          openssl-fips-provider-latest Incorrect Calculation of Buffer Size
+          introduced by AWS Lambda base image (public.ecr.aws/lambda/python) —
+          pending next AWS Lambda image release. Renovate tracks the image tag and
+          will open a PR when a fix is available.
+        expires: '2026-12-31T00:00:00.000Z'
+  SNYK-AMZN2023-OPENSSLFIPSPROVIDERLATEST-17414459:
+    - '*':
+        reason: >-
+          openssl-fips-provider-latest Integer Overflow or Wraparound introduced
+          by AWS Lambda base image (public.ecr.aws/lambda/python) — pending next
+          AWS Lambda image release. Renovate tracks the image tag and will open a
+          PR when a fix is available.
+        expires: '2026-12-31T00:00:00.000Z'
+  SNYK-AMZN2023-OPENSSLFIPSPROVIDERLATEST-17415224:
+    - '*':
+        reason: >-
+          openssl-fips-provider-latest Improper Verification of Cryptographic
+          Signature introduced by AWS Lambda base image
+          (public.ecr.aws/lambda/python) — pending next AWS Lambda image release.
+          Renovate tracks the image tag and will open a PR when a fix is
+          available.
+        expires: '2026-12-31T00:00:00.000Z'
+  SNYK-AMZN2023-OPENSSLFIPSPROVIDERLATEST-17415442:
+    - '*':
+        reason: >-
+          openssl-fips-provider-latest Integer Overflow or Wraparound introduced
+          by AWS Lambda base image (public.ecr.aws/lambda/python) — pending next
+          AWS Lambda image release. Renovate tracks the image tag and will open a
+          PR when a fix is available.
+        expires: '2026-12-31T00:00:00.000Z'
+  SNYK-AMZN2023-OPENSSLFIPSPROVIDERLATEST-17415654:
+    - '*':
+        reason: >-
+          openssl-fips-provider-latest NULL Pointer Dereference introduced by AWS
+          Lambda base image (public.ecr.aws/lambda/python) — pending next AWS
+          Lambda image release. Renovate tracks the image tag and will open a PR
+          when a fix is available.
+        expires: '2026-12-31T00:00:00.000Z'
+  SNYK-AMZN2023-OPENSSLFIPSPROVIDERLATEST-17415676:
+    - '*':
+        reason: >-
+          openssl-fips-provider-latest Improper Verification of Cryptographic
+          Signature introduced by AWS Lambda base image
+          (public.ecr.aws/lambda/python) — pending next AWS Lambda image release.
+          Renovate tracks the image tag and will open a PR when a fix is
+          available.
+        expires: '2026-12-31T00:00:00.000Z'
+  SNYK-AMZN2023-OPENSSLFIPSPROVIDERLATEST-17415699:
+    - '*':
+        reason: >-
+          openssl-fips-provider-latest Allocation of Resources Without Limits or
+          Throttling introduced by AWS Lambda base image
+          (public.ecr.aws/lambda/python) — pending next AWS Lambda image release.
+          Renovate tracks the image tag and will open a PR when a fix is
+          available.
+        expires: '2026-12-31T00:00:00.000Z'
+  SNYK-AMZN2023-OPENSSLFIPSPROVIDERLATEST-17415713:
+    - '*':
+        reason: >-
+          openssl-fips-provider-latest Improper Certificate Validation introduced
+          by AWS Lambda base image (public.ecr.aws/lambda/python) — pending next
+          AWS Lambda image release. Renovate tracks the image tag and will open a
+          PR when a fix is available.
+        expires: '2026-12-31T00:00:00.000Z'
+  SNYK-AMZN2023-OPENSSLFIPSPROVIDERLATEST-17415716:
+    - '*':
+        reason: >-
+          openssl-fips-provider-latest Improper Validation of Integrity Check
+          Value introduced by AWS Lambda base image (public.ecr.aws/lambda/python)
+          — pending next AWS Lambda image release. Renovate tracks the image tag
+          and will open a PR when a fix is available.
+        expires: '2026-12-31T00:00:00.000Z'
+  SNYK-AMZN2023-OPENSSLFIPSPROVIDERLATEST-17415739:
+    - '*':
+        reason: >-
+          openssl-fips-provider-latest NULL Pointer Dereference introduced by AWS
+          Lambda base image (public.ecr.aws/lambda/python) — pending next AWS
+          Lambda image release. Renovate tracks the image tag and will open a PR
+          when a fix is available.
+        expires: '2026-12-31T00:00:00.000Z'
+  SNYK-AMZN2023-OPENSSLFIPSPROVIDERLATEST-17415746:
+    - '*':
+        reason: >-
+          openssl-fips-provider-latest Information Exposure introduced by AWS
+          Lambda base image (public.ecr.aws/lambda/python) — pending next AWS
+          Lambda image release. Renovate tracks the image tag and will open a PR
+          when a fix is available.
+        expires: '2026-12-31T00:00:00.000Z'
+  SNYK-AMZN2023-OPENSSLFIPSPROVIDERLATEST-17415806:
+    - '*':
+        reason: >-
+          openssl-fips-provider-latest Expired Pointer Dereference introduced by
+          AWS Lambda base image (public.ecr.aws/lambda/python) — pending next AWS
+          Lambda image release. Renovate tracks the image tag and will open a PR
+          when a fix is available.
+        expires: '2026-12-31T00:00:00.000Z'
