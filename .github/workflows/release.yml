@@ -53,6 +53,7 @@ jobs:
   release-arm64:
     name: Release (arm64)
     runs-on: ubuntu-24.04-arm
+    needs: release-x86_64
     env:
       RELEASE_BUCKET: dynatrace-aws-s3-log-forwarder-assets
     steps:
@@ -67,6 +68,8 @@ jobs:
           GIT_TAG: ${{ github.ref_name }}
           GIT_COMMIT: ${{ github.sha }}
         run: ./scripts/update_version.sh
+      - name: Download x86_64-updated template from S3
+        run: aws s3 cp s3://${RELEASE_BUCKET}/${{ github.ref_name }}/template.yaml template.yaml
       - name: Build Lambda ZIP
         run: ./scripts/build_docker.sh zip dist/lambda-arm64.zip arm64
       - name: Upload Lambda ZIP to S3
@@ -75,3 +78,14 @@ jobs:
         run: ./scripts/build_docker.sh layer dist/layer-arm64.zip arm64
       - name: Publish Lambda Layer to all commercial regions
         run: ./scripts/publish_layer.sh dist/layer-arm64.zip --arch arm64
+      - name: Upload CloudFormation templates to S3
+        run: |
+          aws s3 cp template.yaml s3://${RELEASE_BUCKET}/${{ github.ref_name }}/
+          aws s3 cp dynatrace-aws-s3-log-forwarder-s3-bucket-configuration.yaml s3://${RELEASE_BUCKET}/${{ github.ref_name }}/
+          aws s3 cp eventbridge-cross-region-or-account-forward-rules.yaml s3://${RELEASE_BUCKET}/${{ github.ref_name }}/
+      - name: Create and upload templates archive
+        run: |
+          zip templates.zip -j template.yaml \
+            dynatrace-aws-s3-log-forwarder-s3-bucket-configuration.yaml \
+            eventbridge-cross-region-or-account-forward-rules.yaml
+          aws s3 cp templates.zip s3://${RELEASE_BUCKET}/${{ github.ref_name }}/
