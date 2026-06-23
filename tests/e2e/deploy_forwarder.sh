@@ -2,6 +2,10 @@
 
 # Deploy the dynatrace-aws-platform-monitoring-s3-log-forwarder for e2e validation.
 # Usage: ./tests/e2e/deploy_forwarder.sh <layer|zip> [eventbridge|sns|sqs] [x86_64|arm64]
+#
+# The build artifact must exist before running this script:
+#   dist/lambda.zip  for zip deployments  — build with: ./scripts/build_docker.sh zip dist/lambda.zip [arch]
+#   dist/layer.zip   for layer deployments — build with: ./scripts/build_docker.sh layer dist/layer.zip [arch]
 
 set -e
 
