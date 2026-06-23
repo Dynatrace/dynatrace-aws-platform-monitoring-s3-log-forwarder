@@ -132,7 +132,6 @@ jobs:
             notification_type: sqs
             bucket: dynatrace-aws-s3-log-forwarder-e2e-testing-layer-direct-sqs
     env:
-      ARCH: x86_64
       NOTIFICATION_TYPE: ${{ matrix.notification_type }}
       E2E_TESTING_BUCKET_NAME: ${{ matrix.bucket }}
       CI_RUN_ID: ${{ github.run_id }}
@@ -167,7 +166,7 @@ jobs:
       - name: Install dependencies
         run: pip install requests
       - name: Deploy forwarder
-        run: ./tests/e2e/deploy_forwarder.sh ${{ matrix.deploy_type }} ${{ matrix.notification_type }}
+        run: ./tests/e2e/deploy_forwarder.sh ${{ matrix.deploy_type }} ${{ matrix.notification_type }} x86_64
       - name: Write test log to S3 and wait for ingestion
         run: |
           echo "[$(date -u '+%Y-%m-%dT%H:%M:%SZ')] E2E testing validation log entry" > ${{ github.run_id }}.log
@@ -212,7 +211,6 @@ jobs:
             notification_type: sqs
             bucket: dynatrace-aws-s3-log-forwarder-e2e-testing-layer-direct-sqs
     env:
-      ARCH: arm64
       NOTIFICATION_TYPE: ${{ matrix.notification_type }}
       E2E_TESTING_BUCKET_NAME: ${{ matrix.bucket }}
       CI_RUN_ID: ${{ github.run_id }}
@@ -247,7 +245,7 @@ jobs:
       - name: Install dependencies
         run: pip install requests
       - name: Deploy forwarder
-        run: ./tests/e2e/deploy_forwarder.sh ${{ matrix.deploy_type }} ${{ matrix.notification_type }}
+        run: ./tests/e2e/deploy_forwarder.sh ${{ matrix.deploy_type }} ${{ matrix.notification_type }} arm64
       - name: Write test log to S3 and wait for ingestion
         run: |
           echo "[$(date -u '+%Y-%m-%dT%H:%M:%SZ')] E2E testing validation log entry" > ${{ github.run_id }}.log

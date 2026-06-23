@@ -1,14 +1,13 @@
 #!/bin/bash
 
 # Deploy the dynatrace-aws-platform-monitoring-s3-log-forwarder for e2e validation.
-# Usage: ./tests/e2e/deploy_forwarder.sh <layer|zip> [eventbridge|sns|sqs]
-# Env: ARCH — target Lambda architecture, x86_64 (default) or arm64
+# Usage: ./tests/e2e/deploy_forwarder.sh <layer|zip> [eventbridge|sns|sqs] [x86_64|arm64]
 
 set -e
 
-DEPLOY_TYPE="${1:?Usage: $0 <layer|zip> [eventbridge|sns|sqs]}"
+DEPLOY_TYPE="${1:?Usage: $0 <layer|zip> [eventbridge|sns|sqs] [x86_64|arm64]}"
 NOTIFICATION_TYPE="${2:-eventbridge}"
-ARCH="${ARCH:-x86_64}"
+ARCH="${3:-x86_64}"
 
 : "${E2E_TESTING_BUCKET_NAME:?E2E_TESTING_BUCKET_NAME must be set}"
 : "${STACK_NAME:?STACK_NAME must be set}"
