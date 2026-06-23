@@ -160,6 +160,7 @@ jobs:
         uses: actions/download-artifact@v7
         with:
           name: lambda-artifacts-x86_64
+          path: dist/
       - uses: actions/setup-python@v6
         with:
           python-version: '3.14'
@@ -182,7 +183,10 @@ jobs:
     name: End-to-end deployment test (${{ matrix.deploy_type }}, ${{ matrix.notification_type }}, arm64)
     runs-on: ubuntu-latest
     needs: [unit-tests, build-x86_64, build-arm64, e2e-test-x86_64]
-    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
+    if: >-
+      needs.build-arm64.result == 'success' && needs.e2e-test-x86_64.result == 'success' &&
+      ((github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository))
     strategy:
       fail-fast: false
       matrix:
@@ -236,6 +240,7 @@ jobs:
         uses: actions/download-artifact@v7
         with:
           name: lambda-artifacts-arm64
+          path: dist/
       - uses: actions/setup-python@v6
         with:
           python-version: '3.14'
