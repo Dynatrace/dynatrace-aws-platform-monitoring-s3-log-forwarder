@@ -72,7 +72,8 @@ If you want to build the Lambda Layer from source instead of using a pre-publish
 From the project root directory:
 
 ```bash
-./scripts/build_docker.sh layer dist/layer.zip
+./scripts/build_docker.sh layer dist/layer.zip          # x86_64 (default)
+./scripts/build_docker.sh layer dist/layer.zip arm64    # arm64
 ```
 
 This will:
@@ -91,7 +92,8 @@ This will:
         --template-file dynatrace-aws-s3-log-forwarder-layer.yaml \
         --stack-name "${STACK_NAME}-layer" \
         --resolve-s3 \
-        --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND
+        --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
+        --parameter-overrides Architecture=x86_64  # or arm64
     ```
 
 1. Retrieve the deployed Layer ARN:
@@ -120,7 +122,8 @@ After making source code changes, repeat steps 1-3 above to rebuild and redeploy
 From the project root directory:
 
 ```bash
-./scripts/build_docker.sh zip dist/lambda.zip
+./scripts/build_docker.sh zip dist/lambda.zip           # x86_64 (default)
+./scripts/build_docker.sh zip dist/lambda.zip arm64     # arm64
 ```
 
 This will:
@@ -155,8 +158,11 @@ This will:
                     DynatraceEnvironmentURL="https://$DYNATRACE_TENANT_UUID.live.dynatrace.com" \
                     DynatraceApiKeySSMParameter=$PARAMETER_NAME \
                     DeploymentPackageType=zip \
+                    Architecture=x86_64 \
                --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND
     ```
+
+    Set `Architecture=arm64` for Graviton (arm64) deployments.
 
     If you want to customize deployment values, you can find the parameter descriptions on the [template.yaml](../template.yaml) file.
 

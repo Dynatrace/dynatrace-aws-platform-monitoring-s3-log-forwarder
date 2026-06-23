@@ -12,26 +12,31 @@ This guide covers how to build and publish the `dynatrace-aws-platform-monitorin
 From the project root directory, run:
 
 ```bash
-./scripts/build_docker.sh layer dist/layer.zip
+./scripts/build_docker.sh layer dist/layer.zip          # x86_64 (default)
+./scripts/build_docker.sh layer dist/layer.zip arm64    # arm64
 ```
 
 ## Step 2. Publish the Layer
 
 Lambda Layers are regional — a layer must be published in each region where customers will deploy. The publish script handles this automatically and grants public access to each published layer version.
 
+Both architectures must be published separately. Run the script once per architecture.
+
 ### Publish to all commercial regions
 
 ```bash
-./scripts/publish_layer.sh dist/layer.zip
+./scripts/publish_layer.sh dist/layer.zip               # x86_64 (default)
+./scripts/publish_layer.sh dist/layer.zip --arch arm64  # arm64
 ```
 
 ### Publish to specific regions
 
 ```bash
 ./scripts/publish_layer.sh dist/layer.zip --regions us-east-1,eu-west-1,eu-central-1
+./scripts/publish_layer.sh dist/layer.zip --arch arm64 --regions us-east-1,eu-west-1,eu-central-1
 ```
 
-The script will output the `LayerVersionArn` for each region — share the appropriate ARN with customers based on their deployment region.
+The script will output the `LayerVersionArn` for each region — share the appropriate ARN with customers based on their deployment region and architecture.
 
 ### Skip automatic file updates
 
@@ -46,22 +51,32 @@ By default, after a successful publish the script automatically updates the Laye
 Alternatively, you can publish manually:
 
 ```bash
+# x86_64
 aws lambda publish-layer-version \
     --layer-name dynatrace-aws-platform-monitoring-s3-log-forwarder \
     --zip-file fileb://dist/layer.zip \
     --compatible-runtimes python3.14 \
     --compatible-architectures x86_64 \
     --description "Dynatrace AWS S3 Log Forwarder (x86_64)"
+
+# arm64
+aws lambda publish-layer-version \
+    --layer-name dynatrace-aws-platform-monitoring-s3-log-forwarder-arm64 \
+    --zip-file fileb://dist/layer.zip \
+    --compatible-runtimes python3.14 \
+    --compatible-architectures arm64 \
+    --description "Dynatrace AWS S3 Log Forwarder (arm64)"
 ```
 
 Note the `LayerVersionArn` from the output — this is the ARN you'll share with customers.
 
 ## Step 3. Share the Layer ARN with customers
 
-The Layer ARNs for all published regions are maintained in the [Lambda Layer ARNs table in README.md](../README.md). Provide customers with the full Layer Version ARN for their deployment region, for example:
+The Layer ARNs for all published regions are maintained in the [Lambda Layer ARNs table in README.md](../README.md). Provide customers with the full Layer Version ARN for their deployment region and architecture, for example:
 
 ```text
-arn:aws:lambda:us-east-1:123456789012:layer:dynatrace-aws-s3-log-forwarder:1
+arn:aws:lambda:us-east-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
+arn:aws:lambda:us-east-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder-arm64:1
 ```
 
 Customers can then deploy the log forwarder using the [Lambda Layer](deployment_guide.md) option in the deployment guide — no build tools or SAM CLI required.
@@ -70,8 +85,10 @@ Customers can then deploy the log forwarder using the [Lambda Layer](deployment_
 
 When releasing an update:
 
-1. Rebuild: `./scripts/build_docker.sh layer dist/layer.zip`
-2. Publish: `./scripts/publish_layer.sh dist/layer.zip`
-3. Communicate the new Layer Version ARNs to customers
+1. Build x86_64: `./scripts/build_docker.sh layer dist/layer.zip`
+2. Publish x86_64: `./scripts/publish_layer.sh dist/layer.zip`
+3. Build arm64: `./scripts/build_docker.sh layer dist/layer.zip arm64`
+4. Publish arm64: `./scripts/publish_layer.sh dist/layer.zip --arch arm64`
+5. Communicate the new Layer Version ARNs to customers
 
 > **Note:** Each `publish-layer-version` call creates a new immutable version. Previous versions remain available until explicitly deleted. Customers must update the `DynatraceS3LogForwarderLayerArn` parameter and redeploy to pick up the new version.
