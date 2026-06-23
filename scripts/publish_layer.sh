@@ -127,7 +127,7 @@ publish_to_region() {
 }
 
 # ---------------------------------------------------------------------------
-# Update README.md — upsert ARNs in the merged "Lambda Layer ARNs" table
+# Update README.md — upsert ARNs in the "Lambda Layer ARNs" table
 # ---------------------------------------------------------------------------
 
 update_readme() {
