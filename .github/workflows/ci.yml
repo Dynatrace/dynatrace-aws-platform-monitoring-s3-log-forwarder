@@ -181,7 +181,7 @@ jobs:
 
   e2e-test-arm64:
     name: End-to-end deployment test (${{ matrix.deploy_type }}, ${{ matrix.notification_type }}, arm64)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     needs: [unit-tests, build-x86_64, build-arm64, e2e-test-x86_64]
     if: >-
       needs.build-arm64.result == 'success' && needs.e2e-test-x86_64.result == 'success' &&
@@ -229,7 +229,7 @@ jobs:
         run: |
           DEPLOY_SHORT=$([[ "${{ matrix.deploy_type }}" == "layer" ]] && echo "lyr" || echo "zip")
           NOTIFICATION_SUFFIX=$([[ "${{ matrix.notification_type }}" == "eventbridge" ]] && echo "" || echo "-${{ matrix.notification_type }}")
-          echo "STACK_NAME=e2e-dt-aws-s3-log-forwarder-${DEPLOY_SHORT}${NOTIFICATION_SUFFIX}-arm64-${{ github.run_id }}" >> $GITHUB_ENV
+          echo "STACK_NAME=e2e-dt-aws-s3-log-forwarder-${DEPLOY_SHORT}${NOTIFICATION_SUFFIX}-${{ github.run_id }}" >> $GITHUB_ENV
           echo "E2E_TEST_PREFIX=test/${{ github.run_id }}/${{ matrix.deploy_type }}/${{ matrix.notification_type }}/arm64" >> $GITHUB_ENV
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6
