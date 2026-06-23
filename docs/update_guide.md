@@ -58,7 +58,7 @@ unzip -o templates.zip
 
 #### If using Lambda Layer deployment
 
-Update the `DynatraceS3LogForwarderLayerArn` parameter with the new Layer Version ARN and redeploy:
+Pick the new Layer Version ARN for your architecture and region from the [Lambda Layer ARNs table in README.md](../README.md), then redeploy:
 
 ```bash
 export LAYER_ARN=<new-layer-version-arn>
@@ -73,10 +73,12 @@ aws cloudformation deploy --stack-name ${STACK_NAME} \
 
 #### If using ZIP deployment
 
-Download the new Lambda deployment package:
+Download the new Lambda deployment package for your architecture:
 
 ```bash
-wget https://dynatrace-aws-s3-log-forwarder-assets.s3.amazonaws.com/${VERSION_TAG}/lambda.zip
+wget https://dynatrace-aws-s3-log-forwarder-assets.s3.amazonaws.com/${VERSION_TAG}/lambda-x86_64.zip
+# or for arm64 (Graviton):
+# wget https://dynatrace-aws-s3-log-forwarder-assets.s3.amazonaws.com/${VERSION_TAG}/lambda-arm64.zip
 ```
 
 Update the CloudFormation stack:
@@ -94,7 +96,7 @@ FUNCTION_NAME=$(aws cloudformation describe-stacks --stack-name ${STACK_NAME} \
     --output text | rev | cut -d':' -f1 | rev)
 
 aws lambda update-function-code --function-name ${FUNCTION_NAME} \
-    --zip-file fileb://lambda.zip
+    --zip-file fileb://lambda-x86_64.zip   # or lambda-arm64.zip
 ```
 
 If successfull, you'll see a message similar to the below at the end of the execution:

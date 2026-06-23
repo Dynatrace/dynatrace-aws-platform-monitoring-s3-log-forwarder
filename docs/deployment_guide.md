@@ -77,41 +77,45 @@ Choose one of the deployment options below:
 
 This is the simplest option — no build tools, SAM CLI, or Python required.
 
-1. Set the Layer ARN:
+1. Pick the Layer ARN for your target architecture and region from the [Lambda Layer ARNs table in README.md](../README.md) and set it:
 
-```bash
-export LAYER_ARN=<layer-version-arn-provided-by-publisher>
-```
+    ```bash
+    export LAYER_ARN=<layer-version-arn-for-your-region-and-architecture>
+    ```
 
-1. Deploy the main forwarder stack:
+2. Deploy the main forwarder stack:
 
-```bash
-aws cloudformation deploy \
-    --stack-name ${STACK_NAME} \
-    --template-file template.yaml \
-    --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
-    --parameter-overrides \
-        DynatraceEnvironmentURL="https://$DYNATRACE_TENANT_UUID.live.dynatrace.com" \
-        DynatraceApiKeySSMParameter="/dynatrace/s3-log-forwarder/$STACK_NAME/api-key" \
-        DynatraceS3LogForwarderLayerArn="$LAYER_ARN" \
-        S3BucketNames="my-bucket,another-bucket"
-```
+    ```bash
+    aws cloudformation deploy \
+        --stack-name ${STACK_NAME} \
+        --template-file template.yaml \
+        --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
+        --parameter-overrides \
+            DynatraceEnvironmentURL="https://$DYNATRACE_TENANT_UUID.live.dynatrace.com" \
+            DynatraceApiKeySSMParameter="/dynatrace/s3-log-forwarder/$STACK_NAME/api-key" \
+            DynatraceS3LogForwarderLayerArn="$LAYER_ARN" \
+            Architecture="x86_64" \
+            S3BucketNames="my-bucket,another-bucket"
+    ```
 
-> [!NOTE]
->
-> When the publisher releases a new layer version, update the `DynatraceS3LogForwarderLayerArn` parameter with the new ARN and redeploy the stack to pick up the update.
+    > [!NOTE]
+    >
+    > * Set `Architecture=arm64` to deploy on Graviton (arm64). Make sure the Layer ARN you selected matches the architecture.
+    > * When the publisher releases a new layer version, update the `DynatraceS3LogForwarderLayerArn` parameter with the new ARN and redeploy the stack to pick up the update.
 
 ---
 
 #### Alternative option: ZIP deployment
 
-1. Download the Lambda deployment package:
+1. Download the Lambda deployment package for your target architecture:
 
     ```bash
-    wget https://dynatrace-aws-s3-log-forwarder-assets.s3.amazonaws.com/${VERSION_TAG}/lambda.zip
+    wget https://dynatrace-aws-s3-log-forwarder-assets.s3.amazonaws.com/${VERSION_TAG}/lambda-x86_64.zip
+    # or for arm64 (Graviton):
+    # wget https://dynatrace-aws-s3-log-forwarder-assets.s3.amazonaws.com/${VERSION_TAG}/lambda-arm64.zip
     ```
 
-1. Deploy the CloudFormation stack:
+2. Deploy the CloudFormation stack:
 
     ```bash
     aws cloudformation deploy \
@@ -122,10 +126,13 @@ aws cloudformation deploy \
             DynatraceEnvironmentURL="https://$DYNATRACE_TENANT_UUID.live.dynatrace.com" \
             DynatraceApiKeySSMParameter="/dynatrace/s3-log-forwarder/$STACK_NAME/api-key" \
             DeploymentPackageType="zip" \
+            Architecture="x86_64" \
             S3BucketNames="my-bucket,another-bucket"
     ```
 
-1. Update the Lambda function code with the deployment package:
+    Set `Architecture=arm64` for Graviton (arm64) deployments.
+
+3. Update the Lambda function code with the deployment package:
 
     ```bash
     FUNCTION_NAME=$(aws cloudformation describe-stacks --stack-name ${STACK_NAME} \
@@ -133,10 +140,10 @@ aws cloudformation deploy \
         --output text | rev | cut -d':' -f1 | rev)
 
     aws lambda update-function-code --function-name ${FUNCTION_NAME} \
-        --zip-file fileb://lambda.zip
+        --zip-file fileb://lambda-x86_64.zip   # or lambda-arm64.zip
     ```
 
-    If successfull, you'll see a message similar to the below at the end of the execution:
+    If successful, you'll see a message similar to the below at the end of the execution:
 
     ```json
     {
