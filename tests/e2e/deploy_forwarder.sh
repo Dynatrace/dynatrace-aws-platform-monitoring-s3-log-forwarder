@@ -32,12 +32,8 @@ aws ssm put-parameter \
 
 case "${DEPLOY_TYPE}" in
     zip)
-        if [[ -f "dist/lambda.zip" ]]; then
-            log "Using pre-built Lambda ZIP"
-        else
-            log "Building Lambda ZIP"
-            ./scripts/build_docker.sh zip "dist/lambda.zip" "${ARCH}"
-        fi
+        log "dist/ contents: $(ls dist/ 2>/dev/null || echo '(empty or missing)')"
+        [[ -f "dist/lambda.zip" ]] || { echo "ERROR: dist/lambda.zip not found" >&2; exit 1; }
 
         log "Deploying the log forwarder template"
         aws cloudformation deploy --stack-name ${STACK_NAME} --parameter-overrides \
@@ -68,12 +64,8 @@ case "${DEPLOY_TYPE}" in
     layer)
         LAYER_STACK_NAME="${STACK_NAME}-layer"
 
-        if [[ -f "dist/layer.zip" ]]; then
-            log "Using pre-built Lambda Layer"
-        else
-            log "Building Lambda Layer"
-            ./scripts/build_docker.sh layer "dist/layer.zip" "${ARCH}"
-        fi
+        log "dist/ contents: $(ls dist/ 2>/dev/null || echo '(empty or missing)')"
+        [[ -f "dist/layer.zip" ]] || { echo "ERROR: dist/layer.zip not found" >&2; exit 1; }
 
         log "Packaging the Lambda Layer template"
         aws cloudformation package \
