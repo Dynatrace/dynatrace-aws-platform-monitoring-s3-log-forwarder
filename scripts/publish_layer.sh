@@ -194,60 +194,48 @@ update_readme() {
 }
 
 # ---------------------------------------------------------------------------
-# Update template.yaml — replace ARN values in the LayerArns mapping
+# Update template.yaml — update LayerVersions.All.{x86|arm64} with the
+# published layer version number. Version is taken from the first successfully
+# published region (all regions receive the same version for a given layer name).
 # ---------------------------------------------------------------------------
 
 update_template() {
     local template_file="$REPO_ROOT/template.yaml"
     [[ -f "$template_file" ]] || return
 
-    echo "Updating LayerArns mappings in $template_file..."
+    [[ ${#PUBLISHED_ARNS[@]} -gt 0 ]] || { echo "No published ARNs — skipping template update."; return; }
+    local first_arn="${PUBLISHED_ARNS[0]#*=}"
+    local new_version="${first_arn##*:}"
 
-    local in_layer_arns=0 current_region="" output="" line stripped new_arn indent
+    local arch_key
+    [[ "$ARCH" == "arm64" ]] && arch_key="arm64" || arch_key="x86"
+
+    echo "Updating LayerVersions.All.${arch_key} to ${new_version} in $template_file..."
+
+    local in_versions=0 in_all=0 updated=0 output="" line stripped indent
 
     while IFS= read -r line || [[ -n "$line" ]]; do
         stripped="${line#"${line%%[![:space:]]*}"}"
         stripped="${stripped%"${stripped##*[![:space:]]}"}"
 
-        # Detect start of LayerArns block
-        if [[ "$stripped" == "LayerArns:" ]]; then
-            in_layer_arns=1
-            output+="$line"$'\n'
+        [[ "$stripped" == "LayerVersions:" ]] && in_versions=1
+        [[ $in_versions -eq 1 && "$stripped" == "All:" ]] && in_all=1
+
+        if [[ $in_versions -eq 1 && $in_all -eq 1 && $updated -eq 0 && "$stripped" == "${arch_key}:"* ]]; then
+            indent="${line%%${arch_key}:*}"
+            output+="${indent}${arch_key}: ${new_version}"$'\n'
+            updated=1
             continue
         fi
 
-        # Detect end of LayerArns block (sibling mapping key at 2-space indent, or any 0-indent key)
-        if [[ $in_layer_arns -eq 1 && "$line" =~ ^[[:space:]]{0,2}[A-Za-z] ]]; then
-            in_layer_arns=0
-            current_region=""
-        fi
-
-        if [[ $in_layer_arns -eq 1 ]]; then
-            # Region key (4-space indent)
-            if [[ "$line" =~ ^[[:space:]]{4}([a-z0-9-]+):$ ]]; then
-                current_region="${BASH_REMATCH[1]}"
-                output+="$line"$'\n'
-                continue
-            fi
-
-            # ARN template value (6-space indent) — update version if this region was published
-            if [[ -n "$current_region" && "$line" =~ ^[[:space:]]{6}Arn: ]]; then
-                new_arn=$(lookup_arn "$current_region")
-                if [[ -n "$new_arn" ]]; then
-                    new_version="${new_arn##*:}"
-                    existing_arn="${line#*Arn: }"
-                    indent="${line%%Arn:*}"
-                    output+="${indent}Arn: ${existing_arn%:*}:${new_version}"$'\n'
-                    continue
-                fi
-            fi
+        # Exit LayerVersions block on a non-indented key
+        if [[ $in_versions -eq 1 && "$line" =~ ^[A-Za-z] ]]; then
+            in_versions=0; in_all=0
         fi
 
         output+="$line"$'\n'
     done < "$template_file"
 
-    # Preserve original trailing-newline behaviour.
-    # Note: $(...) strips trailing newlines, so check the last byte via od instead.
     if [[ "$(tail -c1 "$template_file" | od -An -tx1 | tr -d ' \n')" == "0a" ]]; then
         printf '%s' "$output" > "$template_file"
     else
