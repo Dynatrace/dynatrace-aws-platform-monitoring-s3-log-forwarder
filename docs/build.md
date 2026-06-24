@@ -162,7 +162,7 @@ This will:
                --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND
     ```
 
-    Set `Architecture=arm64` for Graviton (arm64) deployments.
+    Set `Architecture=arm64` for arm64 deployments.
 
     If you want to customize deployment values, you can find the parameter descriptions on the [template.yaml](../template.yaml) file.
 
