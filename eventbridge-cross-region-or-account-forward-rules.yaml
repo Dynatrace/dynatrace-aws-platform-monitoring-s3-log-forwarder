@@ -28,6 +28,52 @@ Metadata:
   Version:
     Description: dev
 
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Required
+        Parameters:
+          - CrossRegionCrossAccountEventBusArn
+          - LogsBucketName
+      - Label:
+          default: Optional S3 Key Prefix Filters (up to 10)
+        Parameters:
+          - LogsBucketPrefix1
+          - LogsBucketPrefix2
+          - LogsBucketPrefix3
+          - LogsBucketPrefix4
+          - LogsBucketPrefix5
+          - LogsBucketPrefix6
+          - LogsBucketPrefix7
+          - LogsBucketPrefix8
+          - LogsBucketPrefix9
+          - LogsBucketPrefix10
+    ParameterLabels:
+      CrossRegionCrossAccountEventBusArn:
+        default: Destination Event Bus ARN
+      LogsBucketName:
+        default: S3 Bucket Name
+      LogsBucketPrefix1:
+        default: S3 Key Prefix 1
+      LogsBucketPrefix2:
+        default: S3 Key Prefix 2
+      LogsBucketPrefix3:
+        default: S3 Key Prefix 3
+      LogsBucketPrefix4:
+        default: S3 Key Prefix 4
+      LogsBucketPrefix5:
+        default: S3 Key Prefix 5
+      LogsBucketPrefix6:
+        default: S3 Key Prefix 6
+      LogsBucketPrefix7:
+        default: S3 Key Prefix 7
+      LogsBucketPrefix8:
+        default: S3 Key Prefix 8
+      LogsBucketPrefix9:
+        default: S3 Key Prefix 9
+      LogsBucketPrefix10:
+        default: S3 Key Prefix 10
+
   Instructions:
     Description: |
       Deploy this template on the AWS Account and/or region where your S3 bucket is (different than 
@@ -65,50 +111,50 @@ Metadata:
 Parameters:
   CrossRegionCrossAccountEventBusArn:
     Type: String
-    Description: "ARN of the dynatrace-aws-platform-monitoring-s3-log-forwarder Event Bus for cross-account and cross-region events, e.g. arn:aws:events:us-east-1:0123456789:event-bus/dynatrace-aws-s3-log-forwarder-{your_forwarder_stack_name}-cross-region-cross-account-s3-events"
+    Description: "ARN of the destination EventBridge bus in the forwarder's account/region. Find it as the CrossRegionCrossAccountEventBus output of the main forwarder stack."
   LogsBucketName:
     Type: String
-    Description: Name of the S3 bucket to send "New Object Created" notifications to the dynatrace-aws-platform-monitoring-s3-log-forwarder
+    Description: "Name of the S3 bucket whose 'Object Created' events should be forwarded to the destination event bus."
     AllowedPattern: "^[0-9a-z]+([0-9a-z-.]{1,61}[0-9a-z])$"
   LogsBucketPrefix1:
     Type: String
-    Description: Prefix 1 to send logs from
+    Description: "Optional S3 key prefix to filter on. Leave empty to forward objects from the entire bucket. Use Prefix1..Prefix10 to target up to 10 prefixes; trailing slash recommended."
     Default: ""
   LogsBucketPrefix2:
     Type: String
-    Description: Prefix 2 to send logs from
+    Description: Optional S3 key prefix (see LogsBucketPrefix1).
     Default: ""
   LogsBucketPrefix3:
     Type: String
-    Description: Prefix 3 to send logs from
+    Description: Optional S3 key prefix (see LogsBucketPrefix1).
     Default: ""
   LogsBucketPrefix4:
     Type: String
-    Description: Prefix 4 to send logs from
+    Description: Optional S3 key prefix (see LogsBucketPrefix1).
     Default: ""
   LogsBucketPrefix5:
     Type: String
-    Description: Prefix 5 to send logs from
+    Description: Optional S3 key prefix (see LogsBucketPrefix1).
     Default: ""
   LogsBucketPrefix6:
     Type: String
-    Description: Prefix 6 to send logs from
+    Description: Optional S3 key prefix (see LogsBucketPrefix1).
     Default: ""
   LogsBucketPrefix7:
     Type: String
-    Description: Prefix 7 to send logs from
+    Description: Optional S3 key prefix (see LogsBucketPrefix1).
     Default: ""
   LogsBucketPrefix8:
     Type: String
-    Description: Prefix 8 to send logs from
+    Description: Optional S3 key prefix (see LogsBucketPrefix1).
     Default: ""
   LogsBucketPrefix9:
     Type: String
-    Description: Prefix 9 to send logs from
+    Description: Optional S3 key prefix (see LogsBucketPrefix1).
     Default: ""
   LogsBucketPrefix10:
     Type: String
-    Description: Prefix 10 to send logs from
+    Description: Optional S3 key prefix (see LogsBucketPrefix1).
     Default: ""
   
 Conditions:
@@ -181,7 +227,7 @@ Resources:
               - !If
                   - EighthS3PrefixSpecified
                   - prefix: !Ref LogsBucketPrefix8
-                  - !Ref AWS::NoValue  
+                  - !Ref AWS::NoValue
               - !If
                   - NinethS3PrefixSpecified
                   - prefix: !Ref LogsBucketPrefix9

@@ -33,6 +33,16 @@ Metadata:
   Version:
     Description: dev
 
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Required
+        Parameters:
+          - DynatraceAwsS3LogForwarderStackName
+    ParameterLabels:
+      DynatraceAwsS3LogForwarderStackName:
+        default: Main Forwarder Stack Name
+
   Instructions:
     Description: |
       Deploy this template once per dynatrace-aws-platform-monitoring-s3-log-forwarder deployment.
@@ -52,7 +62,7 @@ Metadata:
 Parameters:
   DynatraceAwsS3LogForwarderStackName:
     Type: String
-    Description: Name of the CloudFormation stack where you deployed the dynatrace-aws-platform-monitoring-s3-log-forwarder
+    Description: "Name of the main dynatrace-aws-platform-monitoring-s3-log-forwarder CloudFormation stack. Used to attach the AppConfig IAM permissions to the forwarder's Lambda role and to name the AppConfig application/environment consistently with the main stack."
 
 Resources:
   AppConfigApplication:
