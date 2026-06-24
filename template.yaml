@@ -26,9 +26,118 @@ Metadata:
   Version:
     Description: dev
 
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Dynatrace Connection
+        Parameters:
+          - DynatraceEnvironmentURL
+          - DynatraceApiKeySSMParameter
+          - DynatraceApiKey
+          - VerifyLogEndpointSSLCerts
+      - Label:
+          default: Log Processing
+        Parameters:
+          - DynatraceLogIngestContentMaxLength
+          - LogForwarderConfigurationLocation
+      - Label:
+          default: Lambda Configuration
+        Parameters:
+          - DeploymentPackageType
+          - DynatraceS3LogForwarderLayerArn
+          - LambdaFunctionMemorySize
+          - LambdaLoggingLevel
+          - LambdaMaximumExecutionTime
+          - MaximumLambdaConcurrency
+      - Label:
+          default: Network Configuration (VPC)
+        Parameters:
+          - LambdaSubnetIds
+          - LambdaSecurityGroupId
+      - Label:
+          default: SQS Configuration
+        Parameters:
+          - LambdaSQSMessageBatchSize
+          - SQSVisibilityTimeout
+          - SQSLongPollingMaxSeconds
+          - MaximumSQSMessageRetries
+      - Label:
+          default: S3 Buckets
+        Parameters:
+          - S3BucketNames
+          - KmsKeyArns
+          - CreateS3NotificationsSNSTopic
+      - Label:
+          default: Cross-Account / Cross-Region Forwarding
+        Parameters:
+          - EnableCrossRegionCrossAccountForwarding
+          - AwsAccountsToReceiveLogsFrom
+      - Label:
+          default: Monitoring and Notifications
+        Parameters:
+          - NotificationsEmail
+          - DeployCloudWatchMonitoringDashboard
+      - Label:
+          default: IAM
+        Parameters:
+          - IamRolePath
+    ParameterLabels:
+      DynatraceEnvironmentURL:
+        default: Dynatrace Environment URL
+      DynatraceApiKeySSMParameter:
+        default: Dynatrace API Key SSM Parameter Path
+      DynatraceApiKey:
+        default: Dynatrace API Key (plain text)
+      VerifyLogEndpointSSLCerts:
+        default: Verify TLS Certificates
+      DynatraceLogIngestContentMaxLength:
+        default: Log Content Max Length (bytes)
+      LogForwarderConfigurationLocation:
+        default: Configuration Source
+      LambdaFunctionMemorySize:
+        default: Lambda Memory Size (MB)
+      LambdaLoggingLevel:
+        default: Lambda Logging Level
+      LambdaMaximumExecutionTime:
+        default: Lambda Max Execution Time (seconds)
+      LambdaSQSMessageBatchSize:
+        default: SQS Message Batch Size
+      MaximumLambdaConcurrency:
+        default: Maximum Lambda Concurrency
+      DeploymentPackageType:
+        default: Deployment Package Type
+      DynatraceS3LogForwarderLayerArn:
+        default: Lambda Layer ARN (optional override)
+      LambdaSubnetIds:
+        default: Subnet IDs
+      LambdaSecurityGroupId:
+        default: Security Group ID
+      SQSVisibilityTimeout:
+        default: SQS Visibility Timeout (seconds)
+      SQSLongPollingMaxSeconds:
+        default: SQS Long Polling Wait Time (seconds)
+      MaximumSQSMessageRetries:
+        default: Maximum SQS Message Retries
+      S3BucketNames:
+        default: S3 Bucket Names
+      KmsKeyArns:
+        default: KMS Key ARNs
+      EnableCrossRegionCrossAccountForwarding:
+        default: Enable Cross-Region/Cross-Account Forwarding
+      AwsAccountsToReceiveLogsFrom:
+        default: AWS Account IDs to Accept Logs From
+      CreateS3NotificationsSNSTopic:
+        default: Create SNS Topic for S3 Notifications
+      NotificationsEmail:
+        default: Alarm Notifications Email
+      DeployCloudWatchMonitoringDashboard:
+        default: Deploy CloudWatch Monitoring Dashboard
+      IamRolePath:
+        default: IAM Role Path
+
 Parameters:
   DynatraceEnvironmentURL:
-    Description: URL of your Dynatrace environment (e.g. https://{your-environment-id}.live.dynatrace.com or https://{your-environment-id}.apps.dynatrace.com).
+    Description: "URL of your Dynatrace environment. (e.g. https://{your-environment-id}.live.dynatrace.com or https://{your-environment-id}.apps.dynatrace.com)."
     Type: String
     AllowedPattern: "^https:\\/\\/[a-zA-Z0-9-]{2,}(\\.[a-zA-Z0-9-]{2,})(\\.[a-zA-Z0-9-]{2,})*$"
   DynatraceApiKeySSMParameter:
@@ -62,7 +171,7 @@ Parameters:
     AllowedPattern: "(^$|^[a-zA-Z0-9._%+\\-]+@[a-zA-Z0-9.\\-]+\\.[a-zA-Z]{2,}$)"
     ConstraintDescription: "Must be a valid e-mail address or left empty."
   DeploymentPackageType:
-    Description: "Deployment package type for the Lambda function."
+    Description: "How the Lambda function code is delivered. 'layer' uses a pre-built Lambda Layer. 'zip' expects you to upload the function ZIP package yourself after stack creation."
     Type: String
     Default: layer
     AllowedValues:
@@ -103,7 +212,7 @@ Parameters:
       - "ERROR"
       - "CRITICAL"
   LogForwarderConfigurationLocation:
-    Description: Location from which to pull log forwarding and log processing rules (aws-appconfig or local)
+    Description: "Source for log forwarding and processing rules. 'local' uses the rules bundled with the deployment package. 'aws-appconfig' fetches rules from AWS AppConfig, enabling dynamic updates without redeployment."
     Type: String
     Default: local
     AllowedValues:
@@ -134,7 +243,7 @@ Parameters:
     Type: CommaDelimitedList
     Description: List of AWS Accounts to allow to send cross-account S3 Object created Notifications
     Default: ""
-    AllowedPattern: "($^|\\d{12})"
+    AllowedPattern: "(^$|\\d{12})"
   MaximumLambdaConcurrency:
     Description: Maximum number of Lambda functions running concurrently. The concurrency is reserved for the queue processing function, so it's guaranteed.
     Type: Number
@@ -155,7 +264,7 @@ Parameters:
     Default: 420
   SQSLongPollingMaxSeconds:
     Type: Number
-    Description: Maximum seconds to wait for messages during ReceiveMessage long polling requests to receive up to SQSMessageBatchSize number of messages.
+    Description: Maximum seconds to wait for messages during ReceiveMessage long polling requests to receive up to LambdaSQSMessageBatchSize number of messages.
     Default: 20
     MaxValue: 20
   MaximumSQSMessageRetries:
@@ -196,6 +305,14 @@ Rules:
             - !Not [!Equals [!Ref DynatraceApiKey, ""]]
             - !Not [!Equals [!Ref DynatraceApiKeySSMParameter, ""]]
         AssertDescription: "Provide either DynatraceApiKey or DynatraceApiKeySSMParameter — not both."
+  VpcSecurityGroupRequiredWithSubnets:
+    Assertions:
+      - Assert: !Or
+          - Fn::EachMemberEquals:
+              - !Ref LambdaSubnetIds
+              - ""
+          - !Not [!Equals [!Ref LambdaSecurityGroupId, ""]]
+        AssertDescription: "LambdaSecurityGroupId must be set when LambdaSubnetIds is specified."
 
 Mappings:
   LayerArns:
@@ -277,6 +394,9 @@ Conditions:
   KmsKeyArnsProvided: !Not [!Equals [!Join ["", !Ref KmsKeyArns], ""]]
   DirectApiKeyProvided: !Not [!Equals [!Ref DynatraceApiKey, ""]]
   IsLayerArnProvided: !Not [!Equals [!Ref DynatraceS3LogForwarderLayerArn, ""]]
+  IsDynatraceProductionEnvironment: !Equals
+    - !Select [ 2, !Split [ ".", !Select [ 1, !Split [ "://", !Ref DynatraceEnvironmentURL ] ] ] ]
+    - 'dynatrace'
 
 Globals:
   Function:
@@ -369,7 +489,14 @@ Resources:
       Environment:
         Variables:
           LD_LIBRARY_PATH: !If [IsLayerDeployment, !Ref "AWS::NoValue", "/var/task/lib"]
-          DYNATRACE_ENV_URL: !Ref DynatraceEnvironmentURL
+          DYNATRACE_ENV_URL: !If
+            - IsDynatraceProductionEnvironment
+            - !Sub
+              - 'https://${Subdomain}.da.dynatrace.com'
+              - Subdomain: !Select [ 0, !Split [ ".", !Select [ 1, !Split [ "://", !Ref DynatraceEnvironmentURL ] ] ] ]
+            - !Sub
+              - 'https://${Subdomain}.da.dynatracelabs.com'
+              - Subdomain: !Select [ 0, !Split [ ".apps", !Select [ 0, !Split [ ".dynatracelabs.com", !Select [ 1, !Split [ "://", !Ref DynatraceEnvironmentURL ] ] ] ] ] ]
           DYNATRACE_API_KEY_SSM: !If
             - DirectApiKeyProvided
             - !Sub /dynatrace/s3-log-forwarder/${AWS::StackName}/api-key
