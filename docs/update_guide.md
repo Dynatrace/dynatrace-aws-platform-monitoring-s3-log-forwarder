@@ -77,7 +77,7 @@ Download the new Lambda deployment package for your architecture:
 
 ```bash
 wget https://dynatrace-aws-s3-log-forwarder-assets.s3.amazonaws.com/${VERSION_TAG}/lambda-x86_64.zip
-# or for arm64 (Graviton):
+# or for arm64:
 # wget https://dynatrace-aws-s3-log-forwarder-assets.s3.amazonaws.com/${VERSION_TAG}/lambda-arm64.zip
 ```
 

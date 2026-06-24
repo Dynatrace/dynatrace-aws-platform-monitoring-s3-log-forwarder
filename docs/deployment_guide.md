@@ -100,7 +100,7 @@ This is the simplest option — no build tools, SAM CLI, or Python required.
 
     > [!NOTE]
     >
-    > * Set `Architecture=arm64` to deploy on Graviton (arm64). Make sure the Layer ARN you selected matches the architecture.
+    > * Set `Architecture=arm64` to deploy on arm64. Make sure the Layer ARN you selected matches the architecture.
     > * When the publisher releases a new layer version, update the `DynatraceS3LogForwarderLayerArn` parameter with the new ARN and redeploy the stack to pick up the update.
 
 ---
@@ -111,7 +111,7 @@ This is the simplest option — no build tools, SAM CLI, or Python required.
 
     ```bash
     wget https://dynatrace-aws-s3-log-forwarder-assets.s3.amazonaws.com/${VERSION_TAG}/lambda-x86_64.zip
-    # or for arm64 (Graviton):
+    # or for arm64:
     # wget https://dynatrace-aws-s3-log-forwarder-assets.s3.amazonaws.com/${VERSION_TAG}/lambda-arm64.zip
     ```
 
@@ -130,7 +130,7 @@ This is the simplest option — no build tools, SAM CLI, or Python required.
             S3BucketNames="my-bucket,another-bucket"
     ```
 
-    Set `Architecture=arm64` for Graviton (arm64) deployments.
+    Set `Architecture=arm64` for arm64 deployments.
 
 3. Update the Lambda function code with the deployment package:
 
