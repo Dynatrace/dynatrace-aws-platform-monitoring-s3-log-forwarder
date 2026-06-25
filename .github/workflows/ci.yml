@@ -115,22 +115,22 @@ jobs:
             arch: x86_64
             runs-on: ubuntu-latest
             artifact: lambda-artifacts-x86_64
-            bucket: dynatrace-aws-s3-log-forwarder-e2e-testing-zip-eventbridge # TODO: rename to …-zip-x86-64
+            bucket: dynatrace-aws-s3-log-forwarder-e2e-testing-zip-x86-64
           - deploy_type: zip
             arch: arm64
             runs-on: ubuntu-24.04-arm
             artifact: lambda-artifacts-arm64
-            bucket: dynatrace-aws-s3-log-forwarder-e2e-testing-zip-sns-fan-out # TODO: rename to …-zip-arm64
+            bucket: dynatrace-aws-s3-log-forwarder-e2e-testing-zip-arm64
           - deploy_type: layer
             arch: x86_64
             runs-on: ubuntu-latest
             artifact: lambda-artifacts-x86_64
-            bucket: dynatrace-aws-s3-log-forwarder-e2e-testing-layer-eventbridge # TODO: rename to …-layer-x86-64
+            bucket: dynatrace-aws-s3-log-forwarder-e2e-testing-layer-x86-64
           - deploy_type: layer
             arch: arm64
             runs-on: ubuntu-24.04-arm
             artifact: lambda-artifacts-arm64
-            bucket: dynatrace-aws-s3-log-forwarder-e2e-testing-layer-sns-fan-out # TODO: rename to …-layer-arm64
+            bucket: dynatrace-aws-s3-log-forwarder-e2e-testing-layer-arm64
     env:
       E2E_TESTING_BUCKET_NAME: ${{ matrix.bucket }}
       CI_RUN_ID: ${{ github.run_id }}
@@ -176,6 +176,7 @@ jobs:
         if: always()
         run: ./tests/e2e/clean_up_notifications.sh eventbridge ${STACK_NAME} ${E2E_TESTING_BUCKET_NAME}
       - name: Test SNS and SQS notifications
+        if: success() || failure()
         run: |
           ./tests/e2e/configure_notifications.sh sns-sqs ${STACK_NAME} ${E2E_TESTING_BUCKET_NAME} ${E2E_TEST_PREFIX} ${{ secrets.CFN_ROLE_ARN }}
           aws s3 cp test.log s3://${E2E_TESTING_BUCKET_NAME}/${E2E_TEST_PREFIX}/sns/test.log
