@@ -1,0 +1,541 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: |
+  dynatrace-aws-platform-monitoring-s3-log-forwarder - CloudWatch monitoring dashboard
+
+  Nested stack deployed by template.yaml when DeployCloudWatchMonitoringDashboard is "true".
+
+Metadata:
+  License:
+    Description: |
+      Copyright 2022 Dynatrace LLC
+
+      Licensed under the Apache License, Version 2.0 (the "License");
+      you may not use this file except in compliance with the License.
+      You may obtain a copy of the License at
+
+           https://www.apache.org/licenses/LICENSE-2.0
+
+      Unless required by applicable law or agreed to in writing, software
+      distributed under the License is distributed on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+      See the License for the specific language governing permissions and
+      limitations under the License.
+
+  Version:
+    Description: dev
+
+Parameters:
+  ParentStackName:
+    Type: String
+    Description: Name of the parent dynatrace-aws-platform-monitoring-s3-log-forwarder stack. Used as the deployment metric dimension and SQS queue name prefix.
+  QueueProcessingFunctionName:
+    Type: String
+    Description: Name of the QueueProcessing Lambda function in the parent stack.
+
+Resources:
+  CloudWatchDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: !Sub ${ParentStackName}-monitoring-dashboard
+      DashboardBody:
+        !Sub >
+          {
+            "widgets": [
+              {
+                "height": 6,
+                "width": 6,
+                "y": 6,
+                "x": 0,
+                "type": "metric",
+                "properties": {
+                  "metrics": [
+                    [
+                      "dynatrace-aws-platform-monitoring-s3-log-forwarder",
+                      "LogProcessingFailures",
+                      "deployment",
+                      "${ParentStackName}"
+                    ],
+                    [
+                      ".",
+                      "LogFilesProcessed",
+                      ".",
+                      "."
+                    ],
+                    [
+                      ".",
+                      "DroppedObjectsDecodingErrors",
+                      ".",
+                      ".",
+                      {
+                        "yAxis": "right"
+                      }
+                    ],
+                    [
+                      ".",
+                      "DroppedObjectsNotMatchingFwdRules",
+                      ".",
+                      ".",
+                      {
+                        "yAxis": "right"
+                      }
+                    ],
+                    [
+                      ".",
+                      "LogMessagesTrimmed",
+                      ".",
+                      ".",
+                      {
+                        "yAxis": "right"
+                      }
+                    ]
+                  ],
+                  "view": "timeSeries",
+                  "stacked": false,
+                  "region": "${AWS::Region}",
+                  "stat": "Sum",
+                  "period": 60,
+                  "title": "Log file processing"
+                }
+              },
+              {
+                "height": 6,
+                "width": 6,
+                "y": 0,
+                "x": 6,
+                "type": "metric",
+                "properties": {
+                  "metrics": [
+                    [
+                      "dynatrace-aws-platform-monitoring-s3-log-forwarder",
+                      "DynatraceHTTPErrors",
+                      "deployment",
+                      "${ParentStackName}",
+                      {
+                        "yAxis": "right"
+                      }
+                    ],
+                    [
+                      ".",
+                      "DynatraceHTTP503SpaceLimitReached",
+                      ".",
+                      ".",
+                      {
+                        "yAxis": "right"
+                      }
+                    ],
+                    [
+                      ".",
+                      "DynatraceHTTP429Throttled",
+                      ".",
+                      ".",
+                      {
+                        "yAxis": "right"
+                      }
+                    ],
+                    [
+                      ".",
+                      "DynatraceHTTP400InvalidLogEntries",
+                      ".",
+                      ".",
+                      {
+                        "yAxis": "right"
+                      }
+                    ],
+                    [
+                      ".",
+                      "DynatraceHTTP413PayloadTooLarge",
+                      ".",
+                      ".",
+                      {
+                        "yAxis": "right"
+                      }
+                    ],
+                    [
+                      ".",
+                      "DynatraceHTTP200PartialSuccess",
+                      ".",
+                      ".",
+                      {
+                        "yAxis": "right"
+                      }
+                    ],
+                    [
+                      ".",
+                      "DynatraceHTTP204Success",
+                      ".",
+                      ".",
+                      {
+                        "yAxis": "left"
+                      }
+                    ]
+                  ],
+                  "view": "timeSeries",
+                  "stacked": false,
+                  "region": "${AWS::Region}",
+                  "stat": "Sum",
+                  "period": 60,
+                  "title": "Dynatrace API Responses"
+                }
+              },
+              {
+                "height": 6,
+                "width": 6,
+                "y": 0,
+                "x": 18,
+                "type": "metric",
+                "properties": {
+                  "metrics": [
+                    [
+                      "dynatrace-aws-platform-monitoring-s3-log-forwarder",
+                      "LogProcessingTime",
+                      "deployment",
+                      "${ParentStackName}",
+                      {
+                        "label": "LogProcessingTime Avg",
+                        "stat": "Average"
+                      }
+                    ],
+                    [
+                      ".",
+                      "DTIngestionTime",
+                      ".",
+                      ".",
+                      {
+                        "yAxis": "right",
+                        "label": "DTIngestionTime Minimum"
+                      }
+                    ],
+                    [
+                      ".",
+                      "LogProcessingTime",
+                      ".",
+                      ".",
+                      {
+                        "stat": "Maximum"
+                      }
+                    ],
+                    [
+                      "..."
+                    ],
+                    [
+                      ".",
+                      "DTIngestionTime",
+                      ".",
+                      ".",
+                      {
+                        "yAxis": "right",
+                        "stat": "Average"
+                      }
+                    ],
+                    [
+                      "...",
+                      {
+                        "yAxis": "right",
+                        "stat": "Maximum"
+                      }
+                    ],
+                    [
+                      "...",
+                      {
+                        "yAxis": "right",
+                        "stat": "p90"
+                      }
+                    ],
+                    [
+                      ".",
+                      "LogProcessingTime",
+                      ".",
+                      ".",
+                      {
+                        "stat": "p90"
+                      }
+                    ]
+                  ],
+                  "view": "timeSeries",
+                  "stacked": false,
+                  "region": "${AWS::Region}",
+                  "title": "QueueProcessing Lambda Function Log processing & Ingestion times",
+                  "period": 60,
+                  "stat": "Minimum"
+                }
+              },
+              {
+                "height": 6,
+                "width": 6,
+                "y": 12,
+                "x": 0,
+                "type": "metric",
+                "properties": {
+                  "metrics": [
+                    [
+                      "dynatrace-aws-platform-monitoring-s3-log-forwarder",
+                      "UncompressedLogDTPayloadSize",
+                      "deployment",
+                      "${ParentStackName}",
+                      {
+                        "yAxis": "left"
+                      }
+                    ],
+                    [
+                      ".",
+                      "ReceivedUncompressedLogFileSize",
+                      ".",
+                      ".",
+                      {
+                        "yAxis": "left"
+                      }
+                    ]
+                  ],
+                  "view": "timeSeries",
+                  "stacked": false,
+                  "region": "${AWS::Region}",
+                  "stat": "Sum",
+                  "period": 60,
+                  "title": "Log Data throughput"
+                }
+              },
+              {
+                "height": 6,
+                "width": 6,
+                "y": 6,
+                "x": 6,
+                "type": "metric",
+                "properties": {
+                  "metrics": [
+                    [
+                      "AWS/Lambda",
+                      "Invocations",
+                      "FunctionName",
+                      "${QueueProcessingFunctionName}"
+                    ],
+                    [
+                      ".",
+                      "ConcurrentExecutions",
+                      ".",
+                      ".",
+                      {
+                        "stat": "Maximum"
+                      }
+                    ],
+                    [
+                      ".",
+                      "Throttles",
+                      ".",
+                      "."
+                    ],
+                    [
+                      ".",
+                      "Errors",
+                      ".",
+                      "."
+                    ],
+                    [
+                      "dynatrace-aws-platform-monitoring-s3-log-forwarder",
+                      "NotEnoughExecutionTimeRemainingErrors",
+                      "deployment",
+                      "${ParentStackName}",
+                      {
+                        "label": "NotEnoughExecutionTimeRemainingErrors"
+                      }
+                    ]
+                  ],
+                  "view": "timeSeries",
+                  "stacked": false,
+                  "region": "${AWS::Region}",
+                  "stat": "Sum",
+                  "period": 60,
+                  "title": "QueueProcessingFunction Executions"
+                }
+              },
+              {
+                "height": 6,
+                "width": 6,
+                "y": 6,
+                "x": 12,
+                "type": "metric",
+                "properties": {
+                  "metrics": [
+                    [
+                      "AWS/SQS",
+                      "ApproximateNumberOfMessagesVisible",
+                      "QueueName",
+                      "${ParentStackName}-S3NotificationsQueue",
+                      {
+                        "stat": "Average"
+                      }
+                    ],
+                    [
+                      ".",
+                      "ApproximateNumberOfMessagesNotVisible",
+                      ".",
+                      "."
+                    ],
+                    [
+                      ".",
+                      "ApproximateAgeOfOldestMessage",
+                      ".",
+                      ".",
+                      {
+                        "yAxis": "right",
+                        "stat": "Average"
+                      }
+                    ],
+                    [
+                      ".",
+                      "NumberOfMessagesSent",
+                      ".",
+                      "."
+                    ],
+                    [
+                      ".",
+                      "NumberOfMessagesDeleted",
+                      ".",
+                      "."
+                    ]
+                  ],
+                  "view": "timeSeries",
+                  "stacked": false,
+                  "region": "${AWS::Region}",
+                  "stat": "Sum",
+                  "period": 60,
+                  "title": "Processing SQS Queue Messages"
+                }
+              },
+              {
+                "height": 6,
+                "width": 6,
+                "y": 6,
+                "x": 18,
+                "type": "metric",
+                "properties": {
+                  "metrics": [
+                    [
+                      "AWS/SQS",
+                      "ApproximateAgeOfOldestMessage",
+                      "QueueName",
+                      "${ParentStackName}-S3NotificationsDLQ",
+                      {
+                        "label": "DLQ ApproximateAgeOfOldestMessage"
+                      }
+                    ],
+                    [
+                      ".",
+                      "ApproximateNumberOfMessagesVisible",
+                      ".",
+                      ".",
+                      {
+                        "label": "DLQ ApproximateNumberOfMessagesVisible",
+                        "yAxis": "right"
+                      }
+                    ]
+                  ],
+                  "view": "timeSeries",
+                  "stacked": false,
+                  "region": "${AWS::Region}",
+                  "stat": "Average",
+                  "period": 60,
+                  "title": "DLQ Metrics"
+                }
+              },
+              {
+                "height": 7,
+                "width": 18,
+                "y": 12,
+                "x": 6,
+                "type": "log",
+                "properties": {
+                  "query": "SOURCE '/aws/lambda/${QueueProcessingFunctionName}' | fields @timestamp, @logStream, @message \n| sort @timestamp desc \n| limit 500",
+                  "region": "${AWS::Region}",
+                  "stacked": false,
+                  "view": "table",
+                  "title": "Lambda queue processing function logs"
+                }
+              },
+              {
+                "height": 6,
+                "width": 6,
+                "y": 0,
+                "x": 12,
+                "type": "metric",
+                "properties": {
+                  "metrics": [
+                    [
+                      "AWS/Lambda",
+                      "Duration",
+                      "FunctionName",
+                      "${QueueProcessingFunctionName}",
+                      {
+                        "stat": "Minimum"
+                      }
+                    ],
+                    [
+                      "...",
+                      {
+                        "stat": "Average"
+                      }
+                    ],
+                    [
+                      "..."
+                    ],
+                    [
+                      "...",
+                      {
+                        "stat": "p90"
+                      }
+                    ]
+                  ],
+                  "view": "timeSeries",
+                  "stacked": false,
+                  "title": "QueueProcessing Lambda Function Execution time",
+                  "region": "${AWS::Region}",
+                  "stat": "Maximum",
+                  "period": 60
+                }
+              },
+              {
+                "height": 6,
+                "width": 6,
+                "y": 0,
+                "x": 0,
+                "type": "metric",
+                "properties": {
+                  "metrics": [
+                    [
+                      "dynatrace-aws-platform-monitoring-s3-log-forwarder",
+                      "ReceivedUncompressedLogFileSize",
+                      "deployment",
+                      "${ParentStackName}"
+                    ],
+                    [
+                      ".",
+                      "UncompressedLogDTPayloadSize",
+                      ".",
+                      ".",
+                      {
+                        "id": "m1"
+                      }
+                    ]
+                  ],
+                  "view": "singleValue",
+                  "region": "${AWS::Region}",
+                  "stat": "Sum",
+                  "period": 60,
+                  "yAxis": {
+                    "left": {
+                      "min": 0,
+                      "max": 500000000000
+                    }
+                  },
+                  "setPeriodToTimeRange": true,
+                  "sparkline": false,
+                  "trend": false,
+                  "title": "Total log data processed over timeframe"
+                }
+              }
+            ]
+          }
+
+Outputs:
+  DashboardName:
+    Description: Name of the deployed CloudWatch dashboard
+    Value: !Ref CloudWatchDashboard

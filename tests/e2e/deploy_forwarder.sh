@@ -33,6 +33,12 @@ aws ssm put-parameter \
     --value "${DT_TENANT_PLATFORM_TOKEN}" \
     --overwrite
 
+log "Uploading nested monitoring dashboard template and rewriting TemplateURL"
+aws s3 cp cloudwatch-monitoring-dashboard.yaml \
+    "s3://${E2E_TESTING_BUCKET_NAME}/test/${STACK_NAME}/cloudwatch-monitoring-dashboard.yaml"
+NESTED_DASHBOARD_URL="https://${E2E_TESTING_BUCKET_NAME}.s3.amazonaws.com/test/${STACK_NAME}/cloudwatch-monitoring-dashboard.yaml"
+./scripts/rewrite_nested_template_url.sh "${NESTED_DASHBOARD_URL}" deploy-template.yaml
+
 case "${DEPLOY_TYPE}" in
     zip)
         log "dist/ contents: $(ls dist/ 2>/dev/null || echo '(empty or missing)')"
@@ -47,7 +53,7 @@ case "${DEPLOY_TYPE}" in
                         Architecture="${ARCH}" \
                         $([ "${NOTIFICATION_TYPE}" = "sns" ] && echo "CreateS3NotificationsSNSTopic=true S3BucketNames=${E2E_TESTING_BUCKET_NAME}") \
                         $([ "${NOTIFICATION_TYPE}" = "sqs" ] && echo "S3BucketNames=${E2E_TESTING_BUCKET_NAME}") \
-                        --template-file template.yaml --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
+                        --template-file deploy-template.yaml --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
                         --role-arn ${CFN_ROLE_ARN}
 
         aws cloudformation wait stack-create-complete --stack-name ${STACK_NAME}
@@ -105,7 +111,7 @@ case "${DEPLOY_TYPE}" in
                         Architecture="${ARCH}" \
                         $([ "${NOTIFICATION_TYPE}" = "sns" ] && echo "CreateS3NotificationsSNSTopic=true S3BucketNames=${E2E_TESTING_BUCKET_NAME}") \
                         $([ "${NOTIFICATION_TYPE}" = "sqs" ] && echo "S3BucketNames=${E2E_TESTING_BUCKET_NAME}") \
-                        --template-file template.yaml --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
+                        --template-file deploy-template.yaml --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
                         --role-arn ${CFN_ROLE_ARN}
 
         aws cloudformation wait stack-create-complete --stack-name ${STACK_NAME}

@@ -149,11 +149,23 @@ This will:
     >
     > The build runs inside a Docker container. Make sure Docker is running before executing the build script.
 
+1. Upload the nested dashboard template and rewrite its `TemplateURL` in `template.yaml`. `template.yaml` references `cloudwatch-monitoring-dashboard.yaml` via a local path, which CloudFormation can't resolve — it needs an absolute S3 URL:
+
+    ```bash
+    export CFN_ARTIFACTS_BUCKET=<your-s3-bucket-for-cfn-artifacts>
+
+    aws s3 cp cloudwatch-monitoring-dashboard.yaml \
+        "s3://${CFN_ARTIFACTS_BUCKET}/${STACK_NAME}/cloudwatch-monitoring-dashboard.yaml"
+
+    NESTED_DASHBOARD_URL="https://${CFN_ARTIFACTS_BUCKET}.s3.amazonaws.com/${STACK_NAME}/cloudwatch-monitoring-dashboard.yaml"
+    ./scripts/rewrite_nested_template_url.sh "${NESTED_DASHBOARD_URL}" deploy-template.yaml
+    ```
+
 1. Deploy the CloudFormation stack (this creates all infrastructure with a placeholder Lambda function):
 
     ```bash
     aws cloudformation deploy --stack-name $STACK_NAME \
-               --template-file template.yaml \
+               --template-file deploy-template.yaml \
                --parameter-overrides \
                     DynatraceEnvironmentURL="https://$DYNATRACE_TENANT_UUID.live.dynatrace.com" \
                     DynatraceApiKeySSMParameter=$PARAMETER_NAME \
