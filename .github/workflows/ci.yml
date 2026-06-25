@@ -175,22 +175,16 @@ jobs:
       - name: Clean up EventBridge notification
         if: always()
         run: ./tests/e2e/clean_up_notifications.sh eventbridge ${STACK_NAME} ${E2E_TESTING_BUCKET_NAME}
-      - name: Test SNS notification
+      - name: Test SNS and SQS notifications
         run: |
-          ./tests/e2e/configure_notifications.sh sns ${STACK_NAME} ${E2E_TESTING_BUCKET_NAME} ${E2E_TEST_PREFIX}/sns ${{ secrets.CFN_ROLE_ARN }}
+          ./tests/e2e/configure_notifications.sh sns-sqs ${STACK_NAME} ${E2E_TESTING_BUCKET_NAME} ${E2E_TEST_PREFIX} ${{ secrets.CFN_ROLE_ARN }}
           aws s3 cp test.log s3://${E2E_TESTING_BUCKET_NAME}/${E2E_TEST_PREFIX}/sns/test.log
-          ./tests/e2e/validate_logs_exist.py --bucket ${E2E_TESTING_BUCKET_NAME} --key ${E2E_TEST_PREFIX}/sns/test.log
-      - name: Clean up SNS notification
-        if: always()
-        run: ./tests/e2e/clean_up_notifications.sh sns ${STACK_NAME} ${E2E_TESTING_BUCKET_NAME}
-      - name: Test SQS notification
-        run: |
-          ./tests/e2e/configure_notifications.sh sqs ${STACK_NAME} ${E2E_TESTING_BUCKET_NAME} ${E2E_TEST_PREFIX}/sqs ${{ secrets.CFN_ROLE_ARN }}
           aws s3 cp test.log s3://${E2E_TESTING_BUCKET_NAME}/${E2E_TEST_PREFIX}/sqs/test.log
+          ./tests/e2e/validate_logs_exist.py --bucket ${E2E_TESTING_BUCKET_NAME} --key ${E2E_TEST_PREFIX}/sns/test.log
           ./tests/e2e/validate_logs_exist.py --bucket ${E2E_TESTING_BUCKET_NAME} --key ${E2E_TEST_PREFIX}/sqs/test.log
-      - name: Clean up SQS notification
+      - name: Clean up SNS and SQS notifications
         if: always()
-        run: ./tests/e2e/clean_up_notifications.sh sqs ${STACK_NAME} ${E2E_TESTING_BUCKET_NAME}
+        run: ./tests/e2e/clean_up_notifications.sh sns-sqs ${STACK_NAME} ${E2E_TESTING_BUCKET_NAME}
       - name: Clean up resources
         if: always()
         run: ./tests/e2e/clean_up_resources.sh
