@@ -1,14 +1,15 @@
 #!/bin/bash
 
-# Remove all S3 notification configuration from the test bucket and delete
-# the bucket-configuration CloudFormation stack.
+# Remove S3 notification configuration for a single notification type.
+# For eventbridge, also deletes the bucket-configuration CloudFormation stack.
 #
-# Usage: ./tests/e2e/clean_up_notifications.sh <stack_name> <bucket>
+# Usage: ./tests/e2e/clean_up_notifications.sh <eventbridge|sns|sqs> <stack_name> <bucket>
 
 set -e
 
-STACK_NAME="${1:?Usage: $0 <stack_name> <bucket>}"
-E2E_TESTING_BUCKET_NAME="${2:?Usage: $0 <stack_name> <bucket>}"
+NOTIFICATION_TYPE="${1:?Usage: $0 <eventbridge|sns|sqs> <stack_name> <bucket>}"
+STACK_NAME="${2:?Usage: $0 <eventbridge|sns|sqs> <stack_name> <bucket>}"
+E2E_TESTING_BUCKET_NAME="${3:?Usage: $0 <eventbridge|sns|sqs> <stack_name> <bucket>}"
 
 TIMESTAMP_FORMAT='+%Y-%m-%dT%H:%M:%SZ'
 log() {
@@ -20,6 +21,8 @@ aws s3api put-bucket-notification-configuration \
     --bucket "${E2E_TESTING_BUCKET_NAME}" \
     --notification-configuration '{}' || true
 
-log "Deleting CloudFormation stack ${STACK_NAME}-s3-bucket-configuration"
-aws cloudformation delete-stack --stack-name ${STACK_NAME}-s3-bucket-configuration
-aws cloudformation wait stack-delete-complete --stack-name ${STACK_NAME}-s3-bucket-configuration
+if [ "${NOTIFICATION_TYPE}" = "eventbridge" ]; then
+    log "Deleting CloudFormation stack ${STACK_NAME}-s3-bucket-configuration"
+    aws cloudformation delete-stack --stack-name ${STACK_NAME}-s3-bucket-configuration || true
+    aws cloudformation wait stack-delete-complete --stack-name ${STACK_NAME}-s3-bucket-configuration || true
+fi
