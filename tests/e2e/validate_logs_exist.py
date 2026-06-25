@@ -48,7 +48,7 @@ def get_oauth_bearer_token():
     return resp.json()["access_token"]
 
 POLL_INTERVAL_SECONDS = 10
-POLL_MAX_ATTEMPTS = 18
+POLL_MAX_ATTEMPTS = 30
 
 def get_logs_from_dynatrace(source_bucket_name,source_key_name):
     base_url = os.environ['DT_TENANT_PLATFORM_URL']
@@ -63,11 +63,11 @@ def get_logs_from_dynatrace(source_bucket_name,source_key_name):
     )
 
     now = datetime.now(timezone.utc)
-    five_minutes_ago = now - timedelta(minutes=5)
+    fifteen_minutes_ago = now - timedelta(minutes=15)
 
     body = {
         "query": dql_query,
-        "defaultTimeframeStart": five_minutes_ago.strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
+        "defaultTimeframeStart": fifteen_minutes_ago.strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
         "defaultTimeframeEnd": now.strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
         "defaultScanLimitGbytes": -1,
     }

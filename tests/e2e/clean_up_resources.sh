@@ -51,22 +51,6 @@ export_cloudwatch_logs () {
 
 # Delete resources
 
-if [ "${NOTIFICATION_TYPE:-eventbridge}" = "sns" ] || [ "${NOTIFICATION_TYPE}" = "sqs" ]; then
-    log "Clearing bucket notification configuration for ${E2E_TESTING_BUCKET_NAME}"
-    aws s3api put-bucket-notification-configuration \
-        --bucket "${E2E_TESTING_BUCKET_NAME}" \
-        --notification-configuration '{}' || true
-else
-    log "Clearing bucket notification configuration for ${E2E_TESTING_BUCKET_NAME}"
-    aws s3api put-bucket-notification-configuration \
-        --bucket "${E2E_TESTING_BUCKET_NAME}" \
-        --notification-configuration '{}' || true
-
-    log "Deleting Cloudformation Stack ${STACK_NAME}-s3-bucket-configuration"
-    aws cloudformation delete-stack --stack-name ${STACK_NAME}-s3-bucket-configuration
-    aws cloudformation wait stack-delete-complete --stack-name ${STACK_NAME}-s3-bucket-configuration
-fi
-
 log "Deleting Cloudformation Stack ${STACK_NAME}"
 aws cloudformation delete-stack --stack-name ${STACK_NAME}
 aws cloudformation wait stack-delete-complete --stack-name ${STACK_NAME}
