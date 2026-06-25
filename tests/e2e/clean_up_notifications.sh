@@ -7,9 +7,9 @@
 
 set -e
 
-NOTIFICATION_TYPE="${1:?Usage: $0 <eventbridge|sns|sqs> <stack_name> <bucket>}"
-STACK_NAME="${2:?Usage: $0 <eventbridge|sns|sqs> <stack_name> <bucket>}"
-E2E_TESTING_BUCKET_NAME="${3:?Usage: $0 <eventbridge|sns|sqs> <stack_name> <bucket>}"
+NOTIFICATION_TYPE="${1:?Usage: $0 <eventbridge|sns-sqs> <stack_name> <bucket>}"
+STACK_NAME="${2:?Usage: $0 <eventbridge|sns-sqs> <stack_name> <bucket>}"
+E2E_TESTING_BUCKET_NAME="${3:?Usage: $0 <eventbridge|sns-sqs> <stack_name> <bucket>}"
 
 TIMESTAMP_FORMAT='+%Y-%m-%dT%H:%M:%SZ'
 log() {
