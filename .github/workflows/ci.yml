@@ -37,6 +37,7 @@ jobs:
       - name: Validate CloudFormation templates
         run: |
           aws cloudformation validate-template --template-body file://template.yaml
+          aws cloudformation validate-template --template-body file://cloudwatch-monitoring-dashboard.yaml
           aws cloudformation validate-template --template-body file://dynatrace-aws-s3-log-forwarder-layer.yaml
           aws cloudformation validate-template --template-body file://dynatrace-aws-s3-log-forwarder-s3-bucket-configuration.yaml
           aws cloudformation validate-template --template-body file://eventbridge-cross-region-or-account-forward-rules.yaml

@@ -101,12 +101,18 @@ jobs:
         run: |
           sed -i "s/^\( *x86: \)[0-9]*/\1${{ needs.release-x86_64.outputs.layer-version }}/" template.yaml
           sed -i "s/^\( *arm64: \)[0-9]*/\1${{ needs.release-arm64.outputs.layer-version }}/" template.yaml
+      - name: Rewrite nested TemplateURL to release S3 URL
+        run: |
+          NESTED_URL="https://${RELEASE_BUCKET}.s3.amazonaws.com/${{ github.ref_name }}/cloudwatch-monitoring-dashboard.yaml"
+          ./scripts/rewrite_nested_template_url.sh "${NESTED_URL}"
       - name: Upload CloudFormation templates to S3
         run: |
           aws s3 cp template.yaml s3://${RELEASE_BUCKET}/${{ github.ref_name }}/
+          aws s3 cp cloudwatch-monitoring-dashboard.yaml s3://${RELEASE_BUCKET}/${{ github.ref_name }}/
           aws s3 cp dynatrace-aws-s3-log-forwarder-s3-bucket-configuration.yaml s3://${RELEASE_BUCKET}/${{ github.ref_name }}/
           aws s3 cp eventbridge-cross-region-or-account-forward-rules.yaml s3://${RELEASE_BUCKET}/${{ github.ref_name }}/
           zip templates.zip -j template.yaml \
+            cloudwatch-monitoring-dashboard.yaml \
             dynatrace-aws-s3-log-forwarder-s3-bucket-configuration.yaml \
             eventbridge-cross-region-or-account-forward-rules.yaml
           aws s3 cp templates.zip s3://${RELEASE_BUCKET}/${{ github.ref_name }}/
