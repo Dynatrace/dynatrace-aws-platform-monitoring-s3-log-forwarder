@@ -102,37 +102,36 @@ jobs:
             dist/layer.zip
           retention-days: 7
 
-  e2e-test-x86_64:
-    name: End-to-end deployment test (${{ matrix.deploy_type }}, ${{ matrix.notification_type }}, x86_64)
-    runs-on: ubuntu-latest
+  e2e-test:
+    name: End-to-end deployment test (${{ matrix.deploy_type }}, ${{ matrix.arch }})
+    runs-on: ${{ matrix.runs-on }}
     needs: [unit-tests, build-x86_64, build-arm64]
     if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
     strategy:
       fail-fast: false
       matrix:
-        deploy_type: [zip, layer]
-        notification_type: [eventbridge, sns, sqs]
         include:
           - deploy_type: zip
-            notification_type: eventbridge
-            bucket: dynatrace-aws-s3-log-forwarder-e2e-testing-zip-eventbridge
+            arch: x86_64
+            runs-on: ubuntu-latest
+            artifact: lambda-artifacts-x86_64
+            bucket: dynatrace-aws-s3-log-forwarder-e2e-testing-zip-eventbridge # TODO: rename to …-zip-x86-64
           - deploy_type: zip
-            notification_type: sns
-            bucket: dynatrace-aws-s3-log-forwarder-e2e-testing-zip-sns-fan-out
-          - deploy_type: zip
-            notification_type: sqs
-            bucket: dynatrace-aws-s3-log-forwarder-e2e-testing-zip-direct-sqs
+            arch: arm64
+            runs-on: ubuntu-24.04-arm
+            artifact: lambda-artifacts-arm64
+            bucket: dynatrace-aws-s3-log-forwarder-e2e-testing-zip-sns-fan-out # TODO: rename to …-zip-arm64
           - deploy_type: layer
-            notification_type: eventbridge
-            bucket: dynatrace-aws-s3-log-forwarder-e2e-testing-layer-eventbridge
+            arch: x86_64
+            runs-on: ubuntu-latest
+            artifact: lambda-artifacts-x86_64
+            bucket: dynatrace-aws-s3-log-forwarder-e2e-testing-layer-eventbridge # TODO: rename to …-layer-x86-64
           - deploy_type: layer
-            notification_type: sns
-            bucket: dynatrace-aws-s3-log-forwarder-e2e-testing-layer-sns-fan-out
-          - deploy_type: layer
-            notification_type: sqs
-            bucket: dynatrace-aws-s3-log-forwarder-e2e-testing-layer-direct-sqs
+            arch: arm64
+            runs-on: ubuntu-24.04-arm
+            artifact: lambda-artifacts-arm64
+            bucket: dynatrace-aws-s3-log-forwarder-e2e-testing-layer-sns-fan-out # TODO: rename to …-layer-arm64
     env:
-      NOTIFICATION_TYPE: ${{ matrix.notification_type }}
       E2E_TESTING_BUCKET_NAME: ${{ matrix.bucket }}
       CI_RUN_ID: ${{ github.run_id }}
       DT_TENANT_PLATFORM_TOKEN: ${{ secrets.DT_TENANT_PLATFORM_TOKEN }}
@@ -145,10 +144,9 @@ jobs:
       - uses: actions/checkout@v6
       - name: Set stack name and test prefix
         run: |
-          DEPLOY_SHORT=$([[ "${{ matrix.deploy_type }}" == "layer" ]] && echo "lyr" || echo "zip")
-          NOTIFICATION_SUFFIX=$([[ "${{ matrix.notification_type }}" == "eventbridge" ]] && echo "" || echo "-${{ matrix.notification_type }}")
-          echo "STACK_NAME=e2e-dt-aws-s3-log-forwarder-${DEPLOY_SHORT}${NOTIFICATION_SUFFIX}-${{ github.run_id }}" >> $GITHUB_ENV
-          echo "E2E_TEST_PREFIX=test/${{ github.run_id }}/${{ matrix.deploy_type }}/${{ matrix.notification_type }}/x86_64" >> $GITHUB_ENV
+          ARCH="${{ matrix.arch }}"
+          echo "STACK_NAME=e2e-dt-aws-s3-log-forwarder-${{ matrix.deploy_type }}-${ARCH//_/-}-${{ github.run_id }}" >> $GITHUB_ENV
+          echo "E2E_TEST_PREFIX=test/${{ github.run_id }}/${{ matrix.deploy_type }}/${{ matrix.arch }}" >> $GITHUB_ENV
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6
         with:
@@ -157,7 +155,7 @@ jobs:
       - name: Download build artifacts
         uses: actions/download-artifact@v7
         with:
-          name: lambda-artifacts-x86_64
+          name: ${{ matrix.artifact }}
           path: dist/
       - uses: actions/setup-python@v6
         with:
@@ -165,92 +163,24 @@ jobs:
       - name: Install dependencies
         run: pip install requests
       - name: Deploy forwarder
-        run: ./tests/e2e/deploy_forwarder.sh ${{ matrix.deploy_type }} ${{ matrix.notification_type }} x86_64
-      - name: Write test log to S3 and wait for ingestion
+        run: ./tests/e2e/deploy_forwarder.sh ${{ matrix.deploy_type }} ${{ matrix.arch }}
+      - name: Configure S3 notifications
+        run: ./tests/e2e/configure_notifications.sh ${STACK_NAME} ${E2E_TESTING_BUCKET_NAME} ${E2E_TEST_PREFIX} ${{ secrets.CFN_ROLE_ARN }}
+      - name: Write test logs to S3
         run: |
-          echo "[$(date -u '+%Y-%m-%dT%H:%M:%SZ')] E2E testing validation log entry" > ${{ github.run_id }}.log
-          aws s3 cp ${{ github.run_id }}.log s3://${E2E_TESTING_BUCKET_NAME}/${E2E_TEST_PREFIX}/test_log.log
-          sleep 180
-      - name: Validate log entry exists in Dynatrace
-        run: ./tests/e2e/validate_logs_exist.py --bucket ${E2E_TESTING_BUCKET_NAME} --key ${E2E_TEST_PREFIX}/test_log.log
-      - name: Clean up resources
+          echo "[$(date -u '+%Y-%m-%dT%H:%M:%SZ')] E2E testing validation log entry" > test.log
+          aws s3 cp test.log s3://${E2E_TESTING_BUCKET_NAME}/${E2E_TEST_PREFIX}/eventbridge/test.log
+          aws s3 cp test.log s3://${E2E_TESTING_BUCKET_NAME}/${E2E_TEST_PREFIX}/sns/test.log
+          aws s3 cp test.log s3://${E2E_TESTING_BUCKET_NAME}/${E2E_TEST_PREFIX}/sqs/test.log
+      - name: Validate EventBridge log entry exists in Dynatrace
+        run: ./tests/e2e/validate_logs_exist.py --bucket ${E2E_TESTING_BUCKET_NAME} --key ${E2E_TEST_PREFIX}/eventbridge/test.log
+      - name: Validate SNS log entry exists in Dynatrace
+        run: ./tests/e2e/validate_logs_exist.py --bucket ${E2E_TESTING_BUCKET_NAME} --key ${E2E_TEST_PREFIX}/sns/test.log
+      - name: Validate SQS log entry exists in Dynatrace
+        run: ./tests/e2e/validate_logs_exist.py --bucket ${E2E_TESTING_BUCKET_NAME} --key ${E2E_TEST_PREFIX}/sqs/test.log
+      - name: Clean up notifications
         if: always()
-        run: ./tests/e2e/clean_up_resources.sh
-
-  e2e-test-arm64:
-    name: End-to-end deployment test (${{ matrix.deploy_type }}, ${{ matrix.notification_type }}, arm64)
-    runs-on: ubuntu-24.04-arm
-    needs: [unit-tests, build-x86_64, build-arm64, e2e-test-x86_64]
-    if: >-
-      needs.build-arm64.result == 'success' && needs.e2e-test-x86_64.result == 'success' &&
-      ((github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-      (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository))
-    strategy:
-      fail-fast: false
-      matrix:
-        deploy_type: [zip, layer]
-        notification_type: [eventbridge, sns, sqs]
-        include:
-          - deploy_type: zip
-            notification_type: eventbridge
-            bucket: dynatrace-aws-s3-log-forwarder-e2e-testing-zip-eventbridge
-          - deploy_type: zip
-            notification_type: sns
-            bucket: dynatrace-aws-s3-log-forwarder-e2e-testing-zip-sns-fan-out
-          - deploy_type: zip
-            notification_type: sqs
-            bucket: dynatrace-aws-s3-log-forwarder-e2e-testing-zip-direct-sqs
-          - deploy_type: layer
-            notification_type: eventbridge
-            bucket: dynatrace-aws-s3-log-forwarder-e2e-testing-layer-eventbridge
-          - deploy_type: layer
-            notification_type: sns
-            bucket: dynatrace-aws-s3-log-forwarder-e2e-testing-layer-sns-fan-out
-          - deploy_type: layer
-            notification_type: sqs
-            bucket: dynatrace-aws-s3-log-forwarder-e2e-testing-layer-direct-sqs
-    env:
-      NOTIFICATION_TYPE: ${{ matrix.notification_type }}
-      E2E_TESTING_BUCKET_NAME: ${{ matrix.bucket }}
-      CI_RUN_ID: ${{ github.run_id }}
-      DT_TENANT_PLATFORM_TOKEN: ${{ secrets.DT_TENANT_PLATFORM_TOKEN }}
-      CFN_ROLE_ARN: ${{ secrets.CFN_ROLE_ARN }}
-      DT_TENANT_PLATFORM_URL: ${{ secrets.DT_TENANT_PLATFORM_URL }}
-      DT_SSO_URL: ${{ secrets.DT_SSO_URL }}
-      DT_OAUTH_CLIENT_ID: ${{ secrets.DT_OAUTH_CLIENT_ID }}
-      DT_OAUTH_CLIENT_SECRET: ${{ secrets.DT_OAUTH_CLIENT_SECRET }}
-    steps:
-      - uses: actions/checkout@v6
-      - name: Set stack name and test prefix
-        run: |
-          DEPLOY_SHORT=$([[ "${{ matrix.deploy_type }}" == "layer" ]] && echo "lyr" || echo "zip")
-          NOTIFICATION_SUFFIX=$([[ "${{ matrix.notification_type }}" == "eventbridge" ]] && echo "" || echo "-${{ matrix.notification_type }}")
-          echo "STACK_NAME=e2e-dt-aws-s3-log-forwarder-${DEPLOY_SHORT}${NOTIFICATION_SUFFIX}-${{ github.run_id }}" >> $GITHUB_ENV
-          echo "E2E_TEST_PREFIX=test/${{ github.run_id }}/${{ matrix.deploy_type }}/${{ matrix.notification_type }}/arm64" >> $GITHUB_ENV
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v6
-        with:
-          role-to-assume: ${{ secrets.AWS_CICD_ROLE_ARN }}
-          aws-region: us-east-1
-      - name: Download build artifacts
-        uses: actions/download-artifact@v7
-        with:
-          name: lambda-artifacts-arm64
-          path: dist/
-      - uses: actions/setup-python@v6
-        with:
-          python-version: '3.14'
-      - name: Install dependencies
-        run: pip install requests
-      - name: Deploy forwarder
-        run: ./tests/e2e/deploy_forwarder.sh ${{ matrix.deploy_type }} ${{ matrix.notification_type }} arm64
-      - name: Write test log to S3 and wait for ingestion
-        run: |
-          echo "[$(date -u '+%Y-%m-%dT%H:%M:%SZ')] E2E testing validation log entry" > ${{ github.run_id }}.log
-          aws s3 cp ${{ github.run_id }}.log s3://${E2E_TESTING_BUCKET_NAME}/${E2E_TEST_PREFIX}/test_log.log
-          sleep 180
-      - name: Validate log entry exists in Dynatrace
-        run: ./tests/e2e/validate_logs_exist.py --bucket ${E2E_TESTING_BUCKET_NAME} --key ${E2E_TEST_PREFIX}/test_log.log
+        run: ./tests/e2e/clean_up_notifications.sh ${STACK_NAME} ${E2E_TESTING_BUCKET_NAME}
       - name: Clean up resources
         if: always()
         run: ./tests/e2e/clean_up_resources.sh
