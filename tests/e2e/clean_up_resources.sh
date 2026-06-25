@@ -2,7 +2,7 @@
 
 # Settings for CloudWatch Log Export job
 PREFIX="test/${CI_RUN_ID}/lambda-logs"
-STACK_NAME=${STACK_NAME:-e2e-dt-aws-s3-log-forwarder-${CI_RUN_ID}}
+: "${STACK_NAME:?STACK_NAME must be set}"
 : "${E2E_TESTING_BUCKET_NAME:?E2E_TESTING_BUCKET_NAME must be set}"
 LAMBDA_FUNCTION_NAME=$(aws cloudformation describe-stacks --stack-name ${STACK_NAME} --query \
                          'Stacks[].Outputs[?OutputKey==`QueueProcessingFunction`].OutputValue' \
