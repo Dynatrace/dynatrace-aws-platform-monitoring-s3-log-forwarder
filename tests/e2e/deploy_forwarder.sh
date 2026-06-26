@@ -113,9 +113,8 @@ case "${DEPLOY_TYPE}" in
                         EnableCrossRegionCrossAccountForwarding=true \
                         DeploymentPackageType=layer \
                         DynatraceS3LogForwarderLayerArn="${LAYER_ARN}" \
-                        Architecture="${ARCH}" \
-                        CreateS3NotificationsSNSTopic=true \
                         S3BucketNames=${E2E_TESTING_BUCKET_NAME} \
+                        Architecture="${ARCH}" \
                         "${EXTRA_CFN_PARAMS[@]}" \
                         --template-file deploy-template.yaml --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
                         --role-arn ${CFN_ROLE_ARN}
