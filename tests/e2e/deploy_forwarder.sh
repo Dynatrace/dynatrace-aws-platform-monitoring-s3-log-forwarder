@@ -26,6 +26,10 @@ log() {
 
 SSM_PARAMETER_NAME="/dynatrace/s3-log-forwarder/${STACK_NAME}/api-key"
 
+EXTRA_CFN_PARAMS=()
+[[ -n "${KMS_KEY_ARNS:-}" ]]  && EXTRA_CFN_PARAMS+=(KmsKeyArns="${KMS_KEY_ARNS}")
+[[ -n "${IAM_ROLE_PATH:-}" ]] && EXTRA_CFN_PARAMS+=(IamRolePath="${IAM_ROLE_PATH}")
+
 log "Storing Dynatrace platform token in SSM Parameter Store"
 aws ssm put-parameter \
     --name "${SSM_PARAMETER_NAME}" \
@@ -53,6 +57,8 @@ case "${DEPLOY_TYPE}" in
                         Architecture="${ARCH}" \
                         CreateS3NotificationsSNSTopic=true \
                         --template-file deploy-template.yaml --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
+                        S3BucketNames=${E2E_TESTING_BUCKET_NAME} \
+                        "${EXTRA_CFN_PARAMS[@]}" \
                         --role-arn ${CFN_ROLE_ARN}
 
         aws cloudformation wait stack-create-complete --stack-name ${STACK_NAME}
@@ -109,6 +115,8 @@ case "${DEPLOY_TYPE}" in
                         DynatraceS3LogForwarderLayerArn="${LAYER_ARN}" \
                         Architecture="${ARCH}" \
                         CreateS3NotificationsSNSTopic=true \
+                        S3BucketNames=${E2E_TESTING_BUCKET_NAME} \
+                        "${EXTRA_CFN_PARAMS[@]}" \
                         --template-file deploy-template.yaml --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
                         --role-arn ${CFN_ROLE_ARN}
 
