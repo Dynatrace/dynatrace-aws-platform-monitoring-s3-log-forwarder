@@ -163,6 +163,10 @@ jobs:
           python-version: '3.14'
       - name: Install dependencies
         run: pip install requests
+      - name: Print DT URLs
+        run: |
+          echo "DT_TENANT_URL=${DT_TENANT_URL}"
+          echo "DT_TENANT_PLATFORM_URL=${DT_TENANT_PLATFORM_URL}"
       - name: Deploy forwarder
         run: ./tests/e2e/deploy_forwarder.sh ${{ matrix.deploy_type }} ${{ matrix.arch }}
       - name: Create test log file
@@ -227,6 +231,10 @@ jobs:
           python-version: '3.14'
       - name: Install dependencies
         run: pip install requests
+      - name: Print DT URLs
+        run: |
+          echo "DT_TENANT_URL=${DT_TENANT_URL}"
+          echo "DT_TENANT_PLATFORM_URL=${DT_TENANT_PLATFORM_URL}"
       - name: Deploy forwarder
         run: ./tests/e2e/deploy_forwarder.sh layer x86_64
       - name: Create test log file
