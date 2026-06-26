@@ -204,20 +204,19 @@ jobs:
       - name: Configure SNS and SQS notifications
         if: success() || failure()
         run: ./tests/e2e/configure_notifications.sh sns-sqs ${STACK_NAME} ${E2E_TESTING_BUCKET_NAME} ${E2E_TEST_PREFIX} ${{ secrets.CFN_ROLE_ARN }}
-      - name: Test SNS notification
+      - name: Test SNS and SQS notifications
         if: success() || failure()
         run: |
           echo "[$(date -u '+%Y-%m-%dT%H:%M:%SZ')] E2E testing validation log entry" > test.log
           aws s3 cp test.log s3://${E2E_TESTING_BUCKET_NAME}/${E2E_TEST_PREFIX}/sns/test.log
-          sleep 180
-          ./tests/e2e/validate_logs_exist.py --bucket ${E2E_TESTING_BUCKET_NAME} --key ${E2E_TEST_PREFIX}/sns/test.log
-      - name: Test SQS notification
-        if: success() || failure()
-        run: |
-          echo "[$(date -u '+%Y-%m-%dT%H:%M:%SZ')] E2E testing validation log entry" > test.log
           aws s3 cp test.log s3://${E2E_TESTING_BUCKET_NAME}/${E2E_TEST_PREFIX}/sqs/test.log
           sleep 180
-          ./tests/e2e/validate_logs_exist.py --bucket ${E2E_TESTING_BUCKET_NAME} --key ${E2E_TEST_PREFIX}/sqs/test.log
+          ./tests/e2e/validate_logs_exist.py --bucket ${E2E_TESTING_BUCKET_NAME} --key ${E2E_TEST_PREFIX}/sns/test.log &
+          ./tests/e2e/validate_logs_exist.py --bucket ${E2E_TESTING_BUCKET_NAME} --key ${E2E_TEST_PREFIX}/sqs/test.log &
+          RESULT=0
+          wait -n || RESULT=$?
+          wait -n || RESULT=$?
+          exit $RESULT
       - name: Clean up SNS and SQS notifications
         if: always()
         run: ./tests/e2e/clean_up_notifications.sh sns-sqs ${STACK_NAME} ${E2E_TESTING_BUCKET_NAME}
