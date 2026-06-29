@@ -27,8 +27,9 @@ log() {
 SSM_PARAMETER_NAME="/dynatrace/s3-log-forwarder/${STACK_NAME}/api-key"
 
 EXTRA_CFN_PARAMS=()
-[[ -n "${KMS_KEY_ARNS:-}" ]]  && EXTRA_CFN_PARAMS+=(KmsKeyArns="${KMS_KEY_ARNS}")
-[[ -n "${IAM_ROLE_PATH:-}" ]] && EXTRA_CFN_PARAMS+=(IamRolePath="${IAM_ROLE_PATH}")
+[[ -n "${KMS_KEY_ARNS:-}" ]]    && EXTRA_CFN_PARAMS+=(KmsKeyArns="${KMS_KEY_ARNS}")
+[[ -n "${IAM_ROLE_PATH:-}" ]]   && EXTRA_CFN_PARAMS+=(IamRolePath="${IAM_ROLE_PATH}")
+[[ -n "${S3_BUCKET_NAMES:-}" ]] && EXTRA_CFN_PARAMS+=(S3BucketNames="${S3_BUCKET_NAMES}")
 
 log "Storing Dynatrace platform token in SSM Parameter Store"
 aws ssm put-parameter \
