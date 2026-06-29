@@ -394,6 +394,9 @@ Conditions:
   KmsKeyArnsProvided: !Not [!Equals [!Join ["", !Ref KmsKeyArns], ""]]
   DirectApiKeyProvided: !Not [!Equals [!Ref DynatraceApiKey, ""]]
   IsLayerArnProvided: !Not [!Equals [!Ref DynatraceS3LogForwarderLayerArn, ""]]
+  IsDynatraceProductionEnvironment: !Equals
+    - !Select [ 2, !Split [ ".", !Select [ 1, !Split [ "://", !Ref DynatraceEnvironmentURL ] ] ] ]
+    - 'dynatrace'
 
 Globals:
   Function:
@@ -486,7 +489,14 @@ Resources:
       Environment:
         Variables:
           LD_LIBRARY_PATH: !If [IsLayerDeployment, !Ref "AWS::NoValue", "/var/task/lib"]
-          DYNATRACE_ENV_URL: !Ref DynatraceEnvironmentURL
+          DYNATRACE_ENV_URL: !If
+            - IsDynatraceProductionEnvironment
+            - !Sub
+              - 'https://${Subdomain}.da.dynatrace.com'
+              - Subdomain: !Select [ 0, !Split [ ".", !Select [ 1, !Split [ "://", !Ref DynatraceEnvironmentURL ] ] ] ]
+            - !Sub
+              - 'https://${Subdomain}.da.dynatracelabs.com'
+              - Subdomain: !Select [ 0, !Split [ ".apps", !Select [ 0, !Split [ ".dynatracelabs.com", !Select [ 1, !Split [ "://", !Ref DynatraceEnvironmentURL ] ] ] ] ] ]
           DYNATRACE_API_KEY_SSM: !If
             - DirectApiKeyProvided
             - !Sub /dynatrace/s3-log-forwarder/${AWS::StackName}/api-key
