@@ -25,8 +25,8 @@ log_format: text
 
 annotations:
   cloud.provider: aws
-  aws.resource.type: "AWS::EC2::FlowLog"
-  aws.arn.pattern: "arn:aws:ec2:{aws.region}:{aws.account.id}:vpc-flow-log/{aws.vpc.flow_log_id}"
+  # aws.resource.type: "AWS::EC2::FlowLog"
+  # aws.arn.pattern: "arn:aws:ec2:{aws.region}:{aws.account.id}:vpc-flow-log/{aws.vpc.flow_log_id}"
 
 attribute_extraction_from_key_name:
   aws.account.id: '{aws_account_id_pattern}'
