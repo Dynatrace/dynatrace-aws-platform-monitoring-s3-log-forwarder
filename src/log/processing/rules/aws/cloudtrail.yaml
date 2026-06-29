@@ -23,7 +23,7 @@ log_entries_key: Records
 
 annotations:
   cloud.provider: aws
-  aws.resource.type: "AWS::CloudTrail::Trail"
+  # aws.resource.type: "AWS::CloudTrail::Trail"
 
 attribute_extraction_from_key_name:
   aws.account.id: '{aws_account_id_pattern}'
