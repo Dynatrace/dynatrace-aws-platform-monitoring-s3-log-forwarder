@@ -224,6 +224,7 @@ jobs:
         if: always()
         run: ./tests/e2e/clean_up_resources.sh
 
+  # Default flow: layer, x86_64, no prefixes filtering, KMS-encrypted bucket, custom IAM role path
   e2e-test-default:
     name: End-to-end deployment test (default flow)
     runs-on: ubuntu-latest
