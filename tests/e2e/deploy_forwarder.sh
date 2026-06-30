@@ -46,7 +46,7 @@ case "${DEPLOY_TYPE}" in
 
         log "Deploying the log forwarder template"
         aws cloudformation deploy --stack-name ${STACK_NAME} --parameter-overrides \
-                        DynatraceEnvironmentURL=${DT_TENANT_URL} \
+                        DynatraceEnvironmentURL=${DT_TENANT_PLATFORM_URL} \
                         DynatraceApiKeySSMParameter="${SSM_PARAMETER_NAME}" \
                         EnableCrossRegionCrossAccountForwarding=true \
                         DeploymentPackageType=zip \
@@ -103,7 +103,7 @@ case "${DEPLOY_TYPE}" in
 
         log "Deploying the log forwarder template (layer mode)"
         aws cloudformation deploy --stack-name ${STACK_NAME} --parameter-overrides \
-                        DynatraceEnvironmentURL=${DT_TENANT_URL} \
+                        DynatraceEnvironmentURL=${DT_TENANT_PLATFORM_URL} \
                         DynatraceApiKeySSMParameter="${SSM_PARAMETER_NAME}" \
                         EnableCrossRegionCrossAccountForwarding=true \
                         DeploymentPackageType=layer \
