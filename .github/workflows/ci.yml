@@ -105,7 +105,7 @@ jobs:
   e2e-test:
     name: End-to-end deployment test (${{ matrix.deploy_type }}, ${{ matrix.arch }})
     runs-on: ${{ matrix.runs-on }}
-    needs: [unit-tests, build-x86_64, build-arm64]
+    needs: [unit-tests, build-x86_64, build-arm64, e2e-test-default]
     if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
     strategy:
       fail-fast: false
@@ -121,11 +121,11 @@ jobs:
             runs-on: ubuntu-24.04-arm
             artifact: lambda-artifacts-arm64
             bucket: dynatrace-aws-s3-log-forwarder-e2e-testing-zip-arm64
-          - deploy_type: layer
-            arch: x86_64
-            runs-on: ubuntu-latest
-            artifact: lambda-artifacts-x86_64
-            bucket: dynatrace-aws-s3-log-forwarder-e2e-testing-layer-x86-64
+          #- deploy_type: layer
+          #  arch: x86_64
+          #  runs-on: ubuntu-latest
+          #  artifact: lambda-artifacts-x86_64
+          #  bucket: dynatrace-aws-s3-log-forwarder-e2e-testing-layer-x86-64
           - deploy_type: layer
             arch: arm64
             runs-on: ubuntu-24.04-arm
@@ -163,10 +163,6 @@ jobs:
           python-version: '3.14'
       - name: Install dependencies
         run: pip install requests
-      - name: Print DT URLs
-        run: |
-          echo "DT_TENANT_URL=${DT_TENANT_URL}"
-          echo "DT_TENANT_PLATFORM_URL=${DT_TENANT_PLATFORM_URL}"
       - name: Deploy forwarder
         run: ./tests/e2e/deploy_forwarder.sh ${{ matrix.deploy_type }} ${{ matrix.arch }}
       - name: Test EventBridge notification
@@ -231,7 +227,7 @@ jobs:
     needs: [unit-tests, build-x86_64]
     if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
     env:
-      E2E_TESTING_BUCKET_NAME: dynatrace-aws-s3-log-forwarder-e2e-testing-layer-eventbridge
+      E2E_TESTING_BUCKET_NAME: dynatrace-aws-s3-log-forwarder-e2e-testing-layer-x86-64
       DT_TENANT_URL: ${{ secrets.DT_TENANT_URL }}
       DT_TENANT_PLATFORM_TOKEN: ${{ secrets.DT_TENANT_PLATFORM_TOKEN }}
       CFN_ROLE_ARN: ${{ secrets.CFN_ROLE_ARN }}
@@ -239,9 +235,9 @@ jobs:
       DT_SSO_URL: ${{ secrets.DT_SSO_URL }}
       DT_OAUTH_CLIENT_ID: ${{ secrets.DT_OAUTH_CLIENT_ID }}
       DT_OAUTH_CLIENT_SECRET: ${{ secrets.DT_OAUTH_CLIENT_SECRET }}
-      KMS_KEY_ARNS: ${{ secrets.KMS_KEY_ARN }}
+      KMS_KEY_ARNS: arn:aws:kms:us-east-1:558221435292:key/23267ae3-cab2-4ef2-a2ed-4ba4b5676444
       IAM_ROLE_PATH: /e2e-iam-role-path/
-      S3_BUCKET_NAMES: dynatrace-aws-s3-log-forwarder-e2e-testing-layer-eventbridge
+      S3_BUCKET_NAMES: dynatrace-aws-s3-log-forwarder-e2e-testing-layer-x86-64
     steps:
       - uses: actions/checkout@v6
       - name: Set stack name and test prefix
@@ -263,10 +259,6 @@ jobs:
           python-version: '3.14'
       - name: Install dependencies
         run: pip install requests
-      - name: Print DT URLs
-        run: |
-          echo "DT_TENANT_URL=${DT_TENANT_URL}"
-          echo "DT_TENANT_PLATFORM_URL=${DT_TENANT_PLATFORM_URL}"
       - name: Deploy forwarder
         run: ./tests/e2e/deploy_forwarder.sh layer x86_64
       - name: Create test log file
