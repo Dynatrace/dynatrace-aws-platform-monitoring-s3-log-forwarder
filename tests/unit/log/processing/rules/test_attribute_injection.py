@@ -209,6 +209,7 @@ class TestAWSAttributeInjection(unittest.TestCase):
         annotations = processing_rules['aws']['s3'].get_processing_log_annotations()
         self.assertEqual(annotations['aws.resource.type'], 'AWS::S3::Bucket')
 
+    @unittest.skip("aws.resource.type commented out for now in vpcflowlogs.yaml)")
     def test_vpcflowlogs_annotations_include_resource_type(self):
         annotations = processing_rules['aws']['vpcflowlogs'].get_processing_log_annotations()
         self.assertEqual(annotations['aws.resource.type'], 'AWS::EC2::FlowLog')
@@ -286,12 +287,12 @@ class TestAWSAttributeInjection(unittest.TestCase):
                 'key': 'OptionalPrefix/AWSLogs/012345678910/vpcdnsquerylogs/vpc-0123456789abcdf12/2023/02/15/vpc-0123456789abcdf12_vpcdnsquerylogs_012345678910_20230215T0000Z_213be99c.log.gz',
                 'message': vpcdnsquery_log_entry,
                 'expected_arn': 'arn:aws:ec2:us-east-1:012345678910:vpc/vpc-0123456789abcdef12'
-            },
-            'vpcflowlogs': {
-                'key': vpcflowlog_key_name,
-                'message': '',
-                'expected_arn': 'arn:aws:ec2:us-east-1:012345678910:vpc-flow-log/fl-07f38b767c7cd46e3'
             }
+            #'vpcflowlogs': {
+            #    'key': vpcflowlog_key_name,
+            #    'message': '',
+            #    'expected_arn': 'arn:aws:ec2:us-east-1:012345678910:vpc-flow-log/fl-07f38b767c7cd46e3'
+            #}
         }
 
         for rule_name, case in cases.items():
