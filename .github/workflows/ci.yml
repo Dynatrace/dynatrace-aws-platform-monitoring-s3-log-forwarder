@@ -164,6 +164,7 @@ jobs:
       - name: Install dependencies
         run: pip install requests
       - name: Deploy forwarder
+        id: deploy_forwarder
         run: ./tests/e2e/deploy_forwarder.sh ${{ matrix.deploy_type }} ${{ matrix.arch }}
       - name: Test EventBridge notification
         run: |
@@ -176,7 +177,8 @@ jobs:
         if: always()
         run: ./tests/e2e/clean_up_notifications.sh eventbridge ${STACK_NAME} ${E2E_TESTING_BUCKET_NAME}
       - name: Update forwarder for SNS/SQS tests
-        if: success() || failure()
+        id: update_forwarder
+        if: steps.deploy_forwarder.outcome == 'success'
         run: |
           CHANGE_SET_NAME="awscli-cloudformation-add-s3-access-$(date +%s)"
           PARAMS=$(aws cloudformation describe-stacks --stack-name "${STACK_NAME}" \
@@ -198,10 +200,11 @@ jobs:
             --stack-name "${STACK_NAME}" --change-set-name "${CHANGE_SET_NAME}"
           aws cloudformation wait stack-update-complete --stack-name "${STACK_NAME}"
       - name: Configure SNS and SQS notifications
-        if: success() || failure()
+        id: configure_sns_sqs
+        if: steps.update_forwarder.outcome == 'success'
         run: ./tests/e2e/configure_notifications.sh sns-sqs ${STACK_NAME} ${E2E_TESTING_BUCKET_NAME} ${E2E_TEST_PREFIX} ${{ secrets.CFN_ROLE_ARN }}
       - name: Test SNS and SQS notifications
-        if: success() || failure()
+        if: steps.configure_sns_sqs.outcome == 'success'
         run: |
           echo "[$(date -u '+%Y-%m-%dT%H:%M:%SZ')] E2E testing validation log entry" > test.log
           aws s3 cp test.log s3://${E2E_TESTING_BUCKET_NAME}/${E2E_TEST_PREFIX}/sns/test.log
