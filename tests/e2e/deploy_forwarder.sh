@@ -114,6 +114,7 @@ case "${DEPLOY_TYPE}" in
                         DeploymentPackageType=layer \
                         DynatraceS3LogForwarderLayerArn="${LAYER_ARN}" \
                         Architecture="${ARCH}" \
+                        CreateS3NotificationsSNSTopic=true \
                         "${EXTRA_CFN_PARAMS[@]}" \
                         --template-file deploy-template.yaml --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
                         --role-arn ${CFN_ROLE_ARN}
