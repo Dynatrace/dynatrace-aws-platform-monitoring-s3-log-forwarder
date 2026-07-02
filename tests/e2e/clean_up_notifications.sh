@@ -3,7 +3,7 @@
 # Remove S3 notification configuration for a single notification type.
 # For eventbridge, also deletes the bucket-configuration CloudFormation stack.
 #
-# Usage: ./tests/e2e/clean_up_notifications.sh <eventbridge|sns|sqs> <stack_name> <bucket>
+# Usage: ./tests/e2e/clean_up_notifications.sh <eventbridge|sns-sqs> <stack_name> <bucket>
 
 set -e
 

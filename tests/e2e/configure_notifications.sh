@@ -2,7 +2,7 @@
 
 # Configure S3 notifications for a single notification type.
 #
-# Usage: ./tests/e2e/configure_notifications.sh <eventbridge|sns|sqs> <stack_name> <bucket> <prefix> <cfn_role_arn>
+# Usage: ./tests/e2e/configure_notifications.sh <eventbridge|sns-sqs> <stack_name> <bucket> <prefix> <cfn_role_arn>
 
 set -e
 
