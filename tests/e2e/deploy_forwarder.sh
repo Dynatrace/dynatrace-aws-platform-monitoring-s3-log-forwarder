@@ -57,9 +57,8 @@ case "${DEPLOY_TYPE}" in
                         DeploymentPackageType=zip \
                         Architecture="${ARCH}" \
                         CreateS3NotificationsSNSTopic=true \
-                        --template-file deploy-template.yaml --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
-                        S3BucketNames=${E2E_TESTING_BUCKET_NAME} \
                         "${EXTRA_CFN_PARAMS[@]}" \
+                        --template-file deploy-template.yaml --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
                         --role-arn ${CFN_ROLE_ARN}
 
         aws cloudformation wait stack-create-complete --stack-name ${STACK_NAME}
@@ -114,7 +113,6 @@ case "${DEPLOY_TYPE}" in
                         EnableCrossRegionCrossAccountForwarding=true \
                         DeploymentPackageType=layer \
                         DynatraceS3LogForwarderLayerArn="${LAYER_ARN}" \
-                        S3BucketNames=${E2E_TESTING_BUCKET_NAME} \
                         Architecture="${ARCH}" \
                         "${EXTRA_CFN_PARAMS[@]}" \
                         --template-file deploy-template.yaml --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
