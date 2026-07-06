@@ -63,9 +63,11 @@ default_headers = {
 }
 
 class DynatraceSink():
-    def __init__(self, dt_url: str, dt_platform_token_parameter: str, verify_ssl: bool = True):
+    def __init__(self, dt_url: str, dt_platform_token_parameter: str, verify_ssl: bool = True,
+                 token_source: str = 'secretsmanager'):
         self._environment_url = dt_url.rstrip('/')
         self._platform_token_parameter = dt_platform_token_parameter
+        self._token_source = token_source
         self._approx_buffered_messages_size = LIST_BRACKETS_LENGTH
         self._messages = []
         self._batch_num = 1
@@ -189,8 +191,11 @@ class DynatraceSink():
         Returns a list of failed batch numbers.
         '''
 
-        dt_platform_token = parameters.get_parameter(
-            self._platform_token_parameter, max_age=120, decrypt=True)
+        if self._token_source == 'secretsmanager':
+            dt_platform_token = parameters.get_secret(self._platform_token_parameter, max_age=120)
+        else:
+            dt_platform_token = parameters.get_parameter(
+                self._platform_token_parameter, max_age=120, decrypt=True)
 
         tenant_id = extract_tenant_id_from_url(self._environment_url)
 
@@ -259,12 +264,16 @@ class DynatraceSink():
 
 def load_sink() -> 'DynatraceSink':
     '''
-    Loads the configured Dynatrace sink. Reads DYNATRACE_API_KEY_SSM for the SSM parameter
-    path that stores the Dynatrace platform token (used as Bearer credential against the
-    generic S3 logs ingest API). Always set by the CloudFormation template.
+    Loads the configured Dynatrace sink. Exactly one of two env vars is set by CloudFormation:
+      DYNATRACE_API_KEY_SECRETS_MANAGER — Secrets Manager secret ARN (DynatraceApiKey or DynatraceApiKeySecretsManagerSecret)
+      DYNATRACE_API_KEY_SSM             — SSM parameter path (DynatraceApiKeySSMParameter)
     '''
     verify_ssl = False if os.environ['VERIFY_DT_SSL_CERT'] == "false" else True
-    return DynatraceSink(os.environ['DYNATRACE_ENV_URL'], os.environ['DYNATRACE_API_KEY_SSM'], verify_ssl)
+    dt_url = os.environ['DYNATRACE_ENV_URL']
+    if 'DYNATRACE_API_KEY_SECRETS_MANAGER' in os.environ:
+        return DynatraceSink(dt_url, os.environ['DYNATRACE_API_KEY_SECRETS_MANAGER'],
+                             verify_ssl=verify_ssl, token_source='secretsmanager')
+    return DynatraceSink(dt_url, os.environ['DYNATRACE_API_KEY_SSM'], verify_ssl=verify_ssl)
 
 
 def extract_tenant_id_from_url(environment_url: str):
