@@ -12,6 +12,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+import os
 import unittest
 from datetime import datetime
 import json
@@ -139,20 +140,14 @@ class TestDynatraceSink(unittest.TestCase):
                           dynatrace_sink.ingest_logs, [{'content': 'hello'}])
 
 
-mock_dt_secret_arn = 'arn:aws:secretsmanager:us-east-1:123456789012:secret:/dynatrace-s3-log-forwarder/test/api-key-AbCdEf'
+mock_dt_secret_arn = 'arn:aws:secretsmanager:us-east-1:123456789012:secret:dynatrace-s3-log-forwarder-test-api-key-AbCdEf'
 
 class TestDynatraceSinkSecretsManager(unittest.TestCase):
 
     @responses.activate
-    @mock_aws
-    def test_token_fetched_from_secrets_manager(self):
-        sm_client = boto3.client('secretsmanager', region_name='us-east-1')
-        sm_client.create_secret(Name='/dynatrace-s3-log-forwarder/test/api-key',
-                                SecretString='dt0s01.faketoken')
-        secret = sm_client.describe_secret(SecretId='/dynatrace-s3-log-forwarder/test/api-key')
-        secret_arn = secret['ARN']
-
-        dynatrace_sink = dynatrace.DynatraceSink(mock_dt_url, secret_arn,
+    @patch('log.sinks.dynatrace.parameters.get_secret', return_value='dt0s01.faketoken')
+    def test_token_fetched_from_secrets_manager(self, _mock_get_secret):
+        dynatrace_sink = dynatrace.DynatraceSink(mock_dt_url, mock_dt_secret_arn,
                                                  token_source='secretsmanager')
         responses.add(responses.POST,
                       dynatrace_sink.get_environment_url() + dynatrace.GENERIC_LOGS_INGEST_API_URL_SUFFIX,
@@ -164,15 +159,9 @@ class TestDynatraceSinkSecretsManager(unittest.TestCase):
         self.assertEqual(sent.headers['Authorization'], 'Bearer dt0s01.faketoken')
 
     @responses.activate
-    @mock_aws
-    def test_load_sink_uses_secrets_manager_when_env_var_set(self):
-        sm_client = boto3.client('secretsmanager', region_name='us-east-1')
-        sm_client.create_secret(Name='/dynatrace-s3-log-forwarder/test/api-key',
-                                SecretString='dt0s01.smtoken')
-        secret = sm_client.describe_secret(SecretId='/dynatrace-s3-log-forwarder/test/api-key')
-        secret_arn = secret['ARN']
-
-        os.environ['DYNATRACE_API_KEY_SECRETS_MANAGER'] = secret_arn
+    @patch('log.sinks.dynatrace.parameters.get_secret', return_value='dt0s01.smtoken')
+    def test_load_sink_uses_secrets_manager_when_env_var_set(self, _mock_get_secret):
+        os.environ['DYNATRACE_API_KEY_SECRETS_MANAGER'] = mock_dt_secret_arn
         os.environ['DYNATRACE_ENV_URL'] = mock_dt_url
         os.environ['VERIFY_DT_SSL_CERT'] = 'true'
         try:
@@ -181,7 +170,7 @@ class TestDynatraceSinkSecretsManager(unittest.TestCase):
                           status=204)
             sink = dynatrace.load_sink()
             self.assertEqual(sink._token_source, 'secretsmanager')
-            self.assertEqual(sink._platform_token_parameter, secret_arn)
+            self.assertEqual(sink._platform_token_parameter, mock_dt_secret_arn)
             sink.ingest_logs([{'content': 'hello'}])
             sent = responses.calls[0].request
             self.assertEqual(sent.headers['Authorization'], 'Bearer dt0s01.smtoken')

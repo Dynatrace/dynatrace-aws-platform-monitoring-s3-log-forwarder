@@ -270,10 +270,11 @@ def load_sink() -> 'DynatraceSink':
     '''
     verify_ssl = False if os.environ['VERIFY_DT_SSL_CERT'] == "false" else True
     dt_url = os.environ['DYNATRACE_ENV_URL']
-    if 'DYNATRACE_API_KEY_SECRETS_MANAGER' in os.environ:
-        return DynatraceSink(dt_url, os.environ['DYNATRACE_API_KEY_SECRETS_MANAGER'],
-                             verify_ssl=verify_ssl, token_source='secretsmanager')
-    return DynatraceSink(dt_url, os.environ['DYNATRACE_API_KEY_SSM'], verify_ssl=verify_ssl)
+    secret_arn = os.environ.get('DYNATRACE_API_KEY_SECRETS_MANAGER')
+    if secret_arn:
+        return DynatraceSink(dt_url, secret_arn, verify_ssl=verify_ssl, token_source='secretsmanager')
+    return DynatraceSink(dt_url, os.environ['DYNATRACE_API_KEY_SSM'], verify_ssl=verify_ssl,
+                         token_source='ssm')
 
 
 def extract_tenant_id_from_url(environment_url: str):
