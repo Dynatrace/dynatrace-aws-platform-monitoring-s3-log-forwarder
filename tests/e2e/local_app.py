@@ -180,16 +180,19 @@ def load_s3_test_data_from_disk():
 
 
 if os.environ['AWS_SAM_LOCAL'] == 'True':
-    logger.warning('mocking boto3 S3')
-    logger.warning('mocking boto3 SSM')
+    logger.warning('mocking boto3 S3, SSM and Secrets Manager')
     
     from moto import mock_aws
 
-    def save_test_ssm_parameters():
-        client = boto3.client('ssm')
-        api_key_parameter = os.environ['DYNATRACE_API_KEY_SSM']
-        client.put_parameter(Name=api_key_parameter, Type='SecureString',
-                             Value=os.environ['DYNATRACE_API_KEY'])
+    def save_test_parameters():
+        secret_name = os.environ.get('DYNATRACE_API_KEY_SECRETS_MANAGER')
+        if secret_name:
+            client = boto3.client('secretsmanager')
+            client.create_secret(Name=secret_name, SecretString=os.environ['DYNATRACE_API_KEY'])
+        else:
+            client = boto3.client('ssm')
+            client.put_parameter(Name=os.environ['DYNATRACE_API_KEY_SSM'], Type='SecureString',
+                                 Value=os.environ['DYNATRACE_API_KEY'])
 
     class test_context():
         def __init__(self):
@@ -204,7 +207,7 @@ if os.environ['AWS_SAM_LOCAL'] == 'True':
         # http://docs.getmoto.org/en/latest/docs/getting_started.html#what-about-those-pesky-imports
         from app import lambda_handler
 
-        save_test_ssm_parameters()
+        save_test_parameters()
         events = load_s3_test_data_from_disk()
         
         lambda_handler(json.loads(events), test_context())
