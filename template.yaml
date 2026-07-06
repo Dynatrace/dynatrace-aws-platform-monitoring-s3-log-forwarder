@@ -846,7 +846,7 @@ Resources:
           StringEquals:
             "events:detail-type": "Object Created"
             "events:source": "aws.s3"
-          ArnEquals:
+          ArnLike:
             "aws:SourceArn":
               - !Sub arn:aws:events:*:*:rule/dt-s3-log-fwd-to-${AWS::AccountId}-*
 
