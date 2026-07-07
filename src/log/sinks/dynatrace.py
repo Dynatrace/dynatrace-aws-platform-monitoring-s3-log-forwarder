@@ -265,8 +265,8 @@ class DynatraceSink():
 def load_sink() -> 'DynatraceSink':
     '''
     Loads the configured Dynatrace sink. Exactly one of two env vars is set by CloudFormation:
-      DYNATRACE_API_KEY_SECRETS_MANAGER — Secrets Manager secret ARN (DynatraceApiKey or DynatraceApiKeySecretsManagerSecret)
-      DYNATRACE_API_KEY_SSM             — SSM parameter path (DynatraceApiKeySSMParameter)
+      DYNATRACE_API_KEY_SECRETS_MANAGER — Secrets Manager secret ARN (when DynatraceApiKey or DynatraceApiKeySecretsManagerSecret parameter set)
+      DYNATRACE_API_KEY_SSM             — SSM parameter path (when DynatraceApiKeySSMParameter parameter set)
     '''
     verify_ssl = False if os.environ['VERIFY_DT_SSL_CERT'] == "false" else True
     dt_url = os.environ['DYNATRACE_ENV_URL']

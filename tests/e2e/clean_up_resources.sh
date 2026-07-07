@@ -60,7 +60,7 @@ if aws cloudformation describe-stacks --stack-name ${STACK_NAME}-layer >/dev/nul
     aws cloudformation delete-stack --stack-name ${STACK_NAME}-layer
     aws cloudformation wait stack-delete-complete --stack-name ${STACK_NAME}-layer
 fi
-if [[ -z "${DT_TOKEN_SECRET_ARN:-}" ]]; then
+if aws ssm get-parameter --name "/dynatrace/s3-log-forwarder/${STACK_NAME}/api-key" &>/dev/null; then
     log "Deleting SSM parameter /dynatrace/s3-log-forwarder/${STACK_NAME}/api-key"
     aws ssm delete-parameter --name "/dynatrace/s3-log-forwarder/${STACK_NAME}/api-key"
 fi
