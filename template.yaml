@@ -150,7 +150,7 @@ Parameters:
     AllowedPattern: "(^$|^\\/[a-zA-Z0-9._\\-\\/]+$)"
     ConstraintDescription: "Must be a valid SSM parameter path starting with '/' (e.g. /dynatrace/s3-log-forwarder/my-stack/api-key) or left empty."
   DynatraceApiKey:
-    Description: "Dynatrace platform token with data-acquisition:logs:ingest scope. Use this or DynatraceApiKeySSMParameter or DynatraceApiKeySecretsManagerSecret, not a combination. The token is stored in an AWS Secrets Manager secret at /dynatrace/s3-log-forwarder/{stack-name}/api-key. To use an existing secret or SSM parameter instead, leave this empty and use DynatraceApiKeySecretsManagerSecret or DynatraceApiKeySSMParameter."
+    Description: "Dynatrace platform token with data-acquisition:logs:ingest scope. Use this or DynatraceApiKeySSMParameter or DynatraceApiKeySecretsManagerSecret, not a combination. The token is stored in an AWS Secrets Manager secret at dynatrace/s3-log-forwarder/{stack-name}/api-key. To use an existing secret or SSM parameter instead, leave this empty and use DynatraceApiKeySecretsManagerSecret or DynatraceApiKeySSMParameter."
     Type: String
     Default: ""
     NoEcho: true
@@ -158,6 +158,8 @@ Parameters:
     Description: "ARN of an existing AWS Secrets Manager secret storing the Dynatrace platform token (scope: data-acquisition:logs:ingest). Use this or DynatraceApiKey or DynatraceApiKeySSMParameter, not a combination. The secret value must be the plain token string."
     Type: String
     Default: ""
+    AllowedPattern: "(^$|^arn:[a-zA-Z0-9\\-]+:secretsmanager:[a-zA-Z0-9\\-]+:[0-9]{12}:secret:.+$)"
+    ConstraintDescription: "Must be a valid Secrets Manager secret ARN (e.g. arn:aws:secretsmanager:us-east-1:123456789012:secret:my-secret-AbCdEf) or left empty."
   DynatraceLogIngestContentMaxLength:
     Description: Log content maximum byte size, longer logs will be trimmed
     Type: Number
