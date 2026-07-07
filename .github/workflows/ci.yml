@@ -1,8 +1,7 @@
 # Required GitHub Actions secrets:
 #   AWS_CICD_ROLE_ARN            - IAM role ARN for OIDC authentication
 #   CFN_ROLE_ARN                 - IAM role ARN passed to CloudFormation deploy for E2E tests
-#   DT_TENANT_PLATFORM_TOKEN     - Dynatrace platform token used to create the SSM parameter during E2E deployment (regular e2e tests)
-#   DT_TOKEN_SECRET_ARN          - ARN of existing Secrets Manager secret storing the Dynatrace platform token (default flow e2e test)
+#   DT_TOKEN_SECRET_ARN          - ARN of existing Secrets Manager secret storing the Dynatrace platform token (all e2e tests)
 #   DT_TENANT_PLATFORM_URL       - Dynatrace platform URL for log validation queries
 #   DT_SSO_URL                   - Dynatrace SSO URL for OAuth token exchange
 #   DT_OAUTH_CLIENT_ID           - OAuth client ID for log validation
@@ -135,7 +134,7 @@ jobs:
     env:
       E2E_TESTING_BUCKET_NAME: ${{ matrix.bucket }}
       CI_RUN_ID: ${{ github.run_id }}
-      DT_TENANT_PLATFORM_TOKEN: ${{ secrets.DT_TENANT_PLATFORM_TOKEN }}
+      DT_TOKEN_SECRET_ARN: ${{ secrets.DT_TOKEN_SECRET_ARN }}
       CFN_ROLE_ARN: ${{ secrets.CFN_ROLE_ARN }}
       DT_TENANT_PLATFORM_URL: ${{ secrets.DT_TENANT_PLATFORM_URL }}
       DT_SSO_URL: ${{ secrets.DT_SSO_URL }}
