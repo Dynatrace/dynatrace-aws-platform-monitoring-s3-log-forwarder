@@ -31,10 +31,12 @@ EXTRA_CFN_PARAMS=()
 [[ -n "${IAM_ROLE_PATH:-}" ]]   && EXTRA_CFN_PARAMS+=(IamRolePath="${IAM_ROLE_PATH}")
 [[ -n "${S3_BUCKET_NAMES:-}" ]] && EXTRA_CFN_PARAMS+=(S3BucketNames="${S3_BUCKET_NAMES}")
 
-if [[ -n "${DT_TOKEN_SECRET_ARN:-}" ]]; then
+if [[ -n "${DT_TOKEN_SECRET_ARN:-}" && -n "${DT_TENANT_PLATFORM_TOKEN:-}" ]]; then
+    echo "ERROR: DT_TOKEN_SECRET_ARN and DT_TENANT_PLATFORM_TOKEN are mutually exclusive — set exactly one" >&2; exit 1
+elif [[ -n "${DT_TOKEN_SECRET_ARN:-}" ]]; then
     log "Using existing Secrets Manager secret for Dynatrace platform token"
     EXTRA_CFN_PARAMS+=(DynatraceApiKeySecretsManagerSecret="${DT_TOKEN_SECRET_ARN}")
-else
+elif [[ -n "${DT_TENANT_PLATFORM_TOKEN:-}" ]]; then
     log "Storing Dynatrace platform token in SSM Parameter Store"
     aws ssm put-parameter \
         --name "${SSM_PARAMETER_NAME}" \
@@ -42,6 +44,8 @@ else
         --value "${DT_TENANT_PLATFORM_TOKEN}" \
         --overwrite
     EXTRA_CFN_PARAMS+=(DynatraceApiKeySSMParameter="${SSM_PARAMETER_NAME}")
+else
+    echo "ERROR: either DT_TOKEN_SECRET_ARN or DT_TENANT_PLATFORM_TOKEN must be set" >&2; exit 1
 fi
 
 log "Uploading nested monitoring dashboard template and rewriting TemplateURL"

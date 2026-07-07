@@ -109,7 +109,7 @@ This is the simplest option — no build tools, SAM CLI, or Python required.
     export LAYER_ARN=<layer-version-arn-for-your-region-and-architecture>
     ```
 
-2. Deploy the main forwarder stack. Use the token parameter that matches your choice in Step 2:
+2. Deploy the main forwarder stack:
 
     ```bash
     aws cloudformation deploy \
@@ -118,9 +118,7 @@ This is the simplest option — no build tools, SAM CLI, or Python required.
         --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
         --parameter-overrides \
             DynatraceEnvironmentURL="https://$DYNATRACE_TENANT_UUID.live.dynatrace.com" \
-            DynatraceApiKeySecretsManagerSecret="$DT_TOKEN_SECRET_ARN" \  # Option A
-            # DynatraceApiKeySSMParameter="/dynatrace/s3-log-forwarder/$STACK_NAME/api-key" \  # Option B
-            # DynatraceApiKey="<your_dynatrace_platform_token_here>" \  # Option C
+            DynatraceApiKeySecretsManagerSecret="$DT_TOKEN_SECRET_ARN" \
             DynatraceS3LogForwarderLayerArn="$LAYER_ARN" \
             Architecture="x86_64" \
             S3BucketNames="my-bucket,another-bucket"
@@ -128,6 +126,9 @@ This is the simplest option — no build tools, SAM CLI, or Python required.
 
     > [!NOTE]
     >
+    > * Replace `DynatraceApiKeySecretsManagerSecret` with the token parameter that matches your choice in Step 2:
+    >   `DynatraceApiKeySSMParameter="/dynatrace/s3-log-forwarder/$STACK_NAME/api-key"` (Option B) or
+    >   `DynatraceApiKey="<your_dynatrace_platform_token_here>"` (Option C).
     > * Set `Architecture=arm64` to deploy on arm64. Make sure the Layer ARN you selected matches the architecture.
     > * When the publisher releases a new layer version, update the `DynatraceS3LogForwarderLayerArn` parameter with the new ARN and redeploy the stack to pick up the update.
 
@@ -152,15 +153,18 @@ This is the simplest option — no build tools, SAM CLI, or Python required.
         --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
         --parameter-overrides \
             DynatraceEnvironmentURL="https://$DYNATRACE_TENANT_UUID.live.dynatrace.com" \
-            DynatraceApiKeySecretsManagerSecret="$DT_TOKEN_SECRET_ARN" \  # Option A
-            # DynatraceApiKeySSMParameter="/dynatrace/s3-log-forwarder/$STACK_NAME/api-key" \  # Option B
-            # DynatraceApiKey="<your_dynatrace_platform_token_here>" \  # Option C
+            DynatraceApiKeySecretsManagerSecret="$DT_TOKEN_SECRET_ARN" \
             DeploymentPackageType="zip" \
             Architecture="x86_64" \
             S3BucketNames="my-bucket,another-bucket"
     ```
 
-    Set `Architecture=arm64` for arm64 deployments.
+    > [!NOTE]
+    >
+    > * Replace `DynatraceApiKeySecretsManagerSecret` with the token parameter that matches your choice in Step 2:
+    >   `DynatraceApiKeySSMParameter="/dynatrace/s3-log-forwarder/$STACK_NAME/api-key"` (Option B) or
+    >   `DynatraceApiKey="<your_dynatrace_platform_token_here>"` (Option C).
+    > * Set `Architecture=arm64` for arm64 deployments.
 
 3. Update the Lambda function code with the deployment package:
 
