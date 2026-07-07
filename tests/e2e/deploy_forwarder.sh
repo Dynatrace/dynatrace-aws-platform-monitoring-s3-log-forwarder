@@ -31,12 +31,18 @@ EXTRA_CFN_PARAMS=()
 [[ -n "${IAM_ROLE_PATH:-}" ]]   && EXTRA_CFN_PARAMS+=(IamRolePath="${IAM_ROLE_PATH}")
 [[ -n "${S3_BUCKET_NAMES:-}" ]] && EXTRA_CFN_PARAMS+=(S3BucketNames="${S3_BUCKET_NAMES}")
 
-log "Storing Dynatrace platform token in SSM Parameter Store"
-aws ssm put-parameter \
-    --name "${SSM_PARAMETER_NAME}" \
-    --type SecureString \
-    --value "${DT_TENANT_PLATFORM_TOKEN}" \
-    --overwrite
+if [[ -n "${DT_TOKEN_SECRET_ARN:-}" ]]; then
+    log "Using existing Secrets Manager secret for Dynatrace platform token"
+    EXTRA_CFN_PARAMS+=(DynatraceApiKeySecretsManagerSecret="${DT_TOKEN_SECRET_ARN}")
+else
+    log "Storing Dynatrace platform token in SSM Parameter Store"
+    aws ssm put-parameter \
+        --name "${SSM_PARAMETER_NAME}" \
+        --type SecureString \
+        --value "${DT_TENANT_PLATFORM_TOKEN}" \
+        --overwrite
+    EXTRA_CFN_PARAMS+=(DynatraceApiKeySSMParameter="${SSM_PARAMETER_NAME}")
+fi
 
 log "Uploading nested monitoring dashboard template and rewriting TemplateURL"
 aws s3 cp cloudwatch-monitoring-dashboard.yaml \
@@ -52,7 +58,6 @@ case "${DEPLOY_TYPE}" in
         log "Deploying the log forwarder template"
         aws cloudformation deploy --stack-name ${STACK_NAME} --parameter-overrides \
                         DynatraceEnvironmentURL=${DT_TENANT_PLATFORM_URL} \
-                        DynatraceApiKeySSMParameter="${SSM_PARAMETER_NAME}" \
                         EnableCrossRegionCrossAccountForwarding=true \
                         DeploymentPackageType=zip \
                         Architecture="${ARCH}" \
@@ -109,7 +114,6 @@ case "${DEPLOY_TYPE}" in
         log "Deploying the log forwarder template (layer mode)"
         aws cloudformation deploy --stack-name ${STACK_NAME} --parameter-overrides \
                         DynatraceEnvironmentURL=${DT_TENANT_PLATFORM_URL} \
-                        DynatraceApiKeySSMParameter="${SSM_PARAMETER_NAME}" \
                         EnableCrossRegionCrossAccountForwarding=true \
                         DeploymentPackageType=layer \
                         DynatraceS3LogForwarderLayerArn="${LAYER_ARN}" \
