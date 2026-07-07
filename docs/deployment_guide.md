@@ -40,9 +40,27 @@ export DYNATRACE_TENANT_UUID=<replace-with-your-dynatrace-tenant-uuid>
 >
 > Your stack name should have a maximum of 47 characters, otherwise deployment will fail.
 
-### Step 2. Store the Dynatrace platform token in AWS Systems Manager Parameter Store
+### Step 2. Provide the Dynatrace platform token
 
-Store the Dynatrace platform token (scope `data-acquisition:logs:ingest`) as a SecureString parameter so the Lambda function can retrieve it at runtime to authenticate against the generic S3 logs ingest API:
+The Lambda function needs a Dynatrace platform token (scope `data-acquisition:logs:ingest`) to authenticate against the log ingest API. There are three mutually exclusive options — choose one:
+
+---
+
+#### Option A: Existing AWS Secrets Manager secret (recommended)
+
+If you already have a Secrets Manager secret storing the token, reference it directly. The secret value must be the plain token string.
+
+```bash
+export DT_TOKEN_SECRET_ARN=<arn-of-your-existing-secrets-manager-secret>
+```
+
+Pass `DynatraceApiKeySecretsManagerSecret="$DT_TOKEN_SECRET_ARN"` in the deploy command in Step 4.
+
+---
+
+#### Option B: AWS Systems Manager Parameter Store
+
+Store the token as a SecureString parameter:
 
 ```bash
 export HISTCONTROL=ignorespace
@@ -52,9 +70,17 @@ export HISTCONTROL=ignorespace
      --value "<your_dynatrace_platform_token_here>"
 ```
 
-> [!NOTE]
->
-> **Alternative:** If your security requirements are less strict, you can skip this step and pass the platform token directly via `DynatraceApiKey` in the deploy command. The template will store it in an SSM Parameter (String type) and the Lambda reads from it. Note that the token will not be encrypted at rest — use `DynatraceApiKeySSMParameter` with a SecureString parameter as shown above if that is a requirement.
+Pass `DynatraceApiKeySSMParameter="/dynatrace/s3-log-forwarder/$STACK_NAME/api-key"` in the deploy command in Step 4.
+
+---
+
+#### Option C: Plain text token (stack creates a Secrets Manager secret)
+
+Pass the token directly in the deploy command — the stack creates a new Secrets Manager secret to store it securely.
+
+Pass `DynatraceApiKey="<your_dynatrace_platform_token_here>"` in the deploy command in Step 4.
+
+---
 
 ### Step 3. Download the CloudFormation templates
 
@@ -83,7 +109,7 @@ This is the simplest option — no build tools, SAM CLI, or Python required.
     export LAYER_ARN=<layer-version-arn-for-your-region-and-architecture>
     ```
 
-2. Deploy the main forwarder stack:
+2. Deploy the main forwarder stack. Use the token parameter that matches your choice in Step 2:
 
     ```bash
     aws cloudformation deploy \
@@ -92,7 +118,9 @@ This is the simplest option — no build tools, SAM CLI, or Python required.
         --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
         --parameter-overrides \
             DynatraceEnvironmentURL="https://$DYNATRACE_TENANT_UUID.live.dynatrace.com" \
-            DynatraceApiKeySSMParameter="/dynatrace/s3-log-forwarder/$STACK_NAME/api-key" \
+            DynatraceApiKeySecretsManagerSecret="$DT_TOKEN_SECRET_ARN" \  # Option A
+            # DynatraceApiKeySSMParameter="/dynatrace/s3-log-forwarder/$STACK_NAME/api-key" \  # Option B
+            # DynatraceApiKey="<your_dynatrace_platform_token_here>" \  # Option C
             DynatraceS3LogForwarderLayerArn="$LAYER_ARN" \
             Architecture="x86_64" \
             S3BucketNames="my-bucket,another-bucket"
@@ -124,7 +152,9 @@ This is the simplest option — no build tools, SAM CLI, or Python required.
         --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
         --parameter-overrides \
             DynatraceEnvironmentURL="https://$DYNATRACE_TENANT_UUID.live.dynatrace.com" \
-            DynatraceApiKeySSMParameter="/dynatrace/s3-log-forwarder/$STACK_NAME/api-key" \
+            DynatraceApiKeySecretsManagerSecret="$DT_TOKEN_SECRET_ARN" \  # Option A
+            # DynatraceApiKeySSMParameter="/dynatrace/s3-log-forwarder/$STACK_NAME/api-key" \  # Option B
+            # DynatraceApiKey="<your_dynatrace_platform_token_here>" \  # Option C
             DeploymentPackageType="zip" \
             Architecture="x86_64" \
             S3BucketNames="my-bucket,another-bucket"
