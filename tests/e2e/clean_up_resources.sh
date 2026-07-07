@@ -14,16 +14,6 @@ log() {
     return
 }
 
-print_cloudwatch_logs () {
-    local LOG_GROUP="/aws/lambda/${LAMBDA_FUNCTION_NAME}"
-    log "Printing recent Lambda log events from ${LOG_GROUP}"
-    aws logs filter-log-events \
-        --log-group-name "${LOG_GROUP}" \
-        --start-time $(($(date +%s%N)/1000000 - 3600000)) \
-        --query 'events[*].message' \
-        --output text 2>/dev/null || log "WARNING: Could not retrieve log events (log group may not exist)"
-}
-
 export_cloudwatch_logs () {
     # Export Lambda Logs from AWS CloudWatch Logs to S3 and delete Lambda CloudWatch Log Group
 
@@ -72,6 +62,4 @@ if aws cloudformation describe-stacks --stack-name ${STACK_NAME}-layer >/dev/nul
 fi
 log "Deleting SSM parameter /dynatrace/s3-log-forwarder/${STACK_NAME}/api-key"
 aws ssm delete-parameter --name "/dynatrace/s3-log-forwarder/${STACK_NAME}/api-key"
-# Print Lambda logs to CI output, then export to S3
-print_cloudwatch_logs
 export_cloudwatch_logs

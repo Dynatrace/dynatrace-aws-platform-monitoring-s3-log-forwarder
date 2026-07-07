@@ -15,7 +15,7 @@ aws cloudformation deploy \
     --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
     --parameter-overrides \
         DynatraceEnvironmentURL="https://$DYNATRACE_TENANT_UUID.live.dynatrace.com" \
-        DynatraceApiKeySSMParameter="/dynatrace/s3-log-forwarder/$STACK_NAME/api-key" \
+        DynatraceApiKeySSMParameter="/dynatrace/s3-log-forwarder/$STACK_NAME/api-key" \  # or DynatraceApiKeySecretsManagerSecret / DynatraceApiKey — see deployment_guide.md Step 2
         DynatraceS3LogForwarderLayerArn="$LAYER_ARN"
 ```
 
@@ -101,7 +101,7 @@ aws cloudformation deploy \
     --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
     --parameter-overrides \
         DynatraceEnvironmentURL="https://$DYNATRACE_TENANT_UUID.live.dynatrace.com" \
-        DynatraceApiKeySSMParameter="/dynatrace/s3-log-forwarder/$STACK_NAME/api-key" \
+        DynatraceApiKeySSMParameter="/dynatrace/s3-log-forwarder/$STACK_NAME/api-key" \  # or DynatraceApiKeySecretsManagerSecret / DynatraceApiKey — see deployment_guide.md Step 2
         DynatraceS3LogForwarderLayerArn="$LAYER_ARN" \
         IamRolePath="/engineering/platform/"
 ```
