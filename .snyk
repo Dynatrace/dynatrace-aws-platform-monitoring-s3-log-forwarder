@@ -1,3 +1,39 @@
 # Snyk (https://snyk.io) policy file
 version: v1.25.1
-ignore: {}
+ignore:
+  SNYK-AMZN2023-SQLITELIBS-17887328:
+    - '*':
+        reason: >-
+          Vulnerability in base image public.ecr.aws/lambda/python:3.14.2026.07.07.18.
+          No newer base image is available that fixes this issue.
+        expires: 2026-10-08T00:00:00.000Z
+  SNYK-AMZN2023-SQLITELIBS-17887507:
+    - '*':
+        reason: >-
+          Vulnerability in base image public.ecr.aws/lambda/python:3.14.2026.07.07.18.
+          No newer base image is available that fixes this issue.
+        expires: 2026-10-08T00:00:00.000Z
+  SNYK-AMZN2023-LIBUUID-17887540:
+    - '*':
+        reason: >-
+          Vulnerability in base image public.ecr.aws/lambda/python:3.14.2026.07.07.18.
+          No newer base image is available that fixes this issue.
+        expires: 2026-10-08T00:00:00.000Z
+  SNYK-AMZN2023-LIBSMARTCOLS-17888082:
+    - '*':
+        reason: >-
+          Vulnerability in base image public.ecr.aws/lambda/python:3.14.2026.07.07.18.
+          No newer base image is available that fixes this issue.
+        expires: 2026-10-08T00:00:00.000Z
+  SNYK-AMZN2023-LIBMOUNT-17888653:
+    - '*':
+        reason: >-
+          Vulnerability in base image public.ecr.aws/lambda/python:3.14.2026.07.07.18.
+          No newer base image is available that fixes this issue.
+        expires: 2026-10-08T00:00:00.000Z
+  SNYK-AMZN2023-LIBBLKID-17888096:
+    - '*':
+        reason: >-
+          Vulnerability in base image public.ecr.aws/lambda/python:3.14.2026.07.07.18.
+          No newer base image is available that fixes this issue.
+        expires: 2026-10-08T00:00:00.000Z
