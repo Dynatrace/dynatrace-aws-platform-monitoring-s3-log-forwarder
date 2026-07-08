@@ -150,7 +150,7 @@ Parameters:
     AllowedPattern: "(^$|^\\/[a-zA-Z0-9._\\-\\/]+$)"
     ConstraintDescription: "Must be a valid SSM parameter path starting with '/' (e.g. /dynatrace/s3-log-forwarder/my-stack/api-key) or left empty."
   DynatraceApiKey:
-    Description: "Dynatrace platform token with data-acquisition:logs:ingest scope. Use this or DynatraceApiKeySSMParameter or DynatraceApiKeySecretsManagerSecret, not a combination. The token is stored in an AWS Secrets Manager secret at dynatrace/s3-log-forwarder/{stack-name}/api-key. To use an existing secret or SSM parameter instead, leave this empty and use DynatraceApiKeySecretsManagerSecret or DynatraceApiKeySSMParameter."
+    Description: "Dynatrace platform token with data-acquisition:logs:ingest scope. Use this or DynatraceApiKeySSMParameter or DynatraceApiKeySecretsManagerSecret, not a combination. The token is stored in an AWS Secrets Manager secret at dynatrace/s3-log-forwarder/{stack-name}/api-key."
     Type: String
     Default: ""
     NoEcho: true
