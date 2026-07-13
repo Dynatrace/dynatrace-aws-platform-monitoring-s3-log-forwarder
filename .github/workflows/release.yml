@@ -1,5 +1,6 @@
 # Required GitHub Actions secrets:
-#   AWS_CICD_ROLE_ARN  - IAM role ARN for OIDC authentication
+#   AWS_CICD_ROLE_ARN              - IAM role ARN for OIDC authentication
+#   AWS_LAYER_PUBLISHING_ROLE_ARN  - IAM role ARN in the layer publishing account (335651422829) used to publish Lambda layers
 ---
 name: Release
 
@@ -38,6 +39,11 @@ jobs:
         run: aws s3 cp dist/lambda-x86_64.zip s3://${RELEASE_BUCKET}/${{ github.ref_name }}/lambda-x86_64.zip
       - name: Build Lambda Layer
         run: ./scripts/build_docker.sh layer dist/layer-x86_64.zip x86_64
+      - name: Configure AWS credentials for layer publishing
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_LAYER_PUBLISHING_ROLE_ARN }}
+          aws-region: us-east-1
       - name: Publish Lambda Layer to all commercial regions
         run: ./scripts/publish_layer.sh dist/layer-x86_64.zip
       - name: Export layer version
@@ -71,6 +77,11 @@ jobs:
         run: aws s3 cp dist/lambda-arm64.zip s3://${RELEASE_BUCKET}/${{ github.ref_name }}/lambda-arm64.zip
       - name: Build Lambda Layer
         run: ./scripts/build_docker.sh layer dist/layer-arm64.zip arm64
+      - name: Configure AWS credentials for layer publishing
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_LAYER_PUBLISHING_ROLE_ARN }}
+          aws-region: us-east-1
       - name: Publish Lambda Layer to all commercial regions
         run: ./scripts/publish_layer.sh dist/layer-arm64.zip --arch arm64
       - name: Export layer version
