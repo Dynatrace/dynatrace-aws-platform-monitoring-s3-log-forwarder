@@ -109,20 +109,21 @@ publish_to_region() {
     layer_version=$(echo "$layer_version_arn" | grep -o '[0-9]*$')
     echo "  Published: $layer_version_arn"
 
-    aws lambda add-layer-version-permission \
-        --region "$region" \
-        --layer-name "$LAYER_NAME" \
-        --version-number "$layer_version" \
-        --statement-id allow-all-accounts \
-        --principal "*" \
-        --action lambda:GetLayerVersion \
-        --output json > /dev/null 2>&1 || {
-        echo "  FAILED to grant public access in $region"
-        FAILED_REGIONS+=("$region")
-        return
-    }
+    # TODO: restore public access before real release (remove this comment and re-enable the block below)
+    # aws lambda add-layer-version-permission \
+    #     --region "$region" \
+    #     --layer-name "$LAYER_NAME" \
+    #     --version-number "$layer_version" \
+    #     --statement-id allow-all-accounts \
+    #     --principal "*" \
+    #     --action lambda:GetLayerVersion \
+    #     --output json > /dev/null 2>&1 || {
+    #     echo "  FAILED to grant public access in $region"
+    #     FAILED_REGIONS+=("$region")
+    #     return
+    # }
 
-    echo "  Public access granted."
+    echo "  Published (public access skipped for test release)."
     PUBLISHED_ARNS+=("$region=$layer_version_arn")
 }
 

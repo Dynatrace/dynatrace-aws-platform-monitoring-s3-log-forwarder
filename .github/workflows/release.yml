@@ -45,7 +45,7 @@ jobs:
           role-to-assume: ${{ secrets.AWS_LAYER_PUBLISHING_ROLE_ARN }}
           aws-region: us-east-1
       - name: Publish Lambda Layer to all commercial regions
-        run: ./scripts/publish_layer.sh dist/layer-x86_64.zip
+        run: ./scripts/publish_layer.sh dist/layer-x86_64.zip --regions us-east-1
       - name: Export layer version
         id: layer-version
         run: |
@@ -83,7 +83,7 @@ jobs:
           role-to-assume: ${{ secrets.AWS_LAYER_PUBLISHING_ROLE_ARN }}
           aws-region: us-east-1
       - name: Publish Lambda Layer to all commercial regions
-        run: ./scripts/publish_layer.sh dist/layer-arm64.zip --arch arm64
+        run: ./scripts/publish_layer.sh dist/layer-arm64.zip --arch arm64 --regions us-east-1
       - name: Export layer version
         id: layer-version
         run: |
