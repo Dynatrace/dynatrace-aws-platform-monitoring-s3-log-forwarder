@@ -16,11 +16,6 @@ log() {
     echo "[$(date -u "${TIMESTAMP_FORMAT}")] $*"
 }
 
-log "Clearing bucket notification configuration for ${E2E_TESTING_BUCKET_NAME}"
-aws s3api put-bucket-notification-configuration \
-    --bucket "${E2E_TESTING_BUCKET_NAME}" \
-    --notification-configuration '{}' || true
-
 if [ "${NOTIFICATION_TYPE}" = "eventbridge" ]; then
     log "Deleting CloudFormation stack ${STACK_NAME}-s3-bucket-configuration"
     aws cloudformation delete-stack --stack-name ${STACK_NAME}-s3-bucket-configuration || true
