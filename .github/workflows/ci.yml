@@ -176,7 +176,7 @@ jobs:
           aws s3 cp test.log s3://${E2E_TESTING_BUCKET_NAME}/${E2E_TEST_PREFIX}/eventbridge/test.log
           sleep 180
           ./tests/e2e/validate_logs_exist.py --bucket ${E2E_TESTING_BUCKET_NAME} --key ${E2E_TEST_PREFIX}/eventbridge/test.log
-      - name: Clean up EventBridge notification
+      - name: Delete EventBridge bucket configuration stack
         if: always()
         run: ./tests/e2e/clean_up_notifications.sh eventbridge ${STACK_NAME} ${E2E_TESTING_BUCKET_NAME}
       - name: Update forwarder for SNS/SQS tests
@@ -219,9 +219,6 @@ jobs:
           wait -n || RESULT=$?
           wait -n || RESULT=$?
           exit $RESULT
-      - name: Clean up SNS and SQS notifications
-        if: always()
-        run: ./tests/e2e/clean_up_notifications.sh sns-sqs ${STACK_NAME} ${E2E_TESTING_BUCKET_NAME}
       - name: Clean up resources
         if: always()
         run: ./tests/e2e/clean_up_resources.sh
@@ -282,12 +279,6 @@ jobs:
           aws s3 cp test.log s3://${E2E_TESTING_BUCKET_NAME}/${E2E_TEST_PREFIX}/test.log
           sleep 180
           ./tests/e2e/validate_logs_exist.py --bucket ${E2E_TESTING_BUCKET_NAME} --key ${E2E_TEST_PREFIX}/test.log
-      - name: Clean up notifications
-        if: always()
-        run: |
-          aws s3api put-bucket-notification-configuration \
-            --bucket ${E2E_TESTING_BUCKET_NAME} \
-            --notification-configuration '{}' || true
       - name: Clean up resources
         if: always()
         run: ./tests/e2e/clean_up_resources.sh
