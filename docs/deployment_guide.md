@@ -11,6 +11,7 @@ You'll need the following software installed:
 You'll also need:
 
 * A Dynatrace [platform token](https://docs.dynatrace.com/docs/manage/identity-access-management/access-tokens-and-oauth-clients/platform-tokens) for your tenant with the `data-acquisition:logs:ingest` scope (used to authenticate against the generic S3 logs ingest API).
+* An AWS identity (user or role) with the required IAM permissions — see [Required AWS IAM permissions](iam_permissions.md).
 
 ## Deployment options
 
