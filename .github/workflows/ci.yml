@@ -178,7 +178,9 @@ jobs:
           ./tests/e2e/validate_logs_exist.py --bucket ${E2E_TESTING_BUCKET_NAME} --key ${E2E_TEST_PREFIX}/eventbridge/test.log
       - name: Delete EventBridge bucket configuration stack
         if: always()
-        run: ./tests/e2e/clean_up_notifications.sh eventbridge ${STACK_NAME} ${E2E_TESTING_BUCKET_NAME}
+        run: |
+          aws cloudformation delete-stack --stack-name ${STACK_NAME}-s3-bucket-configuration || true
+          aws cloudformation wait stack-delete-complete --stack-name ${STACK_NAME}-s3-bucket-configuration || true
       - name: Update forwarder for SNS/SQS tests
         id: update_forwarder
         if: steps.deploy_forwarder.outcome == 'success'
@@ -219,6 +221,12 @@ jobs:
           wait -n || RESULT=$?
           wait -n || RESULT=$?
           exit $RESULT
+      - name: Clean up notifications
+        if: always()
+        run: |
+          aws s3api put-bucket-notification-configuration \
+            --bucket ${E2E_TESTING_BUCKET_NAME} \
+            --notification-configuration '{}' || true
       - name: Clean up resources
         if: always()
         run: ./tests/e2e/clean_up_resources.sh
@@ -279,6 +287,12 @@ jobs:
           aws s3 cp test.log s3://${E2E_TESTING_BUCKET_NAME}/${E2E_TEST_PREFIX}/test.log
           sleep 180
           ./tests/e2e/validate_logs_exist.py --bucket ${E2E_TESTING_BUCKET_NAME} --key ${E2E_TEST_PREFIX}/test.log
+      - name: Clean up notifications
+        if: always()
+        run: |
+          aws s3api put-bucket-notification-configuration \
+            --bucket ${E2E_TESTING_BUCKET_NAME} \
+            --notification-configuration '{}' || true
       - name: Clean up resources
         if: always()
         run: ./tests/e2e/clean_up_resources.sh
