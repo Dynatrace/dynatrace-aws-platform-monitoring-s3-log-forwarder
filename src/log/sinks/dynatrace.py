@@ -192,7 +192,8 @@ class DynatraceSink():
         '''
 
         if self._token_source == 'secretsmanager':
-            dt_platform_token = parameters.get_secret(self._platform_token_parameter, max_age=120)
+            secret = parameters.get_secret(self._platform_token_parameter, max_age=120, transform='json')
+            dt_platform_token = secret['dt.platform_token']
         else:
             dt_platform_token = parameters.get_parameter(
                 self._platform_token_parameter, max_age=120, decrypt=True)

@@ -145,7 +145,7 @@ mock_dt_secret_arn = 'arn:aws:secretsmanager:us-east-1:123456789012:secret:dynat
 class TestDynatraceSinkSecretsManager(unittest.TestCase):
 
     @responses.activate
-    @patch('log.sinks.dynatrace.parameters.get_secret', return_value='dt0s01.faketoken')
+    @patch('log.sinks.dynatrace.parameters.get_secret', return_value={'dt.platform_token': 'dt0s01.faketoken'})
     def test_token_fetched_from_secrets_manager(self, _mock_get_secret):
         dynatrace_sink = dynatrace.DynatraceSink(mock_dt_url, mock_dt_secret_arn,
                                                  token_source='secretsmanager')
@@ -159,7 +159,7 @@ class TestDynatraceSinkSecretsManager(unittest.TestCase):
         self.assertEqual(sent.headers['Authorization'], 'Bearer dt0s01.faketoken')
 
     @responses.activate
-    @patch('log.sinks.dynatrace.parameters.get_secret', return_value='dt0s01.smtoken')
+    @patch('log.sinks.dynatrace.parameters.get_secret', return_value={'dt.platform_token': 'dt0s01.smtoken'})
     def test_load_sink_uses_secrets_manager_when_env_var_set(self, _mock_get_secret):
         os.environ['DYNATRACE_API_KEY_SECRETS_MANAGER'] = mock_dt_secret_arn
         os.environ['DYNATRACE_ENV_URL'] = mock_dt_url
