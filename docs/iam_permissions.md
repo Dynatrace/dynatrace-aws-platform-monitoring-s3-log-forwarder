@@ -1,10 +1,6 @@
 # Required AWS IAM permissions
 
-This page lists the AWS IAM permissions your identity (user or role) must hold to deploy and manage the `dynatrace-aws-platform-monitoring-s3-log-forwarder`. These are the permissions needed to run the AWS CLI commands in [deployment_guide.md](deployment_guide.md) and [advanced_deployments.md](advanced_deployments.md).
-
-> [!NOTE]
->
-> These are the permissions required to **deploy** the solution — not the permissions the Lambda function itself uses at runtime. For the Lambda execution role's permissions, see [template.yaml](../template.yaml).
+This page lists the AWS IAM permissions your identity (user or role) must hold to deploy and manage the `dynatrace-aws-platform-monitoring-s3-log-forwarder`.
 
 The ARN patterns below use the following placeholders:
 
@@ -33,13 +29,13 @@ cloudformation:CreateChangeSet
 cloudformation:DescribeChangeSet
 cloudformation:ExecuteChangeSet
 cloudformation:DeleteChangeSet
-```text
+```
 
 **CloudFormation SAM transform** — `arn:aws:cloudformation:*:aws:transform/Serverless-2016-10-31`
 
 ```text
 cloudformation:CreateChangeSet
-```text
+```
 
 **Lambda function** — `arn:aws:lambda:<region>:<account-id>:function:<stack-name>-QueueProcessingFunction-*`
 
@@ -51,7 +47,7 @@ lambda:DeleteFunction
 lambda:TagResource
 lambda:ListTags
 lambda:PutFunctionConcurrency
-```text
+```
 
 **Lambda event source mapping** — `*`
 
@@ -60,7 +56,7 @@ lambda:CreateEventSourceMapping
 lambda:GetEventSourceMapping
 lambda:ListEventSourceMappings
 lambda:DeleteEventSourceMapping
-```text
+```
 
 **SQS** — `arn:aws:sqs:<region>:<account-id>:<stack-name>-S3NotificationsQueue` and `arn:aws:sqs:<region>:<account-id>:<stack-name>-S3NotificationsDLQ`
 
@@ -71,7 +67,7 @@ sqs:GetQueueAttributes
 sqs:SetQueueAttributes
 sqs:DeleteQueue
 sqs:ListQueueTags
-```text
+```
 
 **SNS** — `arn:aws:sns:<region>:<account-id>:<stack-name>-Alarms`
 
@@ -85,7 +81,7 @@ sns:GetSubscriptionAttributes
 sns:Unsubscribe
 sns:TagResource
 sns:ListTagsForResource
-```text
+```
 
 **EventBridge rule** — `arn:aws:events:<region>:<account-id>:rule/<stack-name>-s3-notifications`
 
@@ -98,7 +94,7 @@ events:RemoveTargets
 events:ListTargetsByRule
 events:TagResource
 events:ListTagsForResource
-```text
+```
 
 **CloudWatch alarms** — `arn:aws:cloudwatch:<region>:<account-id>:alarm:<stack-name>-MessagesInDLQ`
 
@@ -108,7 +104,7 @@ cloudwatch:DescribeAlarms
 cloudwatch:DeleteAlarms
 cloudwatch:TagResource
 cloudwatch:ListTagsForResource
-```text
+```
 
 **CloudWatch dashboard** — `arn:aws:cloudwatch::<account-id>:dashboard/<stack-name>-monitoring-dashboard`
 
@@ -116,7 +112,7 @@ cloudwatch:ListTagsForResource
 cloudwatch:PutDashboard
 cloudwatch:GetDashboard
 cloudwatch:DeleteDashboards
-```text
+```
 
 **IAM role** — `arn:aws:iam::<account-id>:role/<stack-name>-QueueProcessingFunctionRole-*` or (if you use `IamRolePath`) `arn:aws:iam::<account-id>:role/<iam-role-path>/<stack-name>-QueueProcessingFunctionRole-*`
 
@@ -133,25 +129,24 @@ iam:ListRolePolicies
 iam:ListAttachedRolePolicies
 iam:TagRole
 iam:ListRoleTags
-```text
-
-`iam:PassRole` with condition `iam:PassedToService: lambda.amazonaws.com` is also required on the same resource.
+iam:PassRole  # condition: iam:PassedToService = lambda.amazonaws.com
+```
 
 **SSM Parameter Store** — `arn:aws:ssm:<region>:<account-id>:parameter/dynatrace/s3-log-forwarder/<stack-name>/*`
 
 ```text
 ssm:PutParameter
 ssm:DeleteParameter
-```text
+```
 
 ### Conditional permissions
 
-| Parameter | Required permissions |
-|-----------|---------------------|
-| `DynatraceApiKey` | `secretsmanager:CreateSecret` `secretsmanager:DescribeSecret` `secretsmanager:PutSecretValue` `secretsmanager:DeleteSecret` `secretsmanager:TagResource` on `arn:aws:secretsmanager:<region>:<account-id>:secret:dynatrace/s3-log-forwarder/<stack-name>/api-key*` |
-| `CreateS3NotificationsSNSTopic=true` | `kms:CreateKey` `kms:DescribeKey` `kms:EnableKeyRotation` `kms:GetKeyPolicy` `kms:GetKeyRotationStatus` `kms:ListResourceTags` `kms:PutKeyPolicy` `kms:ScheduleKeyDeletion` `kms:TagResource` on `*` |
-| `CreateS3NotificationsSNSTopic=true` | `sns:CreateTopic` `sns:GetTopicAttributes` `sns:SetTopicAttributes` `sns:DeleteTopic` `sns:Subscribe` `sns:GetSubscriptionAttributes` `sns:Unsubscribe` `sns:TagResource` `sns:ListTagsForResource` on `arn:aws:sns:<region>:<account-id>:<stack-name>-S3Notifications` |
-| `CrossRegionCrossAccountEventBusEnabled=true` | `events:CreateEventBus` `events:DescribeEventBus` `events:DeleteEventBus` on `arn:aws:events:<region>:<account-id>:event-bus/<stack-name>-cross-region-cross-account-s3-events` |
+| Parameter | Required permissions | Resource |
+|-----------|---------------------|----------|
+| `DynatraceApiKey` | `secretsmanager:CreateSecret` `secretsmanager:DescribeSecret` `secretsmanager:PutSecretValue` `secretsmanager:DeleteSecret` `secretsmanager:TagResource` | `arn:aws:secretsmanager:<region>:<account-id>:secret:dynatrace/s3-log-forwarder/<stack-name>/api-key*` |
+| `CreateS3NotificationsSNSTopic=true` | `kms:CreateKey` `kms:DescribeKey` `kms:EnableKeyRotation` `kms:GetKeyPolicy` `kms:GetKeyRotationStatus` `kms:ListResourceTags` `kms:PutKeyPolicy` `kms:ScheduleKeyDeletion` `kms:TagResource` | `*` |
+| `CreateS3NotificationsSNSTopic=true` | `sns:CreateTopic` `sns:GetTopicAttributes` `sns:SetTopicAttributes` `sns:DeleteTopic` `sns:Subscribe` `sns:GetSubscriptionAttributes` `sns:Unsubscribe` `sns:TagResource` `sns:ListTagsForResource` | `arn:aws:sns:<region>:<account-id>:<stack-name>-S3Notifications` |
+| `EnableCrossRegionCrossAccountForwarding=true` | `events:CreateEventBus` `events:DescribeEventBus` `events:DeleteEventBus` | `arn:aws:events:<region>:<account-id>:event-bus/<stack-name>-cross-region-cross-account-s3-events` |
 
 ## Additional permissions for ZIP deployment
 
@@ -180,7 +175,7 @@ events:RemoveTargets
 events:ListTargetsByRule
 events:TagResource
 events:ListTagsForResource
-```text
+```
 
 **IAM role** — `arn:aws:iam::<account-id>:role/<main-stack-name>-QueueProcessingFunctionRole-*`
 
@@ -189,7 +184,7 @@ iam:GetRole
 iam:GetRolePolicy
 iam:PutRolePolicy
 iam:DeleteRolePolicy
-```text
+```
 
 ## AppConfig stack (`dynatrace-aws-s3-log-forwarder-appconfig.yaml`)
 
@@ -217,7 +212,7 @@ appconfig:StartDeployment
 appconfig:GetDeployment
 appconfig:TagResource
 appconfig:ListTagsForResource
-```text
+```
 
 **IAM role** — `arn:aws:iam::<account-id>:role/<main-stack-name>-QueueProcessingFunctionRole-*`
 
@@ -226,14 +221,14 @@ iam:GetRole
 iam:GetRolePolicy
 iam:PutRolePolicy
 iam:DeleteRolePolicy
-```text
+```
 
 **SSM Parameter Store** — `arn:aws:ssm:<region>:<account-id>:parameter/dynatrace/s3-log-forwarder/<main-stack-name>/*`
 
 ```text
 ssm:PutParameter
 ssm:DeleteParameter
-```text
+```
 
 ## Cross-region/account EventBridge stack (`eventbridge-cross-region-or-account-forward-rules.yaml`)
 
@@ -250,7 +245,7 @@ events:RemoveTargets
 events:ListTargetsByRule
 events:TagResource
 events:ListTagsForResource
-```text
+```
 
 **IAM role** — `arn:aws:iam::<source-account-id>:role/<cross-region-stack-name>*`
 
@@ -263,6 +258,5 @@ iam:GetRolePolicy
 iam:DeleteRolePolicy
 iam:TagRole
 iam:ListRoleTags
-```text
-
-`iam:PassRole` with condition `iam:PassedToService: events.amazonaws.com` is also required on the same resource.
+iam:PassRole  # condition: iam:PassedToService = events.amazonaws.com
+```
