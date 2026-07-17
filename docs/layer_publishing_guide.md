@@ -89,6 +89,6 @@ When releasing an update:
 2. Publish x86_64: `./scripts/publish_layer.sh dist/layer.zip`
 3. Build arm64: `./scripts/build_docker.sh layer dist/layer.zip arm64`
 4. Publish arm64: `./scripts/publish_layer.sh dist/layer.zip --arch arm64`
-5. Release the updated `template.yaml` so customers can redeploy to pick up the new layer version
+5. Release the updated YAML templates
 
 > **Note:** Each `publish-layer-version` call creates a new immutable version. Previous versions remain available until explicitly deleted. Customers can pick up the new version by redeploying with the updated `template.yaml`.
