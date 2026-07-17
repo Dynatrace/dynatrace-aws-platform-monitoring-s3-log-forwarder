@@ -71,7 +71,7 @@ The AppConfig application ID is exported to SSM at `/dynatrace/s3-log-forwarder/
 
 Update the main stack by redeploying it and including the parameter specified below to pull rules from AppConfig instead of the bundled local defaults:
 
-```bash 
+```bash
   aws cloudformation deploy \
       --stack-name ${STACK_NAME} \
       --template-file template.yaml \
