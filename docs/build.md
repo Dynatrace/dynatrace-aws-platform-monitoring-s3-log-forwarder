@@ -9,6 +9,10 @@ There are two build options:
 
 Both options are built inside a Docker container for binary compatibility. See `scripts/build_docker.sh`.
 
+> [!NOTE]
+>
+> The build runs inside a Docker container. Make sure Docker is running before executing the build script.
+
 ## Prerequisites
 
 The deployment instructions are written for Linux/MacOS. If you are running on Windows, use the Linux Subsystem for Windows or use an [AWS Cloud9](https://aws.amazon.com/cloud9/) instance.
@@ -37,7 +41,7 @@ Before deploying either option, complete the following steps.
     git checkout $VERSION_TAG
     ```
 
-1. Define a name for your `dynatrace-aws-platform-monitoring-s3-log-forwarder` deployment (e.g. mycompany-dynatrace-s3-log-forwarder) and your Dynatrace tenant UUID (e.g. `abc12345` if your Dynatrace environment url is `https://abc12345.live.dynatrace.com`) in environment variables that will be used along the deployment process.
+1. Define a name for your `dynatrace-aws-platform-monitoring-s3-log-forwarder` deployment (e.g. mycompany-dynatrace-s3-log-forwarder) and your Dynatrace tenant UUID (e.g. `abc12345` if your Dynatrace environment url is `https://abc12345.apps.dynatrace.com`) in environment variables that will be used along the deployment process.
 
     ```bash
     export STACK_NAME=replace_with_your_log_forwarder_stack_name
@@ -48,20 +52,38 @@ Before deploying either option, complete the following steps.
     >
     > Your stack name should have a maximum of 47 characters, otherwise deployment will fail.
 
-1. Create an AWS SSM SecureString Parameter to store your Dynatrace platform token to ingest logs.
+1. Provide the Dynatrace platform token.
+
+    The Lambda function needs a Dynatrace platform token (scope `data-acquisition:logs:ingest`) to authenticate against the log ingest API. There are three mutually exclusive options — choose one:
+
+    **Option A: Existing AWS Secrets Manager secret (recommended)**
+
+    If you already have a Secrets Manager secret storing the token, reference it directly. The secret value must be the plain token string.
 
     ```bash
-    export PARAMETER_NAME="/dynatrace/s3-log-forwarder/$STACK_NAME/$DYNATRACE_TENANT_UUID/api-key"
-    # Configure HISTCONTROL to avoid storing on the bash history the commands containing tokens
-    export HISTCONTROL=ignorespace
-     export PARAMETER_VALUE=your_dynatrace_platform_token_here
-     aws ssm put-parameter --name $PARAMETER_NAME --type SecureString --value $PARAMETER_VALUE
+    export DT_TOKEN_SECRET_ARN=<arn-of-your-existing-secrets-manager-secret>
     ```
 
-    > [!NOTE]
-    >
-    > * It's important that your parameter name follows the structure above, as the solution grants permissions to AWS Lambda to the hierarchy `/dynatrace/s3-log-forwarder/your_stack_name/*`
-    > * Your platform token is stored encrypted with the default AWS-managed key alias: `aws/ssm`. If you want to use a Customer-managed Key, you'll need to grant Decrypt permissions to the AWS Lambda IAM Role that's deployed within the SAM template.
+    **Option B: AWS Systems Manager Parameter Store**
+
+    Store the token as a SecureString parameter:
+
+    ```bash
+    export HISTCONTROL=ignorespace
+     aws ssm put-parameter \
+         --name "/dynatrace/s3-log-forwarder/$STACK_NAME/api-key" \
+         --type SecureString \
+         --value "<your_dynatrace_platform_token_here>"
+    ```
+
+    Pass `DynatraceApiKeySSMParameter="/dynatrace/s3-log-forwarder/$STACK_NAME/api-key"` in the deploy command later.
+
+
+    **Option C: Plain text token (stack creates a Secrets Manager secret)**
+
+    Pass the token directly in the deploy command — the stack creates a new Secrets Manager secret to store it securely.
+
+    Pass `DynatraceApiKey="<your_dynatrace_platform_token_here>"` in the deploy command later.
 
 ## Building and deploying a Lambda Layer from source
 
@@ -80,6 +102,7 @@ This will:
 
 * Install pip dependencies for the target platform into `build/layer/python/`
 * Copy the application source code and license files
+* Bundle the `libyajl.so.2` native library (required by the `ijson` `yajl2_c` backend for high-performance JSON streaming)
 * Produce a layer ZIP at the specified output path
 
 ### Lambda Layer deployment instructions
@@ -109,7 +132,7 @@ This will:
 
 1. Deploy the main forwarder stack.
 
-    Continue with the standard deployment from [the default option in the deployment guide](deployment_guide.md#default-option-lambda-layer), using the Layer ARN retrieved above.
+    Continue with the standard deployment from [the deployment guide](deployment_guide.md#step-4-deploy-the-lambda-function), passing `DynatraceS3LogForwarderLayerArn="$LAYER_ARN"` in `--parameter-overrides` to use the layer you just built.
 
 ### Updating the layer after code changes
 
@@ -139,15 +162,11 @@ This will:
 
 ### Lambda ZIP deployment instructions
 
-1. From the project root directory, execute the following command to build the Lambda deployment package:
+1. From the project root directory, build the Lambda deployment package:
 
     ```bash
     ./scripts/build_docker.sh zip dist/lambda.zip
     ```
-
-    > [!NOTE]
-    >
-    > The build runs inside a Docker container. Make sure Docker is running before executing the build script.
 
 1. Upload the nested dashboard template and rewrite its `TemplateURL` in `template.yaml`. `template.yaml` references `cloudwatch-monitoring-dashboard.yaml` via a local path, which CloudFormation can't resolve — it needs an absolute S3 URL:
 
@@ -161,56 +180,4 @@ This will:
     ./scripts/rewrite_nested_template_url.sh "${NESTED_DASHBOARD_URL}" deploy-template.yaml
     ```
 
-1. Deploy the CloudFormation stack (this creates all infrastructure with a placeholder Lambda function):
-
-    ```bash
-    aws cloudformation deploy --stack-name $STACK_NAME \
-               --template-file deploy-template.yaml \
-               --parameter-overrides \
-                    DynatraceEnvironmentURL="https://$DYNATRACE_TENANT_UUID.live.dynatrace.com" \
-                    DynatraceApiKeySSMParameter=$PARAMETER_NAME \
-                    DeploymentPackageType=zip \
-                    Architecture=x86_64 \
-               --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND
-    ```
-
-    Set `Architecture=arm64` for arm64 deployments.
-
-    If you want to customize deployment values, you can find the parameter descriptions on the [template.yaml](../template.yaml) file.
-
-1. Update the Lambda function code with the built deployment package:
-
-    ```bash
-    FUNCTION_NAME=$(aws cloudformation describe-stacks --stack-name $STACK_NAME \
-        --query 'Stacks[0].Outputs[?OutputKey==`QueueProcessingFunction`].OutputValue' \
-        --output text | rev | cut -d':' -f1 | rev)
-
-    aws lambda update-function-code --function-name ${FUNCTION_NAME} \
-        --zip-file fileb://dist/lambda.zip
-    ```
-
-    If successfull, you'll see a JSON response with `"LastUpdateStatus": "InProgress"`.
-
-    **NOTES:**
-    * The e-mail address is set to receive alerts when log files can't be processed and messages are arriving to the Dead Letter Queue. If you don't want to receive those, just leave the parameter empty.
-    * An Amazon SNS topic is created to receive monitoring alerts where you can subscribe HTTP endpoints to send the notification to your tools (e.g. PagerDuty, Service Now...).
-
-1. At this point, you have successfully deployed the `dynatrace-aws-platform-monitoring-s3-log-forwarder` with your desired configuration. Now, you need to configure specific Amazon S3 buckets to send "S3 Object created" notifications to the log forwarder; as well as grant permissions to the log forwarder to read files from your bucket. For each bucket that you want to send logs from to Dynatrace, perform the below steps:
-
-    * Go to your S3 bucket(s) configuration and enable S3 notifications via EventBridge following instructions [here](https://docs.aws.amazon.com/AmazonS3/latest/userguide/enable-event-notifications-eventbridge.html).
-    * Create Amazon EventBridge rules to send Object created notifications to the log forwarder. To do so, deploy the `dynatrace-aws-s3-log-forwarder-s3-bucket-configuration.yaml` CloudFormation template:
-
-        ```bash
-        export BUCKET_NAME=your-bucket-name-here
-
-        aws cloudformation deploy \
-            --template-file dynatrace-aws-s3-log-forwarder-s3-bucket-configuration.yaml \
-            --stack-name dynatrace-aws-s3-log-forwarder-s3-bucket-configuration-$BUCKET_NAME \
-            --parameter-overrides DynatraceAwsS3LogForwarderStackName=$STACK_NAME \
-                                  LogsBucketName=$BUCKET_NAME \
-            --capabilities CAPABILITY_IAM
-        ```
-
-        **NOTES:**
-        * The S3 bucket must be on the same AWS account and region than where your log forwarder is deployed. For cross-region and cross-account deployments, check the [docs/log_forwarding.md](docs/log_forwarding.md) docs.
-        * If you want to forward logs only for specific S3 prefixes, you can add up to 10 LogsBucketPrefix# parameter overrides (e.g. LogsBucketPrefix1=dev/ LogsBucketPrefix2=prod/ ...).
+1. Follow the [ZIP deployment instructions in the deployment guide](deployment_guide.md#zip-deployment-alternative-option), using `deploy-template.yaml` (generated above) instead of `template.yaml`, and `dist/lambda.zip` as the deployment package.

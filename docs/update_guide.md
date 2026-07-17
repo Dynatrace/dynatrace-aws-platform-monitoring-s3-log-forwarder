@@ -58,18 +58,17 @@ unzip -o templates.zip
 
 #### If using Lambda Layer deployment
 
-Pick the new Layer Version ARN for your architecture and region from the [Lambda Layer ARNs table in README.md](../README.md), then redeploy:
+Redeploy with the new `template.yaml` — the latest layer ARN for your region and architecture is embedded in the template's mappings.
 
 ```bash
-export LAYER_ARN=<new-layer-version-arn>
-
 aws cloudformation deploy --stack-name ${STACK_NAME} \
             --template-file template.yaml \
             --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
             --parameter-overrides \
-                DeploymentPackageType="layer" \
-                DynatraceS3LogForwarderLayerArn="$LAYER_ARN"
+                DeploymentPackageType="layer"
 ```
+
+If you want to pin to a specific layer version, you can optionally provide `DynatraceS3LogForwarderLayerArn="<arn>"`.
 
 #### If using ZIP deployment
 
@@ -99,7 +98,7 @@ aws lambda update-function-code --function-name ${FUNCTION_NAME} \
     --zip-file fileb://lambda-x86_64.zip   # or lambda-arm64.zip
 ```
 
-If successfull, you'll see a message similar to the below at the end of the execution:
+If successful, you'll see a message similar to the below at the end of the execution:
 
 ```bash
 Successfully created/updated stack - dynatrace-s3-log-forwarder in us-east-1
@@ -107,4 +106,4 @@ Successfully created/updated stack - dynatrace-s3-log-forwarder in us-east-1
 
 ## Rollback procedure
 
-If you need to rollback to the previous version, repeat entire update procedure, but use the previous version to set the `VERSION_TAG` environment variable in Step 3.
+If you need to roll back to the previous version, repeat entire update procedure, but use the previous version to set the `VERSION_TAG` environment variable in Step 3.
