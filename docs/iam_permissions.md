@@ -55,6 +55,7 @@ lambda:PutFunctionConcurrency
 lambda:CreateEventSourceMapping
 lambda:GetEventSourceMapping
 lambda:ListEventSourceMappings
+lambda:UpdateEventSourceMapping
 lambda:DeleteEventSourceMapping
 ```
 

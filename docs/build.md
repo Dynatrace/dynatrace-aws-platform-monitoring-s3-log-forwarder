@@ -70,7 +70,7 @@ Before deploying either option, complete the following steps.
 
     ```bash
     export HISTCONTROL=ignorespace
-     aws ssm put-parameter \
+    aws ssm put-parameter \
          --name "/dynatrace/s3-log-forwarder/$STACK_NAME/api-key" \
          --type SecureString \
          --value "<your_dynatrace_platform_token_here>"
