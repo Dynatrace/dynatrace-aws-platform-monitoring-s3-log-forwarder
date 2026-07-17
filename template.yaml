@@ -140,7 +140,7 @@ Metadata:
 
 Parameters:
   DynatraceEnvironmentURL:
-    Description: "URL of your Dynatrace environment. (e.g. https://{your-environment-id}.live.dynatrace.com or https://{your-environment-id}.apps.dynatrace.com)."
+    Description: "URL of your Dynatrace environment. (e.g. https://{your-environment-id}.apps.dynatrace.com)."
     Type: String
     AllowedPattern: "^https:\\/\\/[a-zA-Z0-9-]{2,}(\\.[a-zA-Z0-9-]{2,})(\\.[a-zA-Z0-9-]{2,})*$"
   DynatraceApiKeySSMParameter:
