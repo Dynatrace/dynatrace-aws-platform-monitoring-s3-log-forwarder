@@ -17,10 +17,10 @@ You'll also need:
 
 The `dynatrace-aws-platform-monitoring-s3-log-forwarder` supports two deployment package types:
 
-| Option | Description |
-|--------|-------------|
-| **Lambda Layer** (default) | Use a Layer ARN provided by a maintainer (no build required) |
-| **ZIP** | Lambda function code and dependencies packaged as a ZIP file |
+| Option                         | Description                                                     |
+|--------------------------------|-----------------------------------------------------------------|
+| **Lambda Layer** (recommended) | Use a Lambda Layer provided by a maintainer (no build required) |
+| **ZIP**                        | Lambda function code and dependencies packaged as a ZIP file    |
 
 ## Deploy the dynatrace-aws-platform-monitoring-s3-log-forwarder
 
@@ -54,8 +54,6 @@ If you already have a Secrets Manager secret storing the token, reference it dir
 ```bash
 export DT_TOKEN_SECRET_ARN=<arn-of-your-existing-secrets-manager-secret>
 ```
-
-Pass `DynatraceApiKeySecretsManagerSecret="$DT_TOKEN_SECRET_ARN"` in the deploy command in Step 4.
 
 ---
 

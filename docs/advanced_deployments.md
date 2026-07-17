@@ -6,7 +6,7 @@ This page contains guidance and considerations for large deployments.
 
 The `S3BucketNames` parameter in `template.yaml` forwards logs from entire buckets. If you need to forward logs only from specific S3 key prefixes within a bucket, use the `dynatrace-aws-s3-log-forwarder-s3-bucket-configuration.yaml` template once per bucket instead.
 
-Deploy the main stack without `S3BucketNames`:
+Deploy the main stack without `S3BucketNames`, include the parameters as needed from [deployment_guide.md](deployment_guide.md#deploy-the-dynatrace-aws-platform-monitoring-s3-log-forwarder):
 
 ```bash
 aws cloudformation deploy \
@@ -14,8 +14,8 @@ aws cloudformation deploy \
     --template-file template.yaml \
     --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
     --parameter-overrides \
-        DynatraceEnvironmentURL="https://$DYNATRACE_TENANT_UUID.live.dynatrace.com" \
-        DynatraceApiKeySSMParameter="/dynatrace/s3-log-forwarder/$STACK_NAME/api-key" \  # or DynatraceApiKeySecretsManagerSecret / DynatraceApiKey — see deployment_guide.md Step 2
+        DynatraceEnvironmentURL="https://$DYNATRACE_TENANT_UUID.apps.dynatrace.com" \
+        DynatraceApiKeySecretsManagerSecret="<secret-arn>" \ 
         DynatraceS3LogForwarderLayerArn="$LAYER_ARN"
 ```
 
@@ -39,19 +39,17 @@ You can specify up to 10 prefixes per bucket using `LogsBucketPrefix1` through `
 
 > [!WARNING]
 >
-> Do not add a bucket to both `S3BucketNames` in the main stack and a per-bucket configuration stack. The main stack's EventBridge rule matches all `Object Created` events from that bucket with no prefix filter, so objects in the prefix would be routed to SQS by both rules and ingested into Dynatrace twice.
+> Do not add a bucket to both `S3BucketNames` in the main stack. The main stack's EventBridge rule matches all `Object Created` events from that bucket with no prefix filter, so objects in the prefix would be routed to SQS by both rules and ingested into Dynatrace twice.
 
 <!-- -->
 
 > [!NOTE]
 >
-> * If your S3 objects are encrypted with a customer-managed KMS key, add `KmsKeyArns="arn:aws:kms:region:account:key/uuid"` to the main stack deploy command so the Lambda function can decrypt them.
-> * For cross-region or cross-account buckets, add the `S3BucketIsCrossRegionOrCrossAccount=true` parameter and deploy the `eventbridge-cross-region-or-account-forward-rules.yaml` template in the bucket's account/region. See [Cross-region](#forward-logs-from-s3-buckets-on-different-aws-regions) and [Cross-account](#forward-logs-from-s3-buckets-on-different-aws-accounts) sections below for details.
 > * Each per-bucket stack adds an inline IAM policy statement to the Lambda execution role. See [IAM Role Policy size limit](#iam-role-policy-size-limit) below for scaling considerations.
 
 ## Custom log forwarding and processing rules via AppConfig
 
-By default the forwarder uses built-in rules bundled in the Lambda package. For runtime customisation — changing which logs are forwarded and how they are parsed — without redeploying Lambda, deploy the optional AppConfig stack.
+By default, the forwarder uses built-in rules (see: [src/log/processing/rules/aws/](../src/log/processing/rules/aws/)). To customize which logs are forwarded and how they are parsed at runtime without redeploying the main stack, deploy the optional `dynatrace-aws-s3-log-forwarder-appconfig.yaml` template.
 
 ### Step 1. Deploy the AppConfig stack
 
@@ -72,17 +70,13 @@ The AppConfig application ID is exported to SSM at `/dynatrace/s3-log-forwarder/
 
 ### Step 2. Switch the forwarder to AppConfig
 
-Update the main stack to pull rules from AppConfig instead of the bundled local defaults:
+Update the main stack by redeploying it and including the parameter specified below to pull rules from AppConfig instead of the bundled local defaults:
 
 ```bash
-aws cloudformation deploy \
-    --stack-name ${STACK_NAME} \
-    --template-file template.yaml \
-    --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
     --parameter-overrides LogForwarderConfigurationLocation=aws-appconfig
 ```
 
-### Step 3. Customise the rules
+### Step 3. Customize the rules
 
 Edit the configuration profiles in the [AWS AppConfig console](https://console.aws.amazon.com/appconfig/) under the `${STACK_NAME}-app-config` application and deploy a new version. The Lambda picks up changes within ~1 minute without requiring a redeployment.
 
@@ -92,7 +86,7 @@ For rule syntax and examples see [log_forwarding.md](log_forwarding.md) and [log
 
 Some organizations enforce IAM governance policies that require roles to be created under a specific path (e.g. `/engineering/` or `/service-roles/`). Without the correct path, CloudFormation stack deployment will fail with an access denied error.
 
-Use the `IamRolePath` parameter to set the path for the Lambda execution role:
+Deploy the stack with the `IamRolePath` parameter to set the path for the Lambda execution role:
 
 ```bash
 aws cloudformation deploy \
@@ -100,8 +94,8 @@ aws cloudformation deploy \
     --template-file template.yaml \
     --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
     --parameter-overrides \
-        DynatraceEnvironmentURL="https://$DYNATRACE_TENANT_UUID.live.dynatrace.com" \
-        DynatraceApiKeySSMParameter="/dynatrace/s3-log-forwarder/$STACK_NAME/api-key" \  # or DynatraceApiKeySecretsManagerSecret / DynatraceApiKey — see deployment_guide.md Step 2
+        DynatraceEnvironmentURL="https://$DYNATRACE_TENANT_UUID.apps.dynatrace.com" \
+        DynatraceApiKeySecretsManagerSecret="<secret-arn>" \
         DynatraceS3LogForwarderLayerArn="$LAYER_ARN" \
         IamRolePath="/engineering/platform/"
 ```
@@ -115,9 +109,13 @@ It's possible to centralize log forwarding from S3 buckets on different AWS regi
 In this case, you will need to configure Amazon EventBridge rules on the AWS region where your S3 bucket is to forward S3 Object Created notifications to a dedicated event bus on the AWS region where you have deployed the `dynatrace-aws-s3-log-forwarder`. Before proceeding, make sure you have deployed the `dynatrace-aws-s3-log-forwarder` setting the `EnableCrossRegionCrossAccountForwarding` parameter to "true", so a dedicated Event Bus is created to receive cross-region notifications. If you didn't set this parameter when you deployed the forwarder, you can simply update the log forwarder CloudFormation stack to enable it.
 
 ```bash
-aws cloudformation deploy --stack-name $STACK_NAME --parameter-overrides \
+aws cloudformation deploy \
+    --stack-name $STACK_NAME \
+    --template-file template.yaml \
+    --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND
+    --parameter-overrides \
     EnableCrossRegionCrossAccountForwarding=true \
-    --template-file template.yaml --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND
+
 ```
 
 The diagram below showcases what needs to be deployed to enable cross-region log forwarding:
@@ -157,7 +155,7 @@ For each S3 bucket located in a different AWS region than where the log forwarde
     fi
     ```
 
-    **NOTE:** You can limit log forwarding for specific S3 bucket prefixes (e.g. dev/) adding up to 10 LogBucketPrefix# optional parameters to the above command.
+    **NOTE:** You can limit log forwarding for specific S3 bucket prefixes (e.g. `dev/`) adding up to 10 LogBucketPrefix# optional parameters to the above command.
 
 1. Once the above stack is deployed, go to your S3 bucket(s) and enable notifications via EventBridge following instructions [here](https://docs.aws.amazon.com/AmazonS3/latest/userguide/enable-event-notifications-eventbridge.html).
 
@@ -176,17 +174,21 @@ For each S3 bucket located in a different AWS region than where the log forwarde
 
 1. Define an explicit log-forwarding-rule for this S3 bucket on the log-forwarding-rules AWS AppConfig configuration profile. Unless you have a default rule defined, logs from this bucket won't be forwarded until you deploy an explicit rule.
 
-**NOTE:** You'll incurr cross-region data transfer costs between the region where AWS Lambda forwarder function runs and the region where the S3 bucket is located, on top of data transfer between AWS Lambda and your Dynatrace tenant. For more detailed information, check the [AWS Pricing website](https://aws.amazon.com/ec2/pricing/on-demand/#Data_Transfer).
+**NOTE:** You'll incur cross-region data transfer costs between the region where AWS Lambda forwarder function runs and the region where the S3 bucket is located, on top of data transfer between AWS Lambda and your Dynatrace tenant. For more detailed information, check the [AWS Pricing website](https://aws.amazon.com/ec2/pricing/on-demand/#Data_Transfer).
 
 ## Forward logs from S3 buckets on different AWS accounts
 
 You can centralize log forwarding for logs in multiple AWS accounts and AWS regions on a single `dynatrace-aws-s3-log-forwarder` deployment to avoid the overhead of deploying and managing multiple log forwarding instances. Before proceeding, make sure you have deployed the `dynatrace-aws-s3-log-forwarder` setting the `EnableCrossRegionCrossAccountForwarding` parameter set to "true", so a dedicated Event Bus is created to receive cross-region notifications. You also need to grant permissions to the AWS account using the `AwsAccountsToReceiveLogsFrom` parameter, which takes a comma separated list of AWS account ids to grant permission to. To do so, update your CloudFormation stack executing the command below:
 
 ```bash
-aws cloudformation deploy --stack-name $STACK_NAME --parameter-overrides \
-    EnableCrossRegionCrossAccountForwarding=true \
-    AwsAccountsToReceiveLogsFrom="aws_account_1,aws_account_2..." \
-    --template-file template.yaml --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND
+aws cloudformation deploy \
+    --stack-name $STACK_NAME \
+    --template-file template.yaml \
+    --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND
+    --parameter-overrides \
+       EnableCrossRegionCrossAccountForwarding=true \
+       AwsAccountsToReceiveLogsFrom="aws_account_1,aws_account_2..." \
+    
 ```
 
 **IMPORTANT NOTE:** If you had already some AWS accounts configured on the AwsAccountsToReceiveLogsFrom parameter, make sure to add them to the list on the above command, as it overwrites the previous content of the parameter.
@@ -230,7 +232,7 @@ For each S3 bucket located in a different AWS account that you want to forward l
         --query 'Parameter.Value' --output text
     ```
 
-    **IMPORTANT NOTE:** The S3 bucket on the source AWS account must be configured with [ACLs disabled](https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-ownership-existing-bucket.html). If your S3 bucket has ACLs enabled, the above policy only takes effect for objects owned by the bucket owner. As AWS logs are delivered by AWS-owned accounts, who are the owners of the log objects, the permissions granted by the bucket policy don´t apply. Disabling ACLs should meet the wide majority of use cases (it's the default setting for S3 buckets created on the AWS console, and [will become default setting](https://aws.amazon.com/blogs/aws/heads-up-amazon-s3-security-changes-are-coming-in-april-of-2023/) starting on Apr 2023 for new buckets). If you have ACLs enabled on your bucket, read the [AWS documentation](https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-ownership-existing-bucket.html) carefully before disabling them. The `dynatrace-aws-s3-log-forwarder` doesn't support accessing buckets assuming an IAM role on the destination account.
+    **IMPORTANT NOTE:** The S3 bucket on the source AWS account must be configured with [ACLs disabled](https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-ownership-existing-bucket.html). If your S3 bucket has ACLs enabled, the above policy only takes effect for objects owned by the bucket owner. As AWS logs are delivered by AWS-owned accounts, who are the owners of the log objects, the permissions granted by the bucket policy don´t apply. Disabling ACLs should meet the wide majority of use cases (it's the default setting for S3 buckets created on the AWS console). If you have ACLs enabled on your bucket, read the [AWS documentation](https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-ownership-existing-bucket.html) carefully before disabling them. The `dynatrace-aws-s3-log-forwarder` doesn't support accessing buckets assuming an IAM role on the destination account.
 
 1. On the AWS account where the S3 bucket is, [enable S3 notifications](https://docs.aws.amazon.com/AmazonS3/latest/userguide/enable-event-notifications-eventbridge.html) to Amazon EventBridge on the bucket.
 

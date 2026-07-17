@@ -11,7 +11,7 @@ You can use the following steps to test locally:
    AWS_DEFAULT_REGION=us-east-1
    DEPLOYMENT_NAME=test
    POWERTOOLS_METRICS_NAMESPACE=local
-   DYNATRACE_ENV_URL=https://xxx.dynatrace.com
+   DYNATRACE_ENV_URL=https://xxx.apps.dynatrace.com
    DYNATRACE_API_KEY_SSM=/dynatrace/s3-log-forwarder/dynatrace-aws-s3-log-forwarder/tenant/api-key
    DYNATRACE_API_KEY=dt0s16.XXX
    PYTHONPATH=src
