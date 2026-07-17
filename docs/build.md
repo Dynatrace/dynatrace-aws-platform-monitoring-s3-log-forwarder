@@ -78,7 +78,6 @@ Before deploying either option, complete the following steps.
 
     Pass `DynatraceApiKeySSMParameter="/dynatrace/s3-log-forwarder/$STACK_NAME/api-key"` in the deploy command later.
 
-
     **Option C: Plain text token (stack creates a Secrets Manager secret)**
 
     Pass the token directly in the deploy command — the stack creates a new Secrets Manager secret to store it securely.
