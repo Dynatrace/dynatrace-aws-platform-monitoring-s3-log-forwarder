@@ -30,7 +30,7 @@ All core infrastructure — Lambda, SQS queues, IAM role, EventBridge rules, and
 
 ### Step 1. Define a name for your `dynatrace-aws-platform-monitoring-s3-log-forwarder` deployment.
 
-Define a name for your `dynatrace-aws-platform-monitoring-s3-log-forwarder` deployment (e.g. mycompany-dynatrace-s3-log-forwarder) and your Dynatrace tenant UUID (e.g. `abc12345` if your Dynatrace environment url is `https://abc12345.live.dynatrace.com`) in environment variables that will be used along the deployment process.
+Define a name for your `dynatrace-aws-platform-monitoring-s3-log-forwarder` deployment (e.g. mycompany-dynatrace-s3-log-forwarder) and your Dynatrace tenant UUID (e.g. `abc12345` if your Dynatrace environment url is `https://abc12345.apps.dynatrace.com`) in environment variables that will be used along the deployment process.
 
 ```bash
 export STACK_NAME=<replace-with-your-log-forwarder-stack-name>
@@ -49,7 +49,7 @@ The Lambda function needs a Dynatrace platform token (scope `data-acquisition:lo
 
 #### Option A: Existing AWS Secrets Manager secret (recommended)
 
-If you already have a Secrets Manager secret storing the token, reference it directly. The secret value must be the plain token string.
+If you already have a Secrets Manager secret storing the token, reference it directly. The secret value must be the plain token string. #TODO: update
 
 ```bash
 export DT_TOKEN_SECRET_ARN=<arn-of-your-existing-secrets-manager-secret>
@@ -100,17 +100,9 @@ Choose one of the deployment options below:
 
 ---
 
-#### Default option: Lambda Layer
+#### Lambda Layer (recommended)
 
-This is the simplest option — no build tools, SAM CLI, or Python required.
-
-1. Pick the Layer ARN for your target architecture and region from the [Lambda Layer ARNs table in README.md](../README.md) and set it:
-
-    ```bash
-    export LAYER_ARN=<layer-version-arn-for-your-region-and-architecture>
-    ```
-
-2. Deploy the main forwarder stack:
+1. Deploy the main forwarder stack:
 
     ```bash
     aws cloudformation deploy \
@@ -120,7 +112,6 @@ This is the simplest option — no build tools, SAM CLI, or Python required.
         --parameter-overrides \
             DynatraceEnvironmentURL="https://$DYNATRACE_TENANT_UUID.live.dynatrace.com" \
             DynatraceApiKeySecretsManagerSecret="$DT_TOKEN_SECRET_ARN" \
-            DynatraceS3LogForwarderLayerArn="$LAYER_ARN" \
             Architecture="x86_64" \
             S3BucketNames="my-bucket,another-bucket"
     ```
@@ -131,11 +122,12 @@ This is the simplest option — no build tools, SAM CLI, or Python required.
     >   `DynatraceApiKeySSMParameter="/dynatrace/s3-log-forwarder/$STACK_NAME/api-key"` (Option B) or
     >   `DynatraceApiKey="<your_dynatrace_platform_token_here>"` (Option C).
     > * Set `Architecture=arm64` to deploy on arm64. Make sure the Layer ARN you selected matches the architecture.
-    > * When the publisher releases a new layer version, update the `DynatraceS3LogForwarderLayerArn` parameter with the new ARN and redeploy the stack to pick up the update.
+    > * If your S3 objects are encrypted with a customer-managed KMS key, add `KmsKeyArns="arn:aws:kms:region:account:key/uuid,..."` to  `--parameter-voerrides` in deploy command.
+    > * When `S3BucketNames` is passed, no prefix filtering is supported. If you want more fine-grained control, see [Prefix filtering per bucket](#prefix-filtering-per-bucket) in the Advanced deployments section.
 
 ---
 
-#### Alternative option: ZIP deployment
+#### Zip deployment (alternative option)
 
 1. Download the Lambda deployment package for your target architecture:
 
@@ -153,7 +145,7 @@ This is the simplest option — no build tools, SAM CLI, or Python required.
         --template-file template.yaml \
         --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
         --parameter-overrides \
-            DynatraceEnvironmentURL="https://$DYNATRACE_TENANT_UUID.live.dynatrace.com" \
+            DynatraceEnvironmentURL="https://$DYNATRACE_TENANT_UUID.apps.dynatrace.com" \
             DynatraceApiKeySecretsManagerSecret="$DT_TOKEN_SECRET_ARN" \
             DeploymentPackageType="zip" \
             Architecture="x86_64" \
@@ -166,7 +158,9 @@ This is the simplest option — no build tools, SAM CLI, or Python required.
     >   `DynatraceApiKeySSMParameter="/dynatrace/s3-log-forwarder/$STACK_NAME/api-key"` (Option B) or
     >   `DynatraceApiKey="<your_dynatrace_platform_token_here>"` (Option C).
     > * Set `Architecture=arm64` for arm64 deployments.
-
+    > * If your S3 objects are encrypted with a customer-managed KMS key, add `KmsKeyArns="arn:aws:kms:region:account:key/uuid,..."` to  `--parameter-voerrides` in deploy command.
+    > * When `S3BucketNames` is passed, no prefix filtering is supported. If you want more fine-grained control, see [Prefix filtering per bucket](#prefix-filtering-per-bucket) in the Advanced deployments section.
+    > * 
 3. Update the Lambda function code with the deployment package:
 
     ```bash
@@ -192,7 +186,7 @@ This is the simplest option — no build tools, SAM CLI, or Python required.
 > [!NOTE]
 >
 > * You can optionally configure notifications on your e-mail address to receive alerts when log files can't be processed and messages are arriving to the Dead Letter Queue. To do so, add the parameter `NotificationsEmail`=`your_email_address_here`.
-> * An Amazon SNS topic is created to receive monitoring alerts where you can subscribe HTTP endpoints to send the notification to your tools (e.g. PagerDuty, Service Now...).
+> * An Amazon SNS topic named `<stack-name>-Alarms` is created to receive monitoring alerts where you can subscribe HTTP endpoints to send the notification to your tools. The topic ARN is available in the stack output as `SNSAlertsTopic`.
 > * The template is deployed with a pre-defined set of default values to suit the majority of use cases. If you want to customize deployment values, you can find the parameter descriptions on the [template.yaml](../template.yaml) file.
 
 ### Step 5. Configure S3 buckets to send "S3 Object created" notifications to the log forwarder.
@@ -225,9 +219,6 @@ QUEUE_ARN=$(aws ssm get-parameter \
 
 Then configure the bucket notification ([AWS instructions](https://docs.aws.amazon.com/AmazonS3/latest/userguide/ways-to-add-notification-config-to-bucket.html)). The SQS queue policy already allows the buckets listed in `S3BucketNames` to send notifications directly.
 
-> [!NOTE]
-> Direct S3 to SQS only works for buckets in the same AWS region as the log forwarder.
-
 #### Option C: SNS fan-out
 
 If you have an existing SNS topic receiving S3 Object Created notifications, subscribe the log forwarder's SQS queue to it:
@@ -244,8 +235,6 @@ Alternatively, deploy the main stack with `CreateS3NotificationsSNSTopic=true` t
 > [!NOTE]
 >
 > * Options A and B only work for buckets in the same AWS account and region as the log forwarder. For cross-account or cross-region buckets, see [Advanced deployments](#advanced-deployments).
-> * If your S3 objects are encrypted with a customer-managed KMS key, add `KmsKeyArns="arn:aws:kms:region:account:key/uuid,..."` to your Step 3 deploy command so the Lambda function can decrypt them.
-> * `S3BucketNames` does not support prefix filtering. If you need to forward logs only from specific prefixes within a bucket, use the advanced option below instead.
 
 ## Advanced deployments
 
@@ -253,19 +242,19 @@ For detailed instructions on each scenario, see [advanced_deployments.md](advanc
 
 ### Prefix filtering per bucket
 
-`S3BucketNames` forwards all objects from the listed buckets. To forward only from specific key prefixes (e.g. `AWSLogs/123456789012/CloudTrail/`), deploy the `dynatrace-aws-s3-log-forwarder-s3-bucket-configuration.yaml` template once per bucket — it supports up to 10 prefixes and uses EventBridge for routing.
+`S3BucketNames` forwards all objects from the listed buckets. To forward only from specific key prefixes, deploy the `dynatrace-aws-s3-log-forwarder-s3-bucket-configuration.yaml` template once per bucket — it supports up to 10 prefixes and uses EventBridge for routing.
 
 See [Configuring S3 buckets with prefix filtering](advanced_deployments.md#configuring-s3-buckets-with-prefix-filtering).
 
 ### Custom log forwarding and processing rules
 
-By default the forwarder uses built-in rules. To customise which logs are forwarded and how they are parsed at runtime without redeploying Lambda, deploy the optional `dynatrace-aws-s3-log-forwarder-appconfig.yaml` template.
+By default, the forwarder uses built-in rules (see: [src/log/processing/rules/aws/](../src/log/processing/rules/aws/)). To customize which logs are forwarded and how they are parsed at runtime without redeploying the main stack, deploy the optional `dynatrace-aws-s3-log-forwarder-appconfig.yaml` template.
 
 See [Custom log forwarding and processing rules via AppConfig](advanced_deployments.md#custom-log-forwarding-and-processing-rules-via-appconfig).
 
 ### IAM role path
 
-If your organization requires IAM roles to be created under a specific path (e.g. `/engineering/platform/`), use the `IamRolePath` parameter.
+If your organization policies require IAM roles to be created under a specific path (e.g. `/engineering/platform/`), use the `IamRolePath` parameter.
 
 See [IAM Role path](advanced_deployments.md#iam-role-path).
 
