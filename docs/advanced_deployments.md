@@ -38,7 +38,7 @@ You can specify up to 10 prefixes per bucket using `LogsBucketPrefix1` through `
 
 > [!WARNING]
 >
-> Do not add a bucket to both `S3BucketNames` in the main stack. The main stack's EventBridge rule matches all `Object Created` events from that bucket with no prefix filter, so objects in the prefix would be routed to SQS by both rules and ingested into Dynatrace twice.
+> Do not add a bucket to both `S3BucketNames` in the main stack while also deploying per-bucket configuration stacks. The main stack's EventBridge rule matches all `Object Created` events from that bucket with no prefix filter, so objects in the prefix would be routed to SQS by both rules and ingested into Dynatrace twice.
 
 <!-- -->
 
@@ -188,8 +188,7 @@ aws cloudformation deploy \
     --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
     --parameter-overrides \
        EnableCrossRegionCrossAccountForwarding=true \
-       AwsAccountsToReceiveLogsFrom="aws_account_1,aws_account_2..." \
-    
+       AwsAccountsToReceiveLogsFrom="aws_account_1,aws_account_2..."
 ```
 
 **IMPORTANT NOTE:** If you had already some AWS accounts configured on the AwsAccountsToReceiveLogsFrom parameter, make sure to add them to the list on the above command, as it overwrites the previous content of the parameter.
