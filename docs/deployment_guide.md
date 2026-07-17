@@ -158,7 +158,8 @@ Choose one of the deployment options below:
     > * Set `Architecture=arm64` for arm64 deployments.
     > * If your S3 objects are encrypted with a customer-managed KMS key, add `KmsKeyArns="arn:aws:kms:region:account:key/uuid,..."` to  `--parameter-voerrides` in deploy command.
     > * When `S3BucketNames` is passed, no prefix filtering is supported. If you want more fine-grained control, see [Prefix filtering per bucket](#prefix-filtering-per-bucket) in the Advanced deployments section.
-    > * 
+    >
+    > *
 3. Update the Lambda function code with the deployment package:
 
     ```bash

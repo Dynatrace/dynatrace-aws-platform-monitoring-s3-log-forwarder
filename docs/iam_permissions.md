@@ -18,7 +18,7 @@ The ARN patterns below use the following placeholders:
 
 **CloudFormation** — `arn:aws:cloudformation:<region>:<account-id>:stack/<stack-name>*`
 
-```
+```text
 cloudformation:CreateStack
 cloudformation:UpdateStack
 cloudformation:DeleteStack
@@ -33,17 +33,17 @@ cloudformation:CreateChangeSet
 cloudformation:DescribeChangeSet
 cloudformation:ExecuteChangeSet
 cloudformation:DeleteChangeSet
-```
+```text
 
 **CloudFormation SAM transform** — `arn:aws:cloudformation:*:aws:transform/Serverless-2016-10-31`
 
-```
+```text
 cloudformation:CreateChangeSet
-```
+```text
 
 **Lambda function** — `arn:aws:lambda:<region>:<account-id>:function:<stack-name>-QueueProcessingFunction-*`
 
-```
+```text
 lambda:CreateFunction
 lambda:GetFunction
 lambda:UpdateFunctionConfiguration
@@ -51,31 +51,31 @@ lambda:DeleteFunction
 lambda:TagResource
 lambda:ListTags
 lambda:PutFunctionConcurrency
-```
+```text
 
 **Lambda event source mapping** — `*`
 
-```
+```text
 lambda:CreateEventSourceMapping
 lambda:GetEventSourceMapping
 lambda:ListEventSourceMappings
 lambda:DeleteEventSourceMapping
-```
+```text
 
 **SQS** — `arn:aws:sqs:<region>:<account-id>:<stack-name>-S3NotificationsQueue` and `arn:aws:sqs:<region>:<account-id>:<stack-name>-S3NotificationsDLQ`
 
-```
+```text
 sqs:CreateQueue
 sqs:GetQueueUrl
 sqs:GetQueueAttributes
 sqs:SetQueueAttributes
 sqs:DeleteQueue
 sqs:ListQueueTags
-```
+```text
 
 **SNS** — `arn:aws:sns:<region>:<account-id>:<stack-name>-Alarms`
 
-```
+```text
 sns:CreateTopic
 sns:GetTopicAttributes
 sns:SetTopicAttributes
@@ -85,11 +85,11 @@ sns:GetSubscriptionAttributes
 sns:Unsubscribe
 sns:TagResource
 sns:ListTagsForResource
-```
+```text
 
 **EventBridge rule** — `arn:aws:events:<region>:<account-id>:rule/<stack-name>-s3-notifications`
 
-```
+```text
 events:PutRule
 events:DescribeRule
 events:DeleteRule
@@ -98,29 +98,29 @@ events:RemoveTargets
 events:ListTargetsByRule
 events:TagResource
 events:ListTagsForResource
-```
+```text
 
 **CloudWatch alarms** — `arn:aws:cloudwatch:<region>:<account-id>:alarm:<stack-name>-MessagesInDLQ`
 
-```
+```text
 cloudwatch:PutMetricAlarm
 cloudwatch:DescribeAlarms
 cloudwatch:DeleteAlarms
 cloudwatch:TagResource
 cloudwatch:ListTagsForResource
-```
+```text
 
 **CloudWatch dashboard** — `arn:aws:cloudwatch::<account-id>:dashboard/<stack-name>-monitoring-dashboard`
 
-```
+```text
 cloudwatch:PutDashboard
 cloudwatch:GetDashboard
 cloudwatch:DeleteDashboards
-```
+```text
 
 **IAM role** — `arn:aws:iam::<account-id>:role/<stack-name>-QueueProcessingFunctionRole-*` or (if you use `IamRolePath`) `arn:aws:iam::<account-id>:role/<iam-role-path>/<stack-name>-QueueProcessingFunctionRole-*`
 
-```
+```text
 iam:CreateRole
 iam:GetRole
 iam:DeleteRole
@@ -133,17 +133,16 @@ iam:ListRolePolicies
 iam:ListAttachedRolePolicies
 iam:TagRole
 iam:ListRoleTags
-```
+```text
 
 `iam:PassRole` with condition `iam:PassedToService: lambda.amazonaws.com` is also required on the same resource.
 
-
 **SSM Parameter Store** — `arn:aws:ssm:<region>:<account-id>:parameter/dynatrace/s3-log-forwarder/<stack-name>/*`
 
-```
+```text
 ssm:PutParameter
 ssm:DeleteParameter
-```
+```text
 
 ### Conditional permissions
 
@@ -172,7 +171,7 @@ Deploy this template once per S3 bucket when you need prefix-level filtering. It
 
 **EventBridge rule** — `arn:aws:events:<region>:<account-id>:rule/<main-stack-name>-*`
 
-```
+```text
 events:PutRule
 events:DescribeRule
 events:DeleteRule
@@ -181,16 +180,16 @@ events:RemoveTargets
 events:ListTargetsByRule
 events:TagResource
 events:ListTagsForResource
-```
+```text
 
 **IAM role** — `arn:aws:iam::<account-id>:role/<main-stack-name>-QueueProcessingFunctionRole-*`
 
-```
+```text
 iam:GetRole
 iam:GetRolePolicy
 iam:PutRolePolicy
 iam:DeleteRolePolicy
-```
+```text
 
 ## AppConfig stack (`dynatrace-aws-s3-log-forwarder-appconfig.yaml`)
 
@@ -198,7 +197,7 @@ Deploy this template when you want to manage log forwarding and processing rules
 
 **AppConfig** — `arn:aws:appconfig:<region>:<account-id>:application/*`
 
-```
+```text
 appconfig:CreateApplication
 appconfig:GetApplication
 appconfig:DeleteApplication
@@ -218,23 +217,23 @@ appconfig:StartDeployment
 appconfig:GetDeployment
 appconfig:TagResource
 appconfig:ListTagsForResource
-```
+```text
 
 **IAM role** — `arn:aws:iam::<account-id>:role/<main-stack-name>-QueueProcessingFunctionRole-*`
 
-```
+```text
 iam:GetRole
 iam:GetRolePolicy
 iam:PutRolePolicy
 iam:DeleteRolePolicy
-```
+```text
 
 **SSM Parameter Store** — `arn:aws:ssm:<region>:<account-id>:parameter/dynatrace/s3-log-forwarder/<main-stack-name>/*`
 
-```
+```text
 ssm:PutParameter
 ssm:DeleteParameter
-```
+```text
 
 ## Cross-region/account EventBridge stack (`eventbridge-cross-region-or-account-forward-rules.yaml`)
 
@@ -242,7 +241,7 @@ Deploy this template in each source region or account when centralizing log forw
 
 **EventBridge rule** — `arn:aws:events:<source-region>:<source-account-id>:rule/dt-s3-log-fwd-to-*`
 
-```
+```text
 events:PutRule
 events:DescribeRule
 events:DeleteRule
@@ -251,11 +250,11 @@ events:RemoveTargets
 events:ListTargetsByRule
 events:TagResource
 events:ListTagsForResource
-```
+```text
 
 **IAM role** — `arn:aws:iam::<source-account-id>:role/<cross-region-stack-name>*`
 
-```
+```text
 iam:CreateRole
 iam:GetRole
 iam:DeleteRole
@@ -264,6 +263,6 @@ iam:GetRolePolicy
 iam:DeleteRolePolicy
 iam:TagRole
 iam:ListRoleTags
-```
+```text
 
 `iam:PassRole` with condition `iam:PassedToService: events.amazonaws.com` is also required on the same resource.
