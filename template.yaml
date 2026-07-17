@@ -155,7 +155,7 @@ Parameters:
     Default: ""
     NoEcho: true
   DynatraceApiKeySecretsManagerSecret:
-    Description: "ARN of an existing AWS Secrets Manager secret storing the Dynatrace platform token (scope: data-acquisition:logs:ingest). Use this or DynatraceApiKey or DynatraceApiKeySSMParameter, not a combination. The secret value must be the plain token string."
+    Description: "ARN of an existing AWS Secrets Manager secret storing the Dynatrace platform token (scope: data-acquisition:logs:ingest). Use this or DynatraceApiKey or DynatraceApiKeySSMParameter, not a combination. The secret value must be a JSON object with the key 'dt.platform_token' and the token as the value: {\"dt.platform_token\": \"<token>\"}."
     Type: String
     Default: ""
     AllowedPattern: "(^$|^arn:[a-zA-Z0-9\\-]+:secretsmanager:[a-zA-Z0-9\\-]+:[0-9]{12}:secret:.+$)"
@@ -924,7 +924,7 @@ Resources:
     Condition: DirectApiKeyProvided
     Properties:
       Name: !Sub dynatrace/s3-log-forwarder/${AWS::StackName}/api-key
-      SecretString: !Ref DynatraceApiKey
+      SecretString: !Sub '{"dt.platform_token": "${DynatraceApiKey}"}'
       Description: !Sub "Dynatrace API key for deployment ${AWS::StackName}"
 
   SSMParameterSQSQueueArn:
