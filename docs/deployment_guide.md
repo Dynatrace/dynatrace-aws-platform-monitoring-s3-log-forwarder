@@ -49,7 +49,7 @@ The Lambda function needs a Dynatrace platform token (scope `data-acquisition:lo
 
 #### Option A: Existing AWS Secrets Manager secret (recommended)
 
-If you already have a Secrets Manager secret storing the token, reference it directly. The secret value must be the plain token string. #TODO: update
+If you already have a Secrets Manager secret storing the token, reference it directly. The secret value must be the plain token string.
 
 ```bash
 export DT_TOKEN_SECRET_ARN=<arn-of-your-existing-secrets-manager-secret>
@@ -108,7 +108,7 @@ Choose one of the deployment options below:
         --template-file template.yaml \
         --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
         --parameter-overrides \
-            DynatraceEnvironmentURL="https://$DYNATRACE_TENANT_UUID.live.dynatrace.com" \
+            DynatraceEnvironmentURL="https://$DYNATRACE_TENANT_UUID.apps.dynatrace.com" \
             DynatraceApiKeySecretsManagerSecret="$DT_TOKEN_SECRET_ARN" \
             Architecture="x86_64" \
             S3BucketNames="my-bucket,another-bucket"
@@ -119,8 +119,8 @@ Choose one of the deployment options below:
     > * Replace `DynatraceApiKeySecretsManagerSecret` with the token parameter that matches your choice in Step 2:
     >   `DynatraceApiKeySSMParameter="/dynatrace/s3-log-forwarder/$STACK_NAME/api-key"` (Option B) or
     >   `DynatraceApiKey="<your_dynatrace_platform_token_here>"` (Option C).
-    > * Set `Architecture=arm64` to deploy on arm64. Make sure the Layer ARN you selected matches the architecture.
-    > * If your S3 objects are encrypted with a customer-managed KMS key, add `KmsKeyArns="arn:aws:kms:region:account:key/uuid,..."` to  `--parameter-voerrides` in deploy command.
+    > * Set `Architecture=arm64` to deploy on arm64.
+    > * If your S3 objects are encrypted with a customer-managed KMS key, add `KmsKeyArns="arn:aws:kms:region:account:key/uuid,..."` to  `--parameter-overrides` in deploy command.
     > * When `S3BucketNames` is passed, no prefix filtering is supported. If you want more fine-grained control, see [Prefix filtering per bucket](#prefix-filtering-per-bucket) in the Advanced deployments section.
 
 ---
@@ -158,8 +158,7 @@ Choose one of the deployment options below:
     > * Set `Architecture=arm64` for arm64 deployments.
     > * If your S3 objects are encrypted with a customer-managed KMS key, add `KmsKeyArns="arn:aws:kms:region:account:key/uuid,..."` to  `--parameter-voerrides` in deploy command.
     > * When `S3BucketNames` is passed, no prefix filtering is supported. If you want more fine-grained control, see [Prefix filtering per bucket](#prefix-filtering-per-bucket) in the Advanced deployments section.
-    >
-    > *
+    
 3. Update the Lambda function code with the deployment package:
 
     ```bash

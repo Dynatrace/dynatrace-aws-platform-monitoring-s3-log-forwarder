@@ -15,8 +15,7 @@ aws cloudformation deploy \
     --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
     --parameter-overrides \
         DynatraceEnvironmentURL="https://$DYNATRACE_TENANT_UUID.apps.dynatrace.com" \
-        DynatraceApiKeySecretsManagerSecret="<secret-arn>" \ 
-        DynatraceS3LogForwarderLayerArn="$LAYER_ARN"
+        DynatraceApiKeySecretsManagerSecret="<secret-arn>"
 ```
 
 Then deploy the per-bucket stack for each bucket, specifying the prefixes to forward logs from:
@@ -72,8 +71,12 @@ The AppConfig application ID is exported to SSM at `/dynatrace/s3-log-forwarder/
 
 Update the main stack by redeploying it and including the parameter specified below to pull rules from AppConfig instead of the bundled local defaults:
 
-```bash
-    --parameter-overrides LogForwarderConfigurationLocation=aws-appconfig
+```bash 
+  aws cloudformation deploy \
+      --stack-name ${STACK_NAME} \
+      --template-file template.yaml \
+      --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
+      --parameter-overrides LogForwarderConfigurationLocation=aws-appconfig
 ```
 
 ### Step 3. Customize the rules
@@ -112,10 +115,8 @@ In this case, you will need to configure Amazon EventBridge rules on the AWS reg
 aws cloudformation deploy \
     --stack-name $STACK_NAME \
     --template-file template.yaml \
-    --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND
-    --parameter-overrides \
-    EnableCrossRegionCrossAccountForwarding=true \
-
+    --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
+    --parameter-overrides EnableCrossRegionCrossAccountForwarding=true
 ```
 
 The diagram below showcases what needs to be deployed to enable cross-region log forwarding:
@@ -184,7 +185,7 @@ You can centralize log forwarding for logs in multiple AWS accounts and AWS regi
 aws cloudformation deploy \
     --stack-name $STACK_NAME \
     --template-file template.yaml \
-    --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND
+    --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
     --parameter-overrides \
        EnableCrossRegionCrossAccountForwarding=true \
        AwsAccountsToReceiveLogsFrom="aws_account_1,aws_account_2..." \
