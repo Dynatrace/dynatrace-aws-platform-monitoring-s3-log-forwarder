@@ -64,4 +64,14 @@ case "${NOTIFICATION_TYPE}" in
 esac
 
 # Wait for notification config to propagate
-sleep 15
+case "${NOTIFICATION_TYPE}" in
+    eventbridge) POLL_KEY="EventBridgeConfiguration" ;;
+    sns-sqs)     POLL_KEY="TopicConfigurations" ;;
+esac
+
+for i in $(seq 1 12); do
+    config=$(aws s3api get-bucket-notification-configuration --bucket "${E2E_TESTING_BUCKET_NAME}")
+    echo "$config" | grep -q "${POLL_KEY}" && break
+    log "Waiting for notification config to propagate... ($i/12)"
+    sleep 5
+done
