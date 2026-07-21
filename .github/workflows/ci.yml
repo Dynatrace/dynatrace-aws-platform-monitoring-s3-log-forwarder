@@ -226,7 +226,7 @@ jobs:
         run: |
           aws s3api put-bucket-notification-configuration \
             --bucket ${E2E_TESTING_BUCKET_NAME} \
-            --notification-configuration '{}' || true
+            --notification-configuration '{"EventBridgeConfiguration":{}}' || true
       - name: Clean up resources
         if: always()
         run: ./tests/e2e/clean_up_resources.sh
@@ -278,25 +278,10 @@ jobs:
         run: ./tests/e2e/deploy_forwarder.sh layer x86_64
       - name: Test EventBridge notification
         run: |
-          aws s3api put-bucket-notification-configuration \
-            --bucket ${E2E_TESTING_BUCKET_NAME} \
-            --notification-configuration '{"EventBridgeConfiguration":{}}'
-          for i in $(seq 1 12); do
-            config=$(aws s3api get-bucket-notification-configuration --bucket ${E2E_TESTING_BUCKET_NAME})
-            echo "$config" | grep -q "EventBridgeConfiguration" && break
-            echo "Waiting for notification config to propagate... ($i/12)"
-            sleep 5
-          done
           echo "[$(date -u '+%Y-%m-%dT%H:%M:%SZ')] E2E default flow validation log entry" > test.log
           aws s3 cp test.log s3://${E2E_TESTING_BUCKET_NAME}/${E2E_TEST_PREFIX}/test.log
           sleep 180
           ./tests/e2e/validate_logs_exist.py --bucket ${E2E_TESTING_BUCKET_NAME} --key ${E2E_TEST_PREFIX}/test.log
-      - name: Clean up notifications
-        if: always()
-        run: |
-          aws s3api put-bucket-notification-configuration \
-            --bucket ${E2E_TESTING_BUCKET_NAME} \
-            --notification-configuration '{}' || true
       - name: Clean up resources
         if: always()
         run: ./tests/e2e/clean_up_resources.sh
