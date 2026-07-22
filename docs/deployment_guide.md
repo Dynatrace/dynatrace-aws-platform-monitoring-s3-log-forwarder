@@ -47,9 +47,19 @@ The Lambda function needs a Dynatrace platform token (scope `data-acquisition:lo
 
 ---
 
-#### Option A: Existing AWS Secrets Manager secret (recommended)
+#### Option A: AWS Secrets Manager secret (recommended)
 
-If you already have a Secrets Manager secret storing the token, reference it directly. The secret value must be the plain token string.
+Store the token as a JSON secret in AWS Secrets Manager using the key `dt.platform_token`:
+
+```bash
+export HISTCONTROL=ignorespace
+ export DT_TOKEN_SECRET_ARN=$(aws secretsmanager create-secret \
+     --name "<your-secret-name>" \
+     --secret-string '{"dt.platform_token":"<your_dynatrace_platform_token_here>"}' \
+     --query 'ARN' --output text)
+```
+
+If you already have an existing Secrets Manager secret storing the token, use its ARN instead:
 
 ```bash
 export DT_TOKEN_SECRET_ARN=<arn-of-your-existing-secrets-manager-secret>
