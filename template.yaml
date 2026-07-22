@@ -33,7 +33,6 @@ Metadata:
         Parameters:
           - DynatraceEnvironmentURL
           - DynatraceApiKeySSMParameter
-          - DynatraceApiKey
           - DynatraceApiKeySecretsManagerSecret
           - VerifyLogEndpointSSLCerts
       - Label:
@@ -87,8 +86,6 @@ Metadata:
         default: Dynatrace Environment URL
       DynatraceApiKeySSMParameter:
         default: Dynatrace API Key SSM Parameter Path
-      DynatraceApiKey:
-        default: Dynatrace API Key (plain text)
       DynatraceApiKeySecretsManagerSecret:
         default: Dynatrace API Key Secrets Manager Secret ARN
       VerifyLogEndpointSSLCerts:
@@ -144,18 +141,13 @@ Parameters:
     Type: String
     AllowedPattern: "^https:\\/\\/[a-zA-Z0-9-]{2,}(\\.[a-zA-Z0-9-]{2,})(\\.[a-zA-Z0-9-]{2,})*$"
   DynatraceApiKeySSMParameter:
-    Description: "Path of the SecureString Parameter in AWS Systems Manager Parameter Store that stores the Dynatrace platform token (scope: data-acquisition:logs:ingest) used to authenticate against the generic S3 logs ingest API (e.g. /dynatrace/s3-log-forwarder/my-stack/api-key). Use this or DynatraceApiKey, not both."
+    Description: "Path of the SecureString Parameter in AWS Systems Manager Parameter Store that stores the Dynatrace platform token (scope: data-acquisition:logs:ingest) used to authenticate against the generic S3 logs ingest API (e.g. /dynatrace/s3-log-forwarder/my-stack/api-key). Use this or DynatraceApiKeySecretsManagerSecret, not both."
     Type: String
     Default: ""
     AllowedPattern: "(^$|^\\/[a-zA-Z0-9._\\-\\/]+$)"
     ConstraintDescription: "Must be a valid SSM parameter path starting with '/' (e.g. /dynatrace/s3-log-forwarder/my-stack/api-key) or left empty."
-  DynatraceApiKey:
-    Description: "Dynatrace platform token with data-acquisition:logs:ingest scope. Use this or DynatraceApiKeySSMParameter or DynatraceApiKeySecretsManagerSecret, not a combination. The token is stored in an AWS Secrets Manager secret at dynatrace/s3-log-forwarder/{stack-name}/api-key."
-    Type: String
-    Default: ""
-    NoEcho: true
   DynatraceApiKeySecretsManagerSecret:
-    Description: "ARN of an existing AWS Secrets Manager secret storing the Dynatrace platform token (scope: data-acquisition:logs:ingest). Use this or DynatraceApiKey or DynatraceApiKeySSMParameter, not a combination. The secret value must be a JSON object with the key 'dt.platform_token' and the token as the value: {\"dt.platform_token\": \"<token>\"}."
+    Description: "ARN of an existing AWS Secrets Manager secret storing the Dynatrace platform token (scope: data-acquisition:logs:ingest). Use this or DynatraceApiKeySSMParameter, not both. The secret must be a JSON object with the key dt.platform_token."
     Type: String
     Default: ""
     AllowedPattern: "(^$|^arn:[a-zA-Z0-9\\-]+:secretsmanager:[a-zA-Z0-9\\-]+:[0-9]{12}:secret:.+$)"
@@ -306,22 +298,14 @@ Rules:
   ApiKeyExactlyOneMustBeSet:
     Assertions:
       - Assert: !Or
-          - !Not [!Equals [!Ref DynatraceApiKey, ""]]
           - !Not [!Equals [!Ref DynatraceApiKeySSMParameter, ""]]
           - !Not [!Equals [!Ref DynatraceApiKeySecretsManagerSecret, ""]]
-        AssertDescription: "Provide exactly one of DynatraceApiKey, DynatraceApiKeySSMParameter, or DynatraceApiKeySecretsManagerSecret."
+        AssertDescription: "Provide exactly one of DynatraceApiKeySSMParameter or DynatraceApiKeySecretsManagerSecret."
       - Assert: !Not
-          - !Or
-            - !And
-              - !Not [!Equals [!Ref DynatraceApiKey, ""]]
-              - !Not [!Equals [!Ref DynatraceApiKeySSMParameter, ""]]
-            - !And
-              - !Not [!Equals [!Ref DynatraceApiKey, ""]]
-              - !Not [!Equals [!Ref DynatraceApiKeySecretsManagerSecret, ""]]
-            - !And
-              - !Not [!Equals [!Ref DynatraceApiKeySSMParameter, ""]]
-              - !Not [!Equals [!Ref DynatraceApiKeySecretsManagerSecret, ""]]
-        AssertDescription: "DynatraceApiKey, DynatraceApiKeySSMParameter, and DynatraceApiKeySecretsManagerSecret are mutually exclusive — provide only one."
+          - !And
+            - !Not [!Equals [!Ref DynatraceApiKeySSMParameter, ""]]
+            - !Not [!Equals [!Ref DynatraceApiKeySecretsManagerSecret, ""]]
+        AssertDescription: "DynatraceApiKeySSMParameter and DynatraceApiKeySecretsManagerSecret are mutually exclusive — provide only one."
   VpcSecurityGroupRequiredWithSubnets:
     Assertions:
       - Assert: !Or
@@ -409,7 +393,6 @@ Conditions:
   LambdaVpcSecurityGroupSpecified: !Not [!Equals [!Ref LambdaSecurityGroupId, ""]]
   S3BucketNamesProvided: !Not [!Equals [!Join ["", !Ref S3BucketNames], ""]]
   KmsKeyArnsProvided: !Not [!Equals [!Join ["", !Ref KmsKeyArns], ""]]
-  DirectApiKeyProvided: !Not [!Equals [!Ref DynatraceApiKey, ""]]
   ExistingSecretsManagerSecretProvided: !Not [!Equals [!Ref DynatraceApiKeySecretsManagerSecret, ""]]
   ExistingSSMParameterProvided: !Not [!Equals [!Ref DynatraceApiKeySSMParameter, ""]]
   IsLayerArnProvided: !Not [!Equals [!Ref DynatraceS3LogForwarderLayerArn, ""]]
@@ -483,16 +466,7 @@ Resources:
                 - Effect: Allow
                   Action: secretsmanager:GetSecretValue
                   Resource: !Ref DynatraceApiKeySecretsManagerSecret
-          - !If
-            - DirectApiKeyProvided
-            - PolicyName: SecretsManagerReadPolicy
-              PolicyDocument:
-                Version: "2012-10-17"
-                Statement:
-                  - Effect: Allow
-                    Action: secretsmanager:GetSecretValue
-                    Resource: !Ref DynatraceApiKeySecret
-            - !Ref AWS::NoValue
+          - !Ref AWS::NoValue
 
   QueueProcessingFunction:
     Type: AWS::Serverless::Function
@@ -538,12 +512,9 @@ Resources:
               - 'https://${Subdomain}.da.dynatracelabs.com'
               - Subdomain: !Select [ 0, !Split [ ".apps", !Select [ 0, !Split [ ".dynatracelabs.com", !Select [ 1, !Split [ "://", !Ref DynatraceEnvironmentURL ] ] ] ] ] ]
           DYNATRACE_API_KEY_SECRETS_MANAGER: !If
-            - DirectApiKeyProvided
-            - !Ref DynatraceApiKeySecret
-            - !If
-              - ExistingSecretsManagerSecretProvided
-              - !Ref DynatraceApiKeySecretsManagerSecret
-              - !Ref AWS::NoValue
+            - ExistingSecretsManagerSecretProvided
+            - !Ref DynatraceApiKeySecretsManagerSecret
+            - !Ref AWS::NoValue
           DYNATRACE_API_KEY_SSM: !If
             - ExistingSSMParameterProvided
             - !Ref DynatraceApiKeySSMParameter
@@ -919,14 +890,6 @@ Resources:
       Roles:
         - !Ref QueueProcessingFunctionRole
 
-  DynatraceApiKeySecret:
-    Type: AWS::SecretsManager::Secret
-    Condition: DirectApiKeyProvided
-    Properties:
-      Name: !Sub dynatrace/s3-log-forwarder/${AWS::StackName}/api-key
-      SecretString: !Sub '{"dt.platform_token": "${DynatraceApiKey}"}'
-      Description: !Sub "Dynatrace API key for deployment ${AWS::StackName}"
-
   SSMParameterSQSQueueArn:
     Type: AWS::SSM::Parameter
     Properties:
@@ -987,8 +950,4 @@ Outputs:
   SSMParameterPathLambdaRoleArn:
     Description: "SSM Parameter path storing the Lambda IAM role ARN"
     Value: !Sub /dynatrace/s3-log-forwarder/${AWS::StackName}/lambda-role-arn
-  SecretsManagerSecretArnDynatraceApiKey:
-    Condition: DirectApiKeyProvided
-    Description: "ARN of the Secrets Manager secret where the Dynatrace API key was stored by the stack"
-    Value: !Ref DynatraceApiKeySecret
 
