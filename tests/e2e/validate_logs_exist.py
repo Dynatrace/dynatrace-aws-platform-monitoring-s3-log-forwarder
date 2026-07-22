@@ -28,7 +28,6 @@ def check_required_env_variables():
 
 def get_oauth_bearer_token():
     token_url = f"{os.environ['DT_SSO_URL']}/sso/oauth2/token"
-    print("Token URL: " + token_url)
     client_id = os.environ['DT_OAUTH_CLIENT_ID']
     client_secret = os.environ['DT_OAUTH_CLIENT_SECRET']
 
