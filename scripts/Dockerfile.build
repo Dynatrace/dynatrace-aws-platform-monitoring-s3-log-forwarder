@@ -4,5 +4,5 @@
 #   - snyk.yml scans this image for vulnerabilities (including yajl).
 #   - Renovate tracks the FROM image tag via a custom manager in renovate.json (needed for the non-semver tag format).
 ARG ARCH=x86_64
-FROM public.ecr.aws/lambda/python:3.14.2026.07.21.13-${ARCH}
+FROM public.ecr.aws/lambda/python:3.14.2026.07.22.18-${ARCH}
 RUN dnf install -y zip yajl && dnf clean all && rm -rf /var/cache/dnf
