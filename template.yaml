@@ -444,19 +444,16 @@ Resources:
         - !If
           - ExistingSecretsManagerSecretProvided
           - !Ref AWS::NoValue
-          - !If
-            - DirectApiKeyProvided
-            - !Ref AWS::NoValue
-            - PolicyName: SSMParameterReadPolicy
-              PolicyDocument:
-                Version: "2012-10-17"
-                Statement:
-                  - Effect: Allow
-                    Action:
-                      - ssm:GetParameter
-                      - ssm:GetParameters
-                    Resource:
-                      - !Sub arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter${DynatraceApiKeySSMParameter}
+          - PolicyName: SSMParameterReadPolicy
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - ssm:GetParameter
+                    - ssm:GetParameters
+                  Resource:
+                    - !Sub arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter${DynatraceApiKeySSMParameter}
         - !If
           - ExistingSecretsManagerSecretProvided
           - PolicyName: SecretsManagerReadPolicy
