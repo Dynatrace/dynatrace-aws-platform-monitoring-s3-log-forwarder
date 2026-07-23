@@ -25,6 +25,12 @@
       "versioningTemplate": "regex:^(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+(?:\\.\\d+)*)$"
     }
   ],
+  "packageRules": [
+    {
+      "matchPackageNames": ["public.ecr.aws/lambda/python"],
+      "allowedVersions": "/^3\\.14\\./"
+    }
+  ],
   "vulnerabilityAlerts": {
     "enabled": true
   }
