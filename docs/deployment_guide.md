@@ -102,6 +102,8 @@ Choose one of the deployment options below:
 
 #### Lambda Layer (recommended)
 
+Dynatrace provides Lambda layers with each release of the `dynatrace-aws-platform-monitoring-s3-log-forwarder`, allowing for simple deployment and updates as new versions are released. If you're deploying into an AWS region where a layer is not available, use the [Zip deployment](#zip-deployment) option instead.
+
 1. Deploy the main forwarder stack:
 
     ```bash
@@ -113,26 +115,31 @@ Choose one of the deployment options below:
             DynatraceEnvironmentURL="https://$DYNATRACE_TENANT_UUID.apps.dynatrace.com" \
             DynatraceApiKeySecretsManagerSecret="$DT_TOKEN_SECRET_ARN" \
             Architecture="x86_64" \
-            S3BucketNames="my-bucket,another-bucket"
+            GrantReadPermissionToBuckets="my-bucket,another-bucket"
     ```
 
     > [!NOTE]
     >
     > * Replace `DynatraceApiKeySecretsManagerSecret` with `DynatraceApiKeySSMParameter="/dynatrace/s3-log-forwarder/$STACK_NAME/api-key"` if you chose Option B in Step 2.
     > * Set `Architecture=arm64` to deploy on arm64.
-    > * If your S3 objects are encrypted with a customer-managed KMS key, add `KmsKeyArns="arn:aws:kms:region:account:key/uuid,..."` to  `--parameter-overrides` in deploy command.
-    > * When `S3BucketNames` is passed, no prefix filtering is supported. If you want more fine-grained control, see [Prefix filtering per bucket](#prefix-filtering-per-bucket) in the Advanced deployments section.
+    > * If your S3 objects are encrypted with a customer-managed KMS key, add `GrantDecryptToKmsKeyArns="arn:aws:kms:region:account:key/uuid,..."` to `--parameter-overrides` to grant the Lambda function `kms:Decrypt` permissions on the keys.
+    > * When `GrantReadPermissionToBuckets` is set, the Lambda function IAM role is granted read access to all objects in those buckets. For fine-grained access controls, leave it empty and follow the instructions in [Fine-grained access controls](#fine-grained-access-controls).
 
 ---
 
-#### Zip deployment (alternative option)
+#### Zip deployment
 
-1. Download the Lambda deployment package for your target architecture:
+If you're deploying the forwarder in an AWS region where a Lambda Layer is not available, or you prefer to deploy from a release ZIP, follow the instructions below.
+
+> [!NOTE]
+>
+> For instructions on building from source, see [build.md](build.md).
+
+1. Set your target architecture and download the deployment package:
 
     ```bash
-    wget https://dynatrace-aws-s3-log-forwarder-assets.s3.amazonaws.com/${VERSION_TAG}/lambda-x86_64.zip
-    # or for arm64:
-    # wget https://dynatrace-aws-s3-log-forwarder-assets.s3.amazonaws.com/${VERSION_TAG}/lambda-arm64.zip
+    export ARCH=x86_64  # or arm64
+    wget https://dynatrace-aws-s3-log-forwarder-assets.s3.amazonaws.com/${VERSION_TAG}/lambda-${ARCH}.zip
     ```
 
 2. Deploy the CloudFormation stack:
@@ -146,16 +153,15 @@ Choose one of the deployment options below:
             DynatraceEnvironmentURL="https://$DYNATRACE_TENANT_UUID.apps.dynatrace.com" \
             DynatraceApiKeySecretsManagerSecret="$DT_TOKEN_SECRET_ARN" \
             DeploymentPackageType="zip" \
-            Architecture="x86_64" \
-            S3BucketNames="my-bucket,another-bucket"
+            Architecture="$ARCH" \
+            GrantReadPermissionToBuckets="my-bucket,another-bucket"
     ```
 
     > [!NOTE]
     >
     > * Replace `DynatraceApiKeySecretsManagerSecret` with `DynatraceApiKeySSMParameter="/dynatrace/s3-log-forwarder/$STACK_NAME/api-key"` if you chose Option B in Step 2.
-    > * Set `Architecture=arm64` for arm64 deployments.
-    > * If your S3 objects are encrypted with a customer-managed KMS key, add `KmsKeyArns="arn:aws:kms:region:account:key/uuid,..."` to  `--parameter-overrides` in deploy command.
-    > * When `S3BucketNames` is passed, no prefix filtering is supported. If you want more fine-grained control, see [Prefix filtering per bucket](#prefix-filtering-per-bucket) in the Advanced deployments section.
+    > * If your S3 objects are encrypted with a customer-managed KMS key, add `GrantDecryptToKmsKeyArns="arn:aws:kms:region:account:key/uuid,..."` to `--parameter-overrides` to grant the Lambda function `kms:Decrypt` permissions on the keys.
+    > * When `GrantReadPermissionToBuckets` is set, the Lambda function IAM role is granted read access to all objects in those buckets. For fine-grained access controls, leave it empty and follow the instructions in [Fine-grained access controls](#fine-grained-access-controls).
 
 3. Update the Lambda function code with the deployment package:
 
@@ -165,7 +171,7 @@ Choose one of the deployment options below:
         --output text | rev | cut -d':' -f1 | rev)
 
     aws lambda update-function-code --function-name ${FUNCTION_NAME} \
-        --zip-file fileb://lambda-x86_64.zip   # or lambda-arm64.zip
+        --zip-file fileb://lambda-${ARCH}.zip
     ```
 
     If successful, you'll see a message similar to the below at the end of the execution:
@@ -189,19 +195,9 @@ Choose one of the deployment options below:
 
 At this point, you have successfully deployed the `dynatrace-aws-platform-monitoring-s3-log-forwarder`. Now you need to configure each S3 bucket to send `Object Created` notifications to the log forwarder. There are three supported methods:
 
-#### Option A: Amazon EventBridge (recommended)
+#### Option A: Amazon EventBridge
 
-If you provided `S3BucketNames` in Step 4, the main stack has already created an EventBridge rule routing `Object Created` events from the listed buckets to the SQS queue. Enable EventBridge notifications on each bucket:
-
-```bash
-for BUCKET in my-bucket another-bucket; do
-  aws s3api put-bucket-notification-configuration \
-    --bucket $BUCKET \
-    --notification-configuration '{"EventBridgeConfiguration": {}}'
-done
-```
-
-Or via the console: S3 bucket → **Properties** → **Amazon EventBridge** → **Send notifications to Amazon EventBridge** → **On**.
+If you provided `GrantReadPermissionToBuckets` in Step 4, the main stack has already created an EventBridge rule routing `Object Created` events from the listed buckets to the SQS queue. You must also enable EventBridge notifications on each bucket.
 
 #### Option B: Direct S3 to SQS
 
@@ -213,7 +209,10 @@ QUEUE_ARN=$(aws ssm get-parameter \
     --query 'Parameter.Value' --output text)
 ```
 
-Then configure the bucket notification ([AWS instructions](https://docs.aws.amazon.com/AmazonS3/latest/userguide/ways-to-add-notification-config-to-bucket.html)). The SQS queue policy already allows the buckets listed in `S3BucketNames` to send notifications directly.
+Then configure the bucket notification ([AWS instructions](https://docs.aws.amazon.com/AmazonS3/latest/userguide/ways-to-add-notification-config-to-bucket.html)). The SQS queue policy already allows the buckets listed in `GrantReadPermissionToBuckets` to send notifications directly.
+
+> [!NOTE]
+> Direct S3 to SQS only works for buckets in the same AWS region as the log forwarder.
 
 #### Option C: SNS fan-out
 
@@ -226,25 +225,19 @@ aws sns subscribe \
     --notification-endpoint $QUEUE_ARN
 ```
 
-Alternatively, deploy the main stack with `CreateS3NotificationsSNSTopic=true` to create a dedicated SNS topic (`${StackName}-S3Notifications`) and subscribe your S3 buckets to it. This is useful for fan-out architectures where multiple consumers process the same S3 events.
-
-> [!NOTE]
->
-> * Options A and B only work for buckets in the same AWS account and region as the log forwarder. For cross-account or cross-region buckets, see [Advanced deployments](#advanced-deployments).
-
 ## Advanced deployments
 
 For detailed instructions on each scenario, see [advanced_deployments.md](advanced_deployments.md).
 
-### Prefix filtering per bucket
+### Fine-grained access controls
 
-`S3BucketNames` forwards all objects from the listed buckets. To forward only from specific key prefixes, deploy the `dynatrace-aws-s3-log-forwarder-s3-bucket-configuration.yaml` template once per bucket — it supports up to 10 prefixes and uses EventBridge for routing.
+When `GrantReadPermissionToBuckets` is set, the stack creates an EventBridge rule routing all `Object Created` events from those buckets to the SQS queue, and grants the Lambda function IAM role read access to all objects in those buckets — both with no prefix filtering. To restrict access to specific key prefixes, leave `GrantReadPermissionToBuckets` empty and follow the steps for your chosen notification option.
 
 See [Configuring S3 buckets with prefix filtering](advanced_deployments.md#configuring-s3-buckets-with-prefix-filtering).
 
 ### Custom log forwarding and processing rules
 
-By default, the forwarder uses built-in rules (see: [src/log/processing/rules/aws/](../src/log/processing/rules/aws/)). To customize which logs are forwarded and how they are parsed at runtime without redeploying the main stack, deploy the optional `dynatrace-aws-s3-log-forwarder-appconfig.yaml` template.
+By default, the forwarder uses built-in rules (see: [src/log/processing/rules/aws/](../src/log/processing/rules/aws/)). Custom log forwarding and processing rules are intended exclusively for AWS log types not covered by the built-in rules, or for custom (non-AWS) log sources. Log parsing beyond timestamp extraction is not supported at the forwarder level and must be performed using [Dynatrace OpenPipeline](https://docs.dynatrace.com/docs/analyze-explore-automate/logs/lma-log-processing/lma-openpipeline). To configure custom rules at runtime without redeploying the main stack, deploy the optional `dynatrace-aws-s3-log-forwarder-appconfig.yaml` template.
 
 See [Custom log forwarding and processing rules via AppConfig](advanced_deployments.md#custom-log-forwarding-and-processing-rules-via-appconfig).
 

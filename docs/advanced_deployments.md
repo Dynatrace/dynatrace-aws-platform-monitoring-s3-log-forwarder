@@ -4,9 +4,11 @@ This page contains guidance and considerations for large deployments.
 
 ## Configuring S3 buckets with prefix filtering
 
-The `S3BucketNames` parameter in `template.yaml` forwards logs from entire buckets. If you need to forward logs only from specific S3 key prefixes within a bucket, use the `dynatrace-aws-s3-log-forwarder-s3-bucket-configuration.yaml` template once per bucket instead.
+The `GrantReadPermissionToBuckets` parameter in `template.yaml` forwards logs from entire buckets. If you need to forward logs only from specific S3 key prefixes within a bucket, the approach differs depending on which notification method you configured in [Step 5](deployment_guide.md#step-5-configure-s3-buckets-to-send-s3-object-created-notifications-to-the-log-forwarder).
 
-Deploy the main stack without `S3BucketNames`, include the parameters as needed from [deployment_guide.md](deployment_guide.md#deploy-the-dynatrace-aws-platform-monitoring-s3-log-forwarder):
+### Option A: Amazon EventBridge
+
+Deploy the main stack without `GrantReadPermissionToBuckets`, include the parameters as needed from [deployment_guide.md](deployment_guide.md#deploy-the-dynatrace-aws-platform-monitoring-s3-log-forwarder):
 
 ```bash
 aws cloudformation deploy \
@@ -38,7 +40,7 @@ You can specify up to 10 prefixes per bucket using `LogsBucketPrefix1` through `
 
 > [!WARNING]
 >
-> Do not add a bucket to both `S3BucketNames` in the main stack while also deploying per-bucket configuration stacks. The main stack's EventBridge rule matches all `Object Created` events from that bucket with no prefix filter, so objects in the prefix would be routed to SQS by both rules and ingested into Dynatrace twice.
+> Do not add a bucket to both `GrantReadPermissionToBuckets` in the main stack while also deploying per-bucket configuration stacks. The main stack's EventBridge rule matches all `Object Created` events from that bucket with no prefix filter, so objects in the prefix would be routed to SQS by both EventBridge rules and ingested into Dynatrace twice.
 
 <!-- -->
 
@@ -46,9 +48,17 @@ You can specify up to 10 prefixes per bucket using `LogsBucketPrefix1` through `
 >
 > * Each per-bucket stack adds an inline IAM policy statement to the Lambda execution role. See [IAM Role Policy size limit](#iam-role-policy-size-limit) below for scaling considerations.
 
+### Option B: Direct S3 to SQS
+
+S3 bucket notifications to SQS natively support prefix and suffix filters. When configuring the bucket to send `Object Created` notifications directly to the log forwarder's SQS queue, include a filter rule to restrict which objects trigger notifications. Follow the [AWS documentation on configuring S3 event notifications](https://docs.aws.amazon.com/AmazonS3/latest/userguide/enable-event-notifications.html#enable-event-notifications-sns-sqs-lam).
+
+### Option C: SNS fan-out
+
+S3 bucket notifications to SNS topics also support native prefix and suffix filters. When configuring the bucket to send events to an SNS topic, include a filter rule to restrict which objects trigger notifications. Follow the [AWS documentation on configuring S3 event notifications](https://docs.aws.amazon.com/AmazonS3/latest/userguide/enable-event-notifications.html#enable-event-notifications-sns-sqs-lam).
+
 ## Custom log forwarding and processing rules via AppConfig
 
-By default, the forwarder uses built-in rules (see: [src/log/processing/rules/aws/](../src/log/processing/rules/aws/)). To customize which logs are forwarded and how they are parsed at runtime without redeploying the main stack, deploy the optional `dynatrace-aws-s3-log-forwarder-appconfig.yaml` template.
+By default, the forwarder uses built-in rules (see: [src/log/processing/rules/aws/](../src/log/processing/rules/aws/)). To ingest custom logs, you need to deploy configuration that defines the log format (plain-text/json) as well as timestamp parsing via AWS AppConfig, following the instructions below.
 
 ### Step 1. Deploy the AppConfig stack
 
@@ -106,6 +116,10 @@ aws cloudformation deploy \
 The path must start and end with `/`. If not specified, the role is created at the root path `/`.
 
 ## Forward logs from S3 buckets on different AWS regions
+
+> [!NOTE]
+>
+> Direct S3 to SQS notifications ([Step 5, Option B](deployment_guide.md#step-5-configure-s3-buckets-to-send-s3-object-created-notifications-to-the-log-forwarder)) do not support cross-region buckets. Follow the instructions below to set up cross-region forwarding using EventBridge.
 
 It's possible to centralize log forwarding from S3 buckets on different AWS regions on a single `dynatrace-aws-s3-log-forwarder` deployment on a specific AWS region to avoid the overhead of deploying and managing multiple S3 log forwarders.
 
@@ -178,6 +192,10 @@ For each S3 bucket located in a different AWS region than where the log forwarde
 **NOTE:** You'll incur cross-region data transfer costs between the region where AWS Lambda forwarder function runs and the region where the S3 bucket is located, on top of data transfer between AWS Lambda and your Dynatrace tenant. For more detailed information, check the [AWS Pricing website](https://aws.amazon.com/ec2/pricing/on-demand/#Data_Transfer).
 
 ## Forward logs from S3 buckets on different AWS accounts
+
+> [!NOTE]
+>
+> The EventBridge notification method described in [Step 5, Option A](deployment_guide.md#step-5-configure-s3-buckets-to-send-s3-object-created-notifications-to-the-log-forwarder) does not support cross-account buckets. Follow the instructions below instead.
 
 You can centralize log forwarding for logs in multiple AWS accounts and AWS regions on a single `dynatrace-aws-s3-log-forwarder` deployment to avoid the overhead of deploying and managing multiple log forwarding instances. Before proceeding, make sure you have deployed the `dynatrace-aws-s3-log-forwarder` setting the `EnableCrossRegionCrossAccountForwarding` parameter set to "true", so a dedicated Event Bus is created to receive cross-region notifications. You also need to grant permissions to the AWS account using the `AwsAccountsToReceiveLogsFrom` parameter, which takes a comma separated list of AWS account ids to grant permission to. To do so, update your CloudFormation stack executing the command below:
 
