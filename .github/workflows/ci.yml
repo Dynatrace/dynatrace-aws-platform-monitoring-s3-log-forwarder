@@ -190,7 +190,7 @@ jobs:
             --query 'Stacks[0].Parameters[].ParameterKey' --output json | \
             jq --arg bucket "${E2E_TESTING_BUCKET_NAME}" \
               '[.[] | {"ParameterKey": ., "UsePreviousValue": true}]
-               + [{"ParameterKey": "S3BucketNames", "ParameterValue": $bucket},
+               + [{"ParameterKey": "GrantReadPermissionToBuckets", "ParameterValue": $bucket},
                   {"ParameterKey": "CreateS3NotificationsSNSTopic", "ParameterValue": "true"}]')
           aws cloudformation create-change-set \
             --stack-name "${STACK_NAME}" \

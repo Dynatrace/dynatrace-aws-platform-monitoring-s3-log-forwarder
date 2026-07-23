@@ -27,9 +27,9 @@ log() {
 SSM_PARAMETER_NAME="/dynatrace/s3-log-forwarder/${STACK_NAME}/api-key"
 
 EXTRA_CFN_PARAMS=()
-[[ -n "${KMS_KEY_ARNS:-}" ]]    && EXTRA_CFN_PARAMS+=(KmsKeyArns="${KMS_KEY_ARNS}")
+[[ -n "${KMS_KEY_ARNS:-}" ]]    && EXTRA_CFN_PARAMS+=(GrantDecryptToKmsKeyArns="${KMS_KEY_ARNS}")
 [[ -n "${IAM_ROLE_PATH:-}" ]]   && EXTRA_CFN_PARAMS+=(IamRolePath="${IAM_ROLE_PATH}")
-[[ -n "${S3_BUCKET_NAMES:-}" ]] && EXTRA_CFN_PARAMS+=(S3BucketNames="${S3_BUCKET_NAMES}")
+[[ -n "${S3_BUCKET_NAMES:-}" ]] && EXTRA_CFN_PARAMS+=(GrantReadPermissionToBuckets="${S3_BUCKET_NAMES}")
 
 if [[ -n "${DT_TOKEN_SECRET_ARN:-}" && -n "${DT_TENANT_PLATFORM_TOKEN:-}" ]]; then
     echo "ERROR: DT_TOKEN_SECRET_ARN and DT_TENANT_PLATFORM_TOKEN are mutually exclusive — set exactly one" >&2; exit 1

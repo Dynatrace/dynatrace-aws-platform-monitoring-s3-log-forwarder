@@ -1,6 +1,6 @@
 # dynatrace-aws-platform-monitoring-s3-log-forwarder function metrics
 
-The function publishes the following metrics to CloudWatch under a metric namespace named as your SAM StackName:
+The function publishes the following metrics to CloudWatch under a metric namespace named `dynatrace-aws-platform-monitoring-s3-log-forwarder`
 
 * `LogFilesProcessed` (Sum): Number of log files that have been correctly processed and ingested to Dynatrace.
 * `LogProcessingFailures` (Sum): Number of failures processing log files. (If there's a failure, the function retries up to 3 times; so a single file failure may be 3 Failures here).

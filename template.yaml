@@ -64,8 +64,8 @@ Metadata:
       - Label:
           default: S3 Buckets
         Parameters:
-          - S3BucketNames
-          - KmsKeyArns
+          - GrantReadPermissionToBuckets
+          - GrantDecryptToKmsKeyArns
           - CreateS3NotificationsSNSTopic
       - Label:
           default: Cross-Account / Cross-Region Forwarding
@@ -118,9 +118,9 @@ Metadata:
         default: SQS Long Polling Wait Time (seconds)
       MaximumSQSMessageRetries:
         default: Maximum SQS Message Retries
-      S3BucketNames:
+      GrantReadPermissionToBuckets:
         default: S3 Bucket Names
-      KmsKeyArns:
+      GrantDecryptToKmsKeyArns:
         default: KMS Key ARNs
       EnableCrossRegionCrossAccountForwarding:
         default: Enable Cross-Region/Cross-Account Forwarding
@@ -272,11 +272,11 @@ Parameters:
     Type: Number
     Description: Maximum number of retries for failed processing of S3 Object Created notification messages
     Default: 3
-  S3BucketNames:
+  GrantReadPermissionToBuckets:
     Type: CommaDelimitedList
     Description: "Optional list of S3 bucket names (e.g. my-bucket,another-bucket) to grant the Lambda function s3:GetObject access and create an EventBridge routing rule for. Use the per-bucket CloudFormation template for prefix filtering or cross-account/region buckets."
     Default: ""
-  KmsKeyArns:
+  GrantDecryptToKmsKeyArns:
     Type: CommaDelimitedList
     Description: "Optional list of KMS Key ARNs (e.g. arn:aws:kms:us-east-1:123456789012:key/uuid) the Lambda function needs kms:Decrypt access to in order to read SSE-KMS encrypted S3 objects. Leave empty if your buckets are not encrypted with a customer-managed key."
     Default: ""
@@ -391,8 +391,8 @@ Conditions:
   CreateSNSTopicForS3Notifications: !Equals [ !Ref CreateS3NotificationsSNSTopic, "true" ]
   LambdaVpcConfigSpecified: !Not [!Equals [ !Join [ "", !Ref LambdaSubnetIds ], "" ]]
   LambdaVpcSecurityGroupSpecified: !Not [!Equals [!Ref LambdaSecurityGroupId, ""]]
-  S3BucketNamesProvided: !Not [!Equals [!Join ["", !Ref S3BucketNames], ""]]
-  KmsKeyArnsProvided: !Not [!Equals [!Join ["", !Ref KmsKeyArns], ""]]
+  GrantReadPermissionToBucketsProvided: !Not [!Equals [!Join ["", !Ref GrantReadPermissionToBuckets], ""]]
+  GrantDecryptToKmsKeyArnsProvided: !Not [!Equals [!Join ["", !Ref GrantDecryptToKmsKeyArns], ""]]
   ExistingSecretsManagerSecretProvided: !Not [!Equals [!Ref DynatraceApiKeySecretsManagerSecret, ""]]
   ExistingSSMParameterProvided: !Not [!Equals [!Ref DynatraceApiKeySSMParameter, ""]]
   IsLayerArnProvided: !Not [!Equals [!Ref DynatraceS3LogForwarderLayerArn, ""]]
@@ -590,7 +590,7 @@ Resources:
                 ArnLike:
                   "aws:SourceArn": !Sub "arn:aws:sns:*:${AWS::AccountId}:*"
           - !If
-            - S3BucketNamesProvided
+            - GrantReadPermissionToBucketsProvided
             - Sid: "Allow S3 buckets to Send Messages"
               Effect: "Allow"
               Principal:
@@ -609,7 +609,7 @@ Resources:
                       # Output: arn:aws:s3:::bucket1,arn:aws:s3:::bucket2,arn:aws:s3:::bucket3 -> it just adds the arn:aws:s3::: prefix to first bucket
                       - BucketList: !Join
                           - ",arn:aws:s3:::"
-                          - !Ref S3BucketNames
+                          - !Ref GrantReadPermissionToBuckets
                           # Input: bucket1,bucket2,bucket3
                           # Output: bucket1,arn:aws:s3:::bucket2,arn:aws:s3:::bucket3
             - !Ref AWS::NoValue
@@ -829,9 +829,9 @@ Resources:
         ParentStackName: !Ref AWS::StackName
         QueueProcessingFunctionName: !Ref QueueProcessingFunction
 
-  S3BucketNamesEventBridgeRule:
+  GrantReadPermissionToBucketsEventBridgeRule:
     Type: AWS::Events::Rule
-    Condition: S3BucketNamesProvided
+    Condition: GrantReadPermissionToBucketsProvided
     Properties:
       Name: !Sub "${AWS::StackName}-s3-notifications"
       State: ENABLED
@@ -842,14 +842,14 @@ Resources:
           - "Object Created"
         detail:
           bucket:
-            name: !Ref S3BucketNames
+            name: !Ref GrantReadPermissionToBuckets
       Targets:
         - Id: "SQSQueue"
           Arn: !GetAtt S3NotificationsQueue.Arn
 
   S3GetObjectPolicy:
     Type: AWS::IAM::Policy
-    Condition: S3BucketNamesProvided
+    Condition: GrantReadPermissionToBucketsProvided
     Properties:
       PolicyName: !Sub ${AWS::StackName}-s3-get-object
       PolicyDocument:
@@ -867,7 +867,7 @@ Resources:
                 # Output: arn:aws:s3:::bucket1/*,arn:aws:s3:::bucket2/*,arn:aws:s3:::bucket3/* -> adds arn:aws:s3::: prefix to first bucket and /* suffix to last
                 - BucketList: !Join
                     - "/*,arn:aws:s3:::"
-                    - !Ref S3BucketNames
+                    - !Ref GrantReadPermissionToBuckets
                     # Input: bucket1,bucket2,bucket3
                     # Output: bucket1/*,arn:aws:s3:::bucket2/*,arn:aws:s3:::bucket3
       Roles:
@@ -875,7 +875,7 @@ Resources:
 
   KmsDecryptPolicy:
     Type: AWS::IAM::Policy
-    Condition: KmsKeyArnsProvided
+    Condition: GrantDecryptToKmsKeyArnsProvided
     Properties:
       PolicyName: !Sub ${AWS::StackName}-kms-decrypt
       PolicyDocument:
@@ -883,7 +883,7 @@ Resources:
         Statement:
           - Effect: Allow
             Action: kms:Decrypt
-            Resource: !Ref KmsKeyArns
+            Resource: !Ref GrantDecryptToKmsKeyArns
       Roles:
         - !Ref QueueProcessingFunctionRole
 
