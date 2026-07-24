@@ -121,9 +121,8 @@ Dynatrace provides Lambda layers with each release of the `dynatrace-aws-platfor
     > [!NOTE]
     >
     > * Replace `DynatraceApiKeySecretsManagerSecret` with `DynatraceApiKeySSMParameter="/dynatrace/s3-log-forwarder/$STACK_NAME/api-key"` if you chose Option B in Step 2.
-    > * Set `Architecture=arm64` to deploy on arm64.
-    > * If your S3 objects are encrypted with a customer-managed KMS key, add `GrantDecryptToKmsKeyArns="arn:aws:kms:region:account:key/uuid,..."` to `--parameter-overrides` to grant the Lambda function `kms:Decrypt` permissions on the keys.
-    > * When `GrantReadPermissionToBuckets` is set, the Lambda function IAM role is granted read access to all objects in those buckets. For fine-grained access controls, leave it empty and follow the instructions in [Fine-grained access controls](#fine-grained-access-controls).
+    > * When `GrantReadPermissionToBuckets` is set, the Lambda function IAM role is granted read access to all objects in those buckets. For fine-grained access controls, leave `GrantReadPermissionToBuckets` empty and follow the instructions in [Fine-grained access controls](#fine-grained-access-controls).
+    > * See [CloudFormation parameter reference](cloudformation_parameters.md) for all available parameters.
 
 ---
 
@@ -160,8 +159,8 @@ If you're deploying the forwarder in an AWS region where a Lambda Layer is not a
     > [!NOTE]
     >
     > * Replace `DynatraceApiKeySecretsManagerSecret` with `DynatraceApiKeySSMParameter="/dynatrace/s3-log-forwarder/$STACK_NAME/api-key"` if you chose Option B in Step 2.
-    > * If your S3 objects are encrypted with a customer-managed KMS key, add `GrantDecryptToKmsKeyArns="arn:aws:kms:region:account:key/uuid,..."` to `--parameter-overrides` to grant the Lambda function `kms:Decrypt` permissions on the keys.
-    > * When `GrantReadPermissionToBuckets` is set, the Lambda function IAM role is granted read access to all objects in those buckets. For fine-grained access controls, leave it empty and follow the instructions in [Fine-grained access controls](#fine-grained-access-controls).
+    > * When `GrantReadPermissionToBuckets` is set, the Lambda function IAM role is granted read access to all objects in those buckets. For fine-grained access controls, leave `GrantReadPermissionToBuckets` empty and follow the instructions in [Fine-grained access controls](#fine-grained-access-controls).
+    > * See [CloudFormation parameter reference](cloudformation_parameters.md) for all available parameters.
 
 3. Update the Lambda function code with the deployment package:
 
@@ -189,7 +188,7 @@ If you're deploying the forwarder in an AWS region where a Lambda Layer is not a
 >
 > * You can optionally configure notifications on your e-mail address to receive alerts when log files can't be processed and messages are arriving to the Dead Letter Queue. To do so, add the parameter `NotificationsEmail`=`your_email_address_here`.
 > * An Amazon SNS topic named `<stack-name>-Alarms` is created to receive monitoring alerts where you can subscribe HTTP endpoints to send the notification to your tools. The topic ARN is available in the stack output as `SNSAlertsTopic`.
-> * The template is deployed with a pre-defined set of default values to suit the majority of use cases. If you want to customize deployment values, you can find the parameter descriptions on the [template.yaml](../template.yaml) file.
+> * See [CloudFormation parameter reference](cloudformation_parameters.md) for all available parameters and their default values.
 
 ### Step 5. Configure S3 buckets to send "S3 Object created" notifications to the log forwarder.
 
