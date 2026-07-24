@@ -21,7 +21,7 @@ Review the GitHub release notes for any additional required steps specific to th
 ### Step 2. Find your deployment stack name
 
 Find a name for your `dynatrace-aws-platform-monitoring-s3-log-forwarder` deployment and store in the `STACK_NAME` environment variable. The deployment contains several CloudFormation stacks.
-Find name of the stack that do not start with `dynatrace-aws-s3-log-forwarder` prefix and has text `SAM Template to deploy the dynatrace-aws-s3-log-forwarder` in the description.
+Find name of the stack that do not start with `dynatrace-aws-platform-monitoring-s3-log-forwarder` prefix and has text `SAM Template to deploy the dynatrace-aws-platform-monitoring-s3-log-forwarder` in the description.
 
 ```bash
 export STACK_NAME=<replace-with-your-log-forwarder-stack-name>
@@ -29,7 +29,7 @@ export STACK_NAME=<replace-with-your-log-forwarder-stack-name>
 
 ### Step 3. Set the version to update to
 
-Set the `VERSION_TAG` environment variable to the latest release version tag of `dynatrace-aws-s3-log-forwarder`.
+Set the `VERSION_TAG` environment variable to the latest release version tag of `dynatrace-aws-platform-monitoring-s3-log-forwarder`.
 
 ```bash
 # Get the latest version
