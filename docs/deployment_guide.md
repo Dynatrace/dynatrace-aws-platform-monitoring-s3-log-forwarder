@@ -197,7 +197,7 @@ At this point, you have successfully deployed the `dynatrace-aws-platform-monito
 
 #### Option A: Amazon EventBridge
 
-If you provided `GrantReadPermissionToBuckets` in Step 4, the main stack has already created an EventBridge rule routing `Object Created` events from the listed buckets to the SQS queue. You must also enable EventBridge notifications on each bucket.
+If you provided `GrantReadPermissionToBuckets` in Step 4, the main stack has already created an EventBridge rule routing `Object Created` events from the listed buckets to the SQS queue. You must also [enable EventBridge notifications](https://docs.aws.amazon.com/AmazonS3/latest/userguide/enable-event-notifications-eventbridge.html) on each bucket.
 
 #### Option B: Direct S3 to SQS
 
@@ -237,7 +237,9 @@ See [Configuring S3 buckets with prefix filtering](advanced_deployments.md#confi
 
 ### Custom log forwarding and processing rules
 
-By default, the forwarder uses built-in rules (see: [src/log/processing/rules/aws/](../src/log/processing/rules/aws/)). Custom log forwarding and processing rules are intended exclusively for AWS log types not covered by the built-in rules, or for custom (non-AWS) log sources. Log parsing beyond timestamp extraction is not supported at the forwarder level and must be performed using [Dynatrace OpenPipeline](https://docs.dynatrace.com/docs/analyze-explore-automate/logs/lma-log-processing/lma-openpipeline). To configure custom rules at runtime without redeploying the main stack, deploy the optional `dynatrace-aws-s3-log-forwarder-appconfig.yaml` template.
+Supported AWS-vended log types (see [src/log/processing/rules/aws/](../src/log/processing/rules/aws/)) are parsed automatically with no additional configuration. For any other log source, the default catch-all rule forwards S3 objects as generic plain text, but without structured attribute extraction.
+
+To parse JSON logs, extract attributes via grok or JMESPath, add per-bucket annotations, or route different key prefixes within the same bucket to different sources or processing rules — deploy the optional `dynatrace-aws-s3-log-forwarder-appconfig.yaml` template and define custom forwarding and processing rules. Log parsing beyond what the forwarder supports must be performed using [Dynatrace OpenPipeline](https://docs.dynatrace.com/docs/analyze-explore-automate/logs/lma-log-processing/lma-openpipeline).
 
 See [Custom log forwarding and processing rules via AppConfig](advanced_deployments.md#custom-log-forwarding-and-processing-rules-via-appconfig).
 

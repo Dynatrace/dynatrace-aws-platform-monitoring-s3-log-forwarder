@@ -54,11 +54,21 @@ Before deploying either option, complete the following steps.
 
 1. Provide the Dynatrace platform token.
 
-    The Lambda function needs a Dynatrace platform token (scope `data-acquisition:logs:ingest`) to authenticate against the log ingest API. There are three mutually exclusive options — choose one:
+    The Lambda function needs a Dynatrace platform token (scope `data-acquisition:logs:ingest`) to authenticate against the log ingest API. There are two mutually exclusive options — choose one:
 
-    **Option A: Existing AWS Secrets Manager secret (recommended)**
+    **Option A: AWS Secrets Manager secret (recommended)**
 
-    If you already have a Secrets Manager secret storing the token, reference it directly. The secret value must be the plain token string.
+    Store the token as a JSON secret in AWS Secrets Manager using the key `dt.platform_token`:
+
+    ```bash
+    export HISTCONTROL=ignorespace
+     export DT_TOKEN_SECRET_ARN=$(aws secretsmanager create-secret \
+         --name "<your-secret-name>" \
+         --secret-string '{"dt.platform_token":"<your_dynatrace_platform_token_here>"}' \
+         --query 'ARN' --output text)
+    ```
+
+    If you already have an existing Secrets Manager secret, use its ARN instead — the secret must be a JSON object with the key `dt.platform_token`:
 
     ```bash
     export DT_TOKEN_SECRET_ARN=<arn-of-your-existing-secrets-manager-secret>
@@ -70,19 +80,13 @@ Before deploying either option, complete the following steps.
 
     ```bash
     export HISTCONTROL=ignorespace
-    aws ssm put-parameter \
+     aws ssm put-parameter \
          --name "/dynatrace/s3-log-forwarder/$STACK_NAME/api-key" \
          --type SecureString \
          --value "<your_dynatrace_platform_token_here>"
     ```
 
     Pass `DynatraceApiKeySSMParameter="/dynatrace/s3-log-forwarder/$STACK_NAME/api-key"` in the deploy command later.
-
-    **Option C: Plain text token (stack creates a Secrets Manager secret)**
-
-    Pass the token directly in the deploy command — the stack creates a new Secrets Manager secret to store it securely.
-
-    Pass `DynatraceApiKey="<your_dynatrace_platform_token_here>"` in the deploy command later.
 
 ## Building and deploying a Lambda Layer from source
 

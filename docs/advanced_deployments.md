@@ -8,7 +8,7 @@ The `GrantReadPermissionToBuckets` parameter in `template.yaml` forwards logs fr
 
 ### Option A: Amazon EventBridge
 
-Deploy the main stack without `GrantReadPermissionToBuckets`, include the parameters as needed from [deployment_guide.md](deployment_guide.md#deploy-the-dynatrace-aws-platform-monitoring-s3-log-forwarder):
+Deploy the main stack without `GrantReadPermissionToBuckets`. The example below uses the environment variables set in [Steps 1–2 of the deployment guide](deployment_guide.md#step-1-define-a-name-for-your-dynatrace-aws-platform-monitoring-s3-log-forwarder-deployment):
 
 ```bash
 aws cloudformation deploy \
@@ -17,7 +17,7 @@ aws cloudformation deploy \
     --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
     --parameter-overrides \
         DynatraceEnvironmentURL="https://$DYNATRACE_TENANT_UUID.apps.dynatrace.com" \
-        DynatraceApiKeySecretsManagerSecret="<secret-arn>"
+        DynatraceApiKeySecretsManagerSecret="$DT_TOKEN_SECRET_ARN"
 ```
 
 Then deploy the per-bucket stack for each bucket, specifying the prefixes to forward logs from:
@@ -123,10 +123,14 @@ aws cloudformation deploy \
     --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
     --parameter-overrides \
         DynatraceEnvironmentURL="https://$DYNATRACE_TENANT_UUID.apps.dynatrace.com" \
-        DynatraceApiKeySecretsManagerSecret="<secret-arn>" \
-        DynatraceS3LogForwarderLayerArn="$LAYER_ARN" \
+        DynatraceApiKeySecretsManagerSecret="$DT_TOKEN_SECRET_ARN" \
         IamRolePath="/engineering/platform/"
 ```
+
+> [!NOTE]
+>
+> * `$DT_TOKEN_SECRET_ARN` is the ARN of the Secrets Manager secret created in [Step 2 of the deployment guide](deployment_guide.md#step-2-provide-the-dynatrace-platform-token). The secret must be a JSON object with the key `dt.platform_token`, e.g. `{"dt.platform_token":"<your_token>"}`.
+> * Replace `DynatraceApiKeySecretsManagerSecret="$DT_TOKEN_SECRET_ARN"` with `DynatraceApiKeySSMParameter="/dynatrace/s3-log-forwarder/$STACK_NAME/api-key"` if you stored the token in SSM Parameter Store (Step 2, Option B).
 
 The path must start and end with `/`. If not specified, the role is created at the root path `/`.
 
