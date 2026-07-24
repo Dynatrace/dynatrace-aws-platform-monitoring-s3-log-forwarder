@@ -74,7 +74,7 @@ Note the `LayerVersionArn` from the output — update `README.md` and `template.
 
 The publish script has already updated `README.md` and `template.yaml` with the new Layer ARNs. Release these updated files so customers can update to the new version.
 
-The [Lambda Layer ARNs table in README.md](../README.md) serves as a reference for the published ARNs per region and architecture.
+The [Lambda Layer ARNs table in README.md](../../README.md) serves as a reference for the published ARNs per region and architecture.
 
 ## Publishing a new version
 
