@@ -67,8 +67,6 @@ aws cloudformation deploy --stack-name ${STACK_NAME} \
                 DeploymentPackageType="layer"
 ```
 
-If you want to pin to a specific layer version, you can optionally provide `DynatraceS3LogForwarderLayerArn="<arn>"`.
-
 #### If using ZIP deployment
 
 Download the new Lambda deployment package for your architecture:
