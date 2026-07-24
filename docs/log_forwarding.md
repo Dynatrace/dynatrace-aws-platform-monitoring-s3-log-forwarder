@@ -7,7 +7,7 @@ For runtime rule customisation without redeploying Lambda, you can optionally de
 * `log-forwarding-rules`: stores log forwarding rules.
 * `log-processing-rules`: stores custom log processing rules. For more information, check the [log_processing.md](log_processing.md) documentation.
 
-Once deployed, set `LogForwarderConfigurationLocation=aws-appconfig` on the main stack. The Lambda will pick up configuration changes within ~1 minute without requiring a redeployment.
+Once deployed, redeploy the main stack with `LogForwarderConfigurationLocation=aws-appconfig`.
 
 The section below outlines how to configure custom log forwarding rules.
 

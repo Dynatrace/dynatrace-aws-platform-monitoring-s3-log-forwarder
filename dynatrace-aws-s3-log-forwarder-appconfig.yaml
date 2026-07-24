@@ -7,9 +7,9 @@ Description: |
   the Lambda function.
 
   Deploy this template once per dynatrace-aws-platform-monitoring-s3-log-forwarder deployment
-  when you want to customise forwarding or processing rules. After deployment, edit the
-  log-forwarding-rules and log-processing-rules configuration profiles in AppConfig and deploy
-  them — the Lambda will pick up changes within ~1 minute.
+  when you want to customise forwarding or processing rules. To update rules, edit the Content
+  field of LogForwardingRulesHostedConfiguration or LogProcessingRulesHostedConfiguration in
+  this template and redeploy the stack — the Lambda will pick up changes within ~1 minute.
 
   For more information: https://github.com/Dynatrace/dynatrace-aws-platform-monitoring-s3-log-forwarder
 
@@ -56,8 +56,7 @@ Metadata:
           --parameter-overrides DynatraceAwsS3LogForwarderStackName={your-dynatrace-aws-s3-log-forwarder-stack-name} \
           --capabilities CAPABILITY_IAM
 
-      After deployment, set LOG_FORWARDER_CONFIGURATION_LOCATION=aws-appconfig on the Lambda
-      function (or redeploy the main stack with LogForwarderConfigurationLocation=aws-appconfig).
+      After deployment, redeploy the main stack with LogForwarderConfigurationLocation=aws-appconfig.
 
 Parameters:
   DynatraceAwsS3LogForwarderStackName:
