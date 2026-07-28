@@ -2,12 +2,7 @@
 
 If you're contributing to the project or if you want to build and deploy from source, the following sections cover how to build and deploy the `dynatrace-aws-platform-monitoring-s3-log-forwarder`.
 
-There are two build options:
-
-* **Lambda Layer**
-* **Lambda ZIP**
-
-Both options are built inside a Docker container for binary compatibility. See `scripts/build_docker.sh`.
+The build runs inside a Docker container for binary compatibility. See `scripts/build_docker.sh`.
 
 > [!NOTE]
 >
@@ -140,47 +135,3 @@ This will:
 ### Updating the layer after code changes
 
 After making source code changes, repeat steps 1-3 above to rebuild and redeploy the layer, then update the main stack with the new Layer ARN.
-
-## Building and deploying a Lambda ZIP from source
-
-### Lambda ZIP build details
-
-From the project root directory:
-
-```bash
-./scripts/build_docker.sh zip dist/lambda.zip           # x86_64 (default)
-./scripts/build_docker.sh zip dist/lambda.zip arm64     # arm64
-```
-
-This will:
-
-* Install Python dependencies from `requirements.txt`
-* Copy application source code, configuration files, and license files
-* Bundle the `libyajl.so.2` native library (required by the `ijson` `yajl2_c` backend for high-performance JSON streaming)
-* Produce a ready-to-deploy Lambda ZIP at `dist/lambda.zip`
-
-> [!NOTE]
->
-> At runtime, the `LD_LIBRARY_PATH` environment variable must be set to `/var/task/lib` so the yajl library is found.
-
-### Lambda ZIP deployment instructions
-
-1. From the project root directory, build the Lambda deployment package:
-
-    ```bash
-    ./scripts/build_docker.sh zip dist/lambda.zip
-    ```
-
-1. Upload the nested dashboard template and rewrite its `TemplateURL` in `template.yaml`. `template.yaml` references `cloudwatch-monitoring-dashboard.yaml` via a local path, which CloudFormation can't resolve — it needs an absolute S3 URL:
-
-    ```bash
-    export CFN_ARTIFACTS_BUCKET=<your-s3-bucket-for-cfn-artifacts>
-
-    aws s3 cp cloudwatch-monitoring-dashboard.yaml \
-        "s3://${CFN_ARTIFACTS_BUCKET}/${STACK_NAME}/cloudwatch-monitoring-dashboard.yaml"
-
-    NESTED_DASHBOARD_URL="https://${CFN_ARTIFACTS_BUCKET}.s3.amazonaws.com/${STACK_NAME}/cloudwatch-monitoring-dashboard.yaml"
-    ./scripts/rewrite_nested_template_url.sh "${NESTED_DASHBOARD_URL}" deploy-template.yaml
-    ```
-
-1. Follow the [ZIP deployment instructions in the deployment guide](deployment_guide.md#zip-deployment-alternative-option), using `deploy-template.yaml` (generated above) instead of `template.yaml`, and `dist/lambda.zip` as the deployment package.

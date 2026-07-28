@@ -149,14 +149,6 @@ ssm:DeleteParameter
 | `CreateS3NotificationsSNSTopic=true` | `sns:CreateTopic` `sns:GetTopicAttributes` `sns:SetTopicAttributes` `sns:DeleteTopic` `sns:Subscribe` `sns:GetSubscriptionAttributes` `sns:Unsubscribe` `sns:TagResource` `sns:ListTagsForResource` | `arn:aws:sns:<region>:<account-id>:<stack-name>-S3Notifications` |
 | `EnableCrossRegionCrossAccountForwarding=true` | `events:CreateEventBus` `events:DescribeEventBus` `events:DeleteEventBus` `events:PutPermission` `events:RemovePermission` | `arn:aws:events:<region>:<account-id>:event-bus/<stack-name>-cross-region-cross-account-s3-events` |
 
-## Additional permissions for ZIP deployment
-
-When using the ZIP deployment option, you also run `aws cloudformation describe-stacks` and `aws lambda update-function-code`:
-
-`cloudformation:DescribeStacks` on `arn:aws:cloudformation:<region>:<account-id>:stack/<stack-name>/*`
-
-`lambda:UpdateFunctionCode` on `arn:aws:lambda:<region>:<account-id>:function:<stack-name>-QueueProcessingFunction-*`
-
 ## Per-bucket stack (`dynatrace-aws-s3-log-forwarder-s3-bucket-configuration.yaml`)
 
 Deploy this template once per S3 bucket when you need prefix-level filtering. It creates an EventBridge rule and attaches an inline IAM policy to the Lambda execution role created by the main stack.

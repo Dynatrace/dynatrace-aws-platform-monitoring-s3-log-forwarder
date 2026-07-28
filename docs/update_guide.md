@@ -55,8 +55,6 @@ unzip -o templates.zip
 
 ### Step 5. Update the stack
 
-#### If using Lambda Layer deployment
-
 Redeploy with the new `template.yaml` — the latest layer ARN for your region and architecture is embedded in the template's mappings.
 
 ```bash
@@ -65,34 +63,6 @@ aws cloudformation deploy --stack-name ${STACK_NAME} \
             --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
             --parameter-overrides \
                 DeploymentPackageType="layer"
-```
-
-#### If using ZIP deployment
-
-Download the new Lambda deployment package for your architecture:
-
-```bash
-wget https://dynatrace-aws-s3-log-forwarder-assets.s3.amazonaws.com/${VERSION_TAG}/lambda-x86_64.zip
-# or for arm64:
-# wget https://dynatrace-aws-s3-log-forwarder-assets.s3.amazonaws.com/${VERSION_TAG}/lambda-arm64.zip
-```
-
-Update the CloudFormation stack:
-
-```bash
-aws cloudformation deploy --stack-name ${STACK_NAME} \
-            --template-file template.yaml --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND
-```
-
-Then update the Lambda function code with the new deployment package:
-
-```bash
-FUNCTION_NAME=$(aws cloudformation describe-stacks --stack-name ${STACK_NAME} \
-    --query 'Stacks[0].Outputs[?OutputKey==`QueueProcessingFunction`].OutputValue' \
-    --output text | rev | cut -d':' -f1 | rev)
-
-aws lambda update-function-code --function-name ${FUNCTION_NAME} \
-    --zip-file fileb://lambda-x86_64.zip   # or lambda-arm64.zip
 ```
 
 If successful, you'll see a message similar to the below at the end of the execution:

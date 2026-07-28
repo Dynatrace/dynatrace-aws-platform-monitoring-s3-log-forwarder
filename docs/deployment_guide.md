@@ -13,15 +13,6 @@ You'll also need:
 * A Dynatrace [platform token](https://docs.dynatrace.com/docs/manage/identity-access-management/access-tokens-and-oauth-clients/platform-tokens) for your tenant with the `data-acquisition:logs:ingest` scope (used to authenticate against the generic S3 logs ingest API).
 * An AWS identity (user or role) with the required IAM permissions — see [Required AWS IAM permissions](iam_permissions.md).
 
-## Deployment options
-
-The `dynatrace-aws-platform-monitoring-s3-log-forwarder` supports two deployment package types:
-
-| Option                         | Description                                                     |
-|--------------------------------|-----------------------------------------------------------------|
-| **Lambda Layer** (recommended) | Use a Lambda Layer provided by a maintainer (no build required) |
-| **ZIP**                        | Lambda function code and dependencies packaged as a ZIP file    |
-
 ## Deploy the dynatrace-aws-platform-monitoring-s3-log-forwarder
 
 All core infrastructure — Lambda, SQS queues, IAM role, EventBridge rules, and S3 bucket permissions — is deployed from a single `template.yaml`. For a high level view of what's deployed, look at the diagram below:
@@ -96,13 +87,9 @@ unzip templates.zip
 
 ### Step 4. Deploy the Lambda function
 
-Choose one of the deployment options below:
-
----
-
 #### Lambda Layer (recommended)
 
-Dynatrace provides Lambda layers with each release of the `dynatrace-aws-platform-monitoring-s3-log-forwarder`, allowing for simple deployment and updates as new versions are released. If you're deploying into an AWS region where a layer is not available, use the [Zip deployment](#zip-deployment) option instead.
+Dynatrace provides Lambda layers with each release of the `dynatrace-aws-platform-monitoring-s3-log-forwarder`, allowing for simple deployment and updates as new versions are released.
 
 1. Deploy the main forwarder stack:
 
@@ -123,64 +110,6 @@ Dynatrace provides Lambda layers with each release of the `dynatrace-aws-platfor
     > * Replace `DynatraceApiKeySecretsManagerSecret` with `DynatraceApiKeySSMParameter="/dynatrace/s3-log-forwarder/$STACK_NAME/api-key"` if you chose Option B in Step 2.
     > * When `GrantReadPermissionToBuckets` is set, the Lambda function IAM role is granted read access to all objects in those buckets. For fine-grained access controls, leave `GrantReadPermissionToBuckets` empty and follow the instructions in [Fine-grained access controls](#fine-grained-access-controls).
     > * See [CloudFormation parameter reference](cloudformation_parameters.md) for all available parameters.
-
----
-
-#### Zip deployment
-
-If you're deploying the forwarder in an AWS region where a Lambda Layer is not available, or you prefer to deploy from a release ZIP, follow the instructions below.
-
-> [!NOTE]
->
-> For instructions on building from source, see [build.md](build.md).
-
-1. Set your target architecture and download the deployment package:
-
-    ```bash
-    export ARCH=x86_64  # or arm64
-    wget https://dynatrace-aws-s3-log-forwarder-assets.s3.amazonaws.com/${VERSION_TAG}/lambda-${ARCH}.zip
-    ```
-
-2. Deploy the CloudFormation stack:
-
-    ```bash
-    aws cloudformation deploy \
-        --stack-name ${STACK_NAME} \
-        --template-file template.yaml \
-        --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
-        --parameter-overrides \
-            DynatraceEnvironmentURL="https://$DYNATRACE_TENANT_UUID.apps.dynatrace.com" \
-            DynatraceApiKeySecretsManagerSecret="$DT_TOKEN_SECRET_ARN" \
-            DeploymentPackageType="zip" \
-            Architecture="$ARCH" \
-            GrantReadPermissionToBuckets="my-bucket,another-bucket"
-    ```
-
-    > [!NOTE]
-    >
-    > * Replace `DynatraceApiKeySecretsManagerSecret` with `DynatraceApiKeySSMParameter="/dynatrace/s3-log-forwarder/$STACK_NAME/api-key"` if you chose Option B in Step 2.
-    > * When `GrantReadPermissionToBuckets` is set, the Lambda function IAM role is granted read access to all objects in those buckets. For fine-grained access controls, leave `GrantReadPermissionToBuckets` empty and follow the instructions in [Fine-grained access controls](#fine-grained-access-controls).
-    > * See [CloudFormation parameter reference](cloudformation_parameters.md) for all available parameters.
-
-3. Update the Lambda function code with the deployment package:
-
-    ```bash
-    FUNCTION_NAME=$(aws cloudformation describe-stacks --stack-name ${STACK_NAME} \
-        --query 'Stacks[0].Outputs[?OutputKey==`QueueProcessingFunction`].OutputValue' \
-        --output text | rev | cut -d':' -f1 | rev)
-
-    aws lambda update-function-code --function-name ${FUNCTION_NAME} \
-        --zip-file fileb://lambda-${ARCH}.zip
-    ```
-
-    If successful, you'll see a message similar to the below at the end of the execution:
-
-    ```json
-    {
-        "FunctionName": "...",
-        "LastUpdateStatus": "InProgress"
-    }
-    ```
 
 ---
 
