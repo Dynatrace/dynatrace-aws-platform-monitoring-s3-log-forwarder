@@ -51,9 +51,10 @@ export_cloudwatch_logs () {
 
 # Delete resources
 
-SNS_TOPIC_ARN=$(aws cloudformation describe-stacks --stack-name "${STACK_NAME}" \
-    --query 'Stacks[0].Outputs[?OutputKey==`S3NotificationsSNSTopic`].OutputValue' \
+QUEUE_ARN=$(aws cloudformation describe-stacks --stack-name "${STACK_NAME}" \
+    --query 'Stacks[0].Outputs[?OutputKey==`SQSProcessingQueue`].OutputValue' \
     --output text 2>/dev/null || true)
+SNS_TOPIC_ARN="arn:aws:sns:$(cut -d: -f4 <<< "${QUEUE_ARN}"):$(cut -d: -f5 <<< "${QUEUE_ARN}"):${STACK_NAME}-s3-notifications"
 
 log "Deleting Cloudformation Stack ${STACK_NAME}"
 aws cloudformation delete-stack --stack-name ${STACK_NAME}
