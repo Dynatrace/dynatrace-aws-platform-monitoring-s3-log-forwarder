@@ -172,12 +172,11 @@ Parameters:
     AllowedPattern: "(^$|^[a-zA-Z0-9._%+\\-]+@[a-zA-Z0-9.\\-]+\\.[a-zA-Z]{2,}$)"
     ConstraintDescription: "Must be a valid e-mail address or left empty."
   DeploymentPackageType:
-    Description: "How the Lambda function code is delivered. 'layer' uses a pre-built Lambda Layer. 'zip' expects you to upload the function ZIP package yourself after stack creation."
+    Description: "How the Lambda function code is delivered. 'layer' uses a pre-built Lambda Layer published by Dynatrace."
     Type: String
     Default: layer
     AllowedValues:
       - layer
-      - zip
   DynatraceS3LogForwarderLayerArn:
     Type: String
     Default: ""
