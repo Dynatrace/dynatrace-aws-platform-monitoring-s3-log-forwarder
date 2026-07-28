@@ -840,12 +840,6 @@ Outputs:
   SNSAlertsTopic:
     Description: "SNS Topic receiving monitoring alerts"
     Value: !Ref AlarmsSNSTopic
-  S3NotificationsSNSTopic:
-    Condition: S3NotificationsSNSTopicProvided
-    Description: "ARN(s) of the SNS Topics allowed to send S3 Object Created notifications to the SQS queue"
-    Value: !Join [",", !Ref S3NotificationsSNSTopicArns]
-    Export:
-      Name: !Sub ${AWS::StackName}:S3NotificationsSNSTopicArns
   CrossRegionCrossAccountEventBus:
     Condition: CrossRegionCrossAccountForwardingIsEnabled
     Description: "Amazon EventBridge event bus to receive cross-region and cross-account S3 object created notifications"
