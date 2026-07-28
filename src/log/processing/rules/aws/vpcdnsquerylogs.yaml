@@ -24,9 +24,7 @@ log_format: json_stream
 
 annotations:
   cloud.provider: aws
-  # not sure
   aws.resource.type: "AWS::EC2::VPC"
-  # not sure
   aws.arn.pattern: "arn:aws:ec2:{aws.region}:{aws.account.id}:vpc/{aws.resource.id}"
 
 # map message keys to Dynatrace log ingest format
