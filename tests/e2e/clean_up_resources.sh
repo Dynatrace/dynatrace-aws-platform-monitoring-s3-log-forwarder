@@ -51,9 +51,18 @@ export_cloudwatch_logs () {
 
 # Delete resources
 
+SNS_TOPIC_ARN=$(aws cloudformation describe-stacks --stack-name "${STACK_NAME}" \
+    --query 'Stacks[0].Outputs[?OutputKey==`S3NotificationsSNSTopic`].OutputValue' \
+    --output text 2>/dev/null || true)
+
 log "Deleting Cloudformation Stack ${STACK_NAME}"
 aws cloudformation delete-stack --stack-name ${STACK_NAME}
 aws cloudformation wait stack-delete-complete --stack-name ${STACK_NAME}
+
+if [[ "${SNS_TOPIC_ARN}" =~ ^arn:aws:sns: ]]; then
+    log "Deleting SNS topic ${SNS_TOPIC_ARN}"
+    aws sns delete-topic --topic-arn "${SNS_TOPIC_ARN}"
+fi
 # Delete the layer stack if it exists
 if aws cloudformation describe-stacks --stack-name ${STACK_NAME}-layer >/dev/null 2>&1; then
     log "Deleting Cloudformation Stack ${STACK_NAME}-layer"

@@ -54,7 +54,9 @@ S3 bucket notifications to SQS natively support prefix and suffix filters. When 
 
 ### Option C: SNS fan-out
 
-S3 bucket notifications to SNS topics also support native prefix and suffix filters. When configuring the bucket to send events to an SNS topic, include a filter rule to restrict which objects trigger notifications. Follow the [AWS documentation on configuring S3 event notifications](https://docs.aws.amazon.com/AmazonS3/latest/userguide/enable-event-notifications.html#enable-event-notifications-sns-sqs-lam).
+S3 bucket notifications to SNS topics natively support prefix and suffix filters. When configuring the bucket to send events to an SNS topic, include a filter rule to restrict which objects trigger notifications. Follow the [AWS documentation on configuring S3 event notifications](https://docs.aws.amazon.com/AmazonS3/latest/userguide/enable-event-notifications.html#enable-event-notifications-sns-sqs-lam).
+
+Pass the topic ARN(s) via `S3NotificationsSNSTopicArns` to allow them in the SQS queue policy, then subscribe each SNS topic to the SQS queue on your side. See [Option C in Step 5 of the deployment guide](deployment_guide.md#option-c-sns-fan-out) for prerequisites and full instructions.
 
 ## Custom log forwarding and processing rules via AppConfig
 
