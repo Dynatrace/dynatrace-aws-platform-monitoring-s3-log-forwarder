@@ -49,7 +49,7 @@ Download the CloudFormation templates for the version you're updating to:
 
 ```bash
 mkdir -p dynatrace-aws-s3-log-forwarder-templates && cd "$_"
-wget https://dynatrace-aws-s3-log-forwarder-assets.s3.amazonaws.com/${VERSION_TAG}/templates.zip
+wget https://github.com/dynatrace/dynatrace-aws-platform-monitoring-s3-log-forwarder/releases/download/${VERSION_TAG}/templates.zip
 unzip -o templates.zip
 ```
 
