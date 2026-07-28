@@ -18,8 +18,8 @@ This page documents all parameters for the main `template.yaml` stack.
 
 | Parameter | Type | Default                                                                                                | Allowed values | Description |
 |-----------|------|--------------------------------------------------------------------------------------------------------|----------------|-------------|
-| `DeploymentPackageType` | String | `layer`                                                                                                | `layer`, `zip` | How Lambda function code is delivered. `layer` uses a pre-built Lambda Layer published by Dynatrace. `zip` expects you to upload the function ZIP package yourself after stack creation. |
-| `DynatraceS3LogForwarderLayerArn` | String | _(empty — layer ARN resolved from the template's built-in region mapping, based od deployment region)_ | Valid Lambda Layer ARN | ARN of a custom Lambda Layer to use instead of the Dynatrace-published layer. If not provided, the ARN is automatically selected from the template's region map. Only set this when building from source or using a self-hosted layer. Ignored when `DeploymentPackageType=zip`. |
+| `DeploymentPackageType` | String | `layer`                                                                                                | `layer` | How Lambda function code is delivered. `layer` uses a pre-built Lambda Layer published by Dynatrace. |
+| `DynatraceS3LogForwarderLayerArn` | String | _(empty — layer ARN resolved from the template's built-in region mapping, based od deployment region)_ | Valid Lambda Layer ARN | ARN of a custom Lambda Layer to use instead of the Dynatrace-published layer. If not provided, the ARN is automatically selected from the template's region map. Only set this when building from source or using a self-hosted layer. |
 | `Architecture` | String | `x86_64`                                                                                               | `x86_64`, `arm64` | Instruction set architecture for the Lambda function. |
 
 ## S3 bucket access

@@ -33,10 +33,6 @@ jobs:
           GIT_TAG: ${{ github.ref_name }}
           GIT_COMMIT: ${{ github.sha }}
         run: ./scripts/update_version.sh
-      - name: Build Lambda ZIP
-        run: ./scripts/build_docker.sh zip dist/lambda-x86_64.zip x86_64
-      - name: Upload Lambda ZIP to S3
-        run: aws s3 cp dist/lambda-x86_64.zip s3://${RELEASE_BUCKET}/${{ github.ref_name }}/lambda-x86_64.zip
       - name: Build Lambda Layer
         run: ./scripts/build_docker.sh layer dist/layer-x86_64.zip x86_64
       - name: Configure AWS credentials for layer publishing
@@ -71,10 +67,6 @@ jobs:
           GIT_TAG: ${{ github.ref_name }}
           GIT_COMMIT: ${{ github.sha }}
         run: ./scripts/update_version.sh
-      - name: Build Lambda ZIP
-        run: ./scripts/build_docker.sh zip dist/lambda-arm64.zip arm64
-      - name: Upload Lambda ZIP to S3
-        run: aws s3 cp dist/lambda-arm64.zip s3://${RELEASE_BUCKET}/${{ github.ref_name }}/lambda-arm64.zip
       - name: Build Lambda Layer
         run: ./scripts/build_docker.sh layer dist/layer-arm64.zip arm64
       - name: Configure AWS credentials for layer publishing
