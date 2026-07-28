@@ -41,8 +41,11 @@ alb_log_entry = 'http 2018-07-02T22:23:00.186641Z app/my-loadbalancer/50dc6c495c
 classic_elb_log_entry = '2022-09-27T22:48:26.330387Z a2e8277e0e09143fbb06db5dcd2a14c2 3.67.7.163:8596 192.168.18.161:32728 0.000042 0.004504 0.000036 404 404 0 1086 "GET http://a2e8277e0e09143fbb06db5dcd2a14c2-1086714162.us-east-1.elb.amazonaws.com:80/n9BxiYVakde9.php HTTP/1.1" "Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 5.1; Trident/4.0)" - -'
 nlb_log_entry = 'tls 2.0 2022-09-27T17:10:23 net/k8s-podinfo-frontend-352ef7564b/809b86b470cfa0ff f0f22c45225e4663 192.168.18.161:60808 192.168.103.168:443 24 16 140 518 - arn:aws:acm:us-east-1:012345678910:certificate/ae6e87cd-9848-465b-9433-b0d34850a685 - ECDHE-RSA-AES128-GCM-SHA256 tlsv12 - k8s-podinfo-frontend-352ef7564b-809b86b470cfa0ff.elb.us-east-1.amazonaws.com - - -'
 network_firewall_log_entry = {
-    'event_timestamp': '1602627001',
     'firewall_name': 'my-test-firewall',
+    'event_timestamp': '1602627001',
+    'event': {
+        'timestamp': '2020-10-13T22:10:01.006481+0000',
+    },
 }
 s3_access_log_entry = '79a59df900b949e55d96a1e698fbacedfd6e09d98eacf8f8d5218e7cd47ef2be DOC-EXAMPLE-BUCKET1 [06/Feb/2019:00:00:38 +0000] 192.0.2.3 79a59df900b949e55d96a1e698fbacedfd6e09d98eacf8f8d5218e7cd47ef2be 3E57427F3EXAMPLE REST.GET.VERSIONING - "GET /DOC-EXAMPLE-BUCKET1?versioning HTTP/1.1" 200 - 113 - 7 - "-" "S3Console/0.4" - s9lzHYrFp76ZVxRcpX9+5cjAnEH2ROuNkd2BHfIa6UkFVdtjf5mKR3/eTPFvsiP/XV/VLi31234= SigV4 ECDHE-RSA-AES128-GCM-SHA256 AuthHeader DOC-EXAMPLE-BUCKET1.s3.us-west-1.amazonaws.com TLSV1.2 arn:aws:s3:us-west-1:123456789012:accesspoint/example-AP Yes'
 vpcdnsquery_log_entry = {
@@ -144,6 +147,11 @@ class TestAWSAttributeInjection(unittest.TestCase):
         attributes = netfw_processing_rule.get_attributes_from_s3_key_name(network_firewall_key_name)
 
         self.assertEqual(attributes,expected_attributes)
+
+    def test_networkfirewall_timestamp_uses_iso8601(self):
+        netfw_processing_rule = processing_rules['aws']['network-firewall']
+        attributes = netfw_processing_rule.get_extracted_log_attributes(network_firewall_log_entry)
+        self.assertEqual(attributes.get('timestamp'), '2020-10-13T22:10:01.006481+0000')
 
     def test_msk_attributes(self):
         expected_attributes = {
