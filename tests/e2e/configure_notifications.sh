@@ -36,15 +36,12 @@ case "${NOTIFICATION_TYPE}" in
         ;;
 
     sns-sqs)
-        SNS_TOPIC_ARN=$(aws cloudformation describe-stacks --stack-name "${STACK_NAME}" \
-            --query 'Stacks[0].Outputs[?OutputKey==`S3NotificationsSNSTopic`].OutputValue' \
-            --output text)
-        [[ "${SNS_TOPIC_ARN}" =~ ^arn:aws:sns: ]] || { echo "ERROR: could not retrieve a valid SNS topic ARN from stack ${STACK_NAME} (got: '${SNS_TOPIC_ARN}')" >&2; exit 1; }
-
         QUEUE_ARN=$(aws cloudformation describe-stacks --stack-name "${STACK_NAME}" \
             --query 'Stacks[0].Outputs[?OutputKey==`SQSProcessingQueue`].OutputValue' \
             --output text)
         [[ "${QUEUE_ARN}" =~ ^arn:aws:sqs: ]] || { echo "ERROR: could not retrieve a valid SQS queue ARN from stack ${STACK_NAME} (got: '${QUEUE_ARN}')" >&2; exit 1; }
+
+        SNS_TOPIC_ARN="arn:aws:sns:$(cut -d: -f4 <<< "${QUEUE_ARN}"):$(cut -d: -f5 <<< "${QUEUE_ARN}"):${STACK_NAME}-s3-notifications"
 
         NEW_CONFIG=$(jq -n \
             --arg sns_arn "${SNS_TOPIC_ARN}" --arg sns_prefix "${E2E_TEST_PREFIX}/sns/" \
