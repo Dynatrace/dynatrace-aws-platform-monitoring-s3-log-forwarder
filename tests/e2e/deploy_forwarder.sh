@@ -31,6 +31,25 @@ EXTRA_CFN_PARAMS=()
 [[ -n "${IAM_ROLE_PATH:-}" ]]   && EXTRA_CFN_PARAMS+=(IamRolePath="${IAM_ROLE_PATH}")
 [[ -n "${S3_BUCKET_NAMES:-}" ]] && EXTRA_CFN_PARAMS+=(GrantReadPermissionToBuckets="${S3_BUCKET_NAMES}")
 
+log "Creating SNS topic for e2e testing"
+SNS_TOPIC_ARN=$(aws sns create-topic \
+    --name "${STACK_NAME}-s3-notifications" \
+    --query TopicArn --output text)
+log "SNS topic created: ${SNS_TOPIC_ARN}"
+
+AWS_ACCOUNT_ID=$(cut -d: -f5 <<< "${SNS_TOPIC_ARN}")
+SNS_POLICY=$(jq -n \
+    --arg topic_arn "${SNS_TOPIC_ARN}" \
+    --arg account_id "${AWS_ACCOUNT_ID}" \
+    --arg bucket_arn "arn:aws:s3:::${E2E_TESTING_BUCKET_NAME}" \
+    '{Version:"2012-10-17",Statement:[{Sid:"AllowS3ToPublish",Effect:"Allow",Principal:{Service:"s3.amazonaws.com"},Action:"sns:Publish",Resource:$topic_arn,Condition:{StringEquals:{"aws:SourceAccount":$account_id},ArnLike:{"aws:SourceArn":$bucket_arn}}}]}')
+aws sns set-topic-attributes \
+    --topic-arn "${SNS_TOPIC_ARN}" \
+    --attribute-name Policy \
+    --attribute-value "${SNS_POLICY}"
+
+EXTRA_CFN_PARAMS+=(S3NotificationsSNSTopicArns="${SNS_TOPIC_ARN}")
+
 if [[ -n "${DT_TOKEN_SECRET_ARN:-}" && -n "${DT_TENANT_PLATFORM_TOKEN:-}" ]]; then
     echo "ERROR: DT_TOKEN_SECRET_ARN and DT_TENANT_PLATFORM_TOKEN are mutually exclusive — set exactly one" >&2; exit 1
 elif [[ -n "${DT_TOKEN_SECRET_ARN:-}" ]]; then
@@ -65,7 +84,6 @@ case "${DEPLOY_TYPE}" in
                         EnableCrossRegionCrossAccountForwarding=true \
                         DeploymentPackageType=zip \
                         Architecture="${ARCH}" \
-                        CreateS3NotificationsSNSTopic=true \
                         "${EXTRA_CFN_PARAMS[@]}" \
                         --template-file deploy-template.yaml --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
                         --role-arn ${CFN_ROLE_ARN}
@@ -122,7 +140,6 @@ case "${DEPLOY_TYPE}" in
                         DeploymentPackageType=layer \
                         DynatraceS3LogForwarderLayerArn="${LAYER_ARN}" \
                         Architecture="${ARCH}" \
-                        CreateS3NotificationsSNSTopic=true \
                         "${EXTRA_CFN_PARAMS[@]}" \
                         --template-file deploy-template.yaml --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
                         --role-arn ${CFN_ROLE_ARN}
@@ -135,4 +152,13 @@ case "${DEPLOY_TYPE}" in
         exit 1
         ;;
 esac
+
+log "Subscribing SNS topic to SQS queue"
+QUEUE_ARN=$(aws cloudformation describe-stacks --stack-name "${STACK_NAME}" \
+    --query 'Stacks[0].Outputs[?OutputKey==`SQSProcessingQueue`].OutputValue' \
+    --output text)
+aws sns subscribe \
+    --topic-arn "${SNS_TOPIC_ARN}" \
+    --protocol sqs \
+    --notification-endpoint "${QUEUE_ARN}"
 
