@@ -387,12 +387,14 @@ class TestProcessLogObject(unittest.TestCase):
             'dt.da.aws.s3.bucket.name',
             'dt.da.aws.s3.key.name',
             'aws.arn',
+            'aws.resource.id',
             'aws.resource.type',
             'content',
             'timestamp'
         }
         self.assertEqual(set(call_args.keys()), expected_keys)
         self.assertIsNone(call_args['aws.arn'])
+        self.assertIsNone(call_args['aws.resource.id'])
         self.assertIsNone(call_args['aws.resource.type'])
         self.assertIsNone(call_args['timestamp'])
 
