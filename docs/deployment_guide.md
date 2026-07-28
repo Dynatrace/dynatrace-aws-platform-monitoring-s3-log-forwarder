@@ -117,7 +117,6 @@ Dynatrace provides Lambda layers with each release of the `dynatrace-aws-platfor
 >
 > * You can optionally configure notifications on your e-mail address to receive alerts when log files can't be processed and messages are arriving to the Dead Letter Queue. To do so, add the parameter `NotificationsEmail`=`your_email_address_here`.
 > * An Amazon SNS topic named `<stack-name>-Alarms` is created to receive monitoring alerts where you can subscribe HTTP endpoints to send the notification to your tools. The topic ARN is available in the stack output as `SNSAlertsTopic`.
-> * If you plan to configure S3 buckets via existing SNS topics (Option C in Step 5), add `S3NotificationsSNSTopicArns`=`<comma-separated-sns-topic-arns>` to `--parameter-overrides`.
 > * See [CloudFormation parameter reference](cloudformation_parameters.md) for all available parameters and their default values.
 
 ### Step 5. Configure S3 buckets to send "S3 Object created" notifications to the log forwarder.

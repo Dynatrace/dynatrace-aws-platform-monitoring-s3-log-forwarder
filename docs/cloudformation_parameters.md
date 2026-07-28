@@ -28,6 +28,7 @@ This page documents all parameters for the main `template.yaml` stack.
 |-----------|------|---------|-------------|
 | `GrantReadPermissionToBuckets` | CommaDelimitedList | _(empty)_ | Comma-separated list of S3 bucket names to grant the Lambda function `s3:GetObject` access to and create an EventBridge routing rule for (e.g. `my-bucket,another-bucket`). Use the [per-bucket stack](../dynatrace-aws-s3-log-forwarder-s3-bucket-configuration.yaml) for prefix filtering or cross-account/region buckets. |
 | `GrantDecryptToKmsKeyArns` | CommaDelimitedList | _(empty)_ | Comma-separated list of KMS Key ARNs to grant the Lambda function `kms:Decrypt` access to. Required when S3 objects are encrypted with a customer-managed KMS key (SSE-KMS). |
+| `S3NotificationsSNSTopicArns` | CommaDelimitedList | _(empty)_ | Comma-separated list of existing SNS topic ARNs permitted to deliver S3 Object Created notifications to the SQS queue (e.g. `arn:aws:sns:us-east-1:123456789012:topic-a,arn:aws:sns:us-east-1:123456789012:topic-b`). When provided, only the listed topics are allowed; when empty, no SNS topic has permission. You are responsible for subscribing each topic to the SQS queue after deployment. See [Option C in the deployment guide](deployment_guide.md#option-c-sns-fan-out). |
 
 ## Rules configuration
 
