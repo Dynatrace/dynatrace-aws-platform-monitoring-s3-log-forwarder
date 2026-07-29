@@ -49,6 +49,7 @@ Metadata:
           - LambdaLoggingLevel
           - LambdaMaximumExecutionTime
           - MaximumLambdaConcurrency
+          - Architecture
       - Label:
           default: Network Configuration (VPC)
         Parameters:
@@ -66,6 +67,7 @@ Metadata:
         Parameters:
           - GrantReadPermissionToBuckets
           - GrantDecryptToKmsKeyArns
+          - NotificationType
           - S3NotificationsSNSTopicArns
       - Label:
           default: Cross-Account / Cross-Region Forwarding
@@ -126,6 +128,8 @@ Metadata:
         default: Enable Cross-Region/Cross-Account Forwarding
       AwsAccountsToReceiveLogsFrom:
         default: AWS Account IDs to Accept Logs From
+      NotificationType:
+        default: S3 Notification Type
       S3NotificationsSNSTopicArns:
         default: Existing SNS Topic ARN(s) for S3 Notifications
       NotificationsEmail:
@@ -134,6 +138,8 @@ Metadata:
         default: Deploy CloudWatch Monitoring Dashboard
       IamRolePath:
         default: IAM Role Path
+      Architecture:
+        default: Architecture type for Lambda function
 
 Parameters:
   DynatraceEnvironmentURL:
@@ -225,6 +231,15 @@ Parameters:
       - "true"
       - "false"
     Default: "true"
+  NotificationType:
+    Type: String
+    Description: "The mechanism used to deliver S3 Object Created notifications to the log forwarder."
+    Default: "EventBridge"
+    AllowedValues:
+      - "None (Manual setup)"
+      - "EventBridge"
+      - "SNS"
+      - "Direct SQS"
   S3NotificationsSNSTopicArns:
     Type: CommaDelimitedList
     Description: >-
@@ -312,6 +327,15 @@ Rules:
               - ""
           - !Not [!Equals [!Ref LambdaSecurityGroupId, ""]]
         AssertDescription: "LambdaSecurityGroupId must be set when LambdaSubnetIds is specified."
+  SNSNotificationTypeRequiresSNSTopicArns:
+    Assertions:
+      - Assert: !Or
+          - !Not [!Equals [!Ref NotificationType, "SNS"]]
+          - !Not
+              - Fn::EachMemberEquals:
+                  - !Ref S3NotificationsSNSTopicArns
+                  - ""
+        AssertDescription: "S3NotificationsSNSTopicArns must be provided when NotificationType is SNS."
 
 Mappings:
   LayerArns:
@@ -366,7 +390,7 @@ Mappings:
     sa-east-1:
       Arn: arn:aws:lambda:sa-east-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
     us-east-1:
-      Arn: arn:aws:lambda:us-east-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
+      Arn: arn:aws:lambda:us-east-1:908047316593:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder
     us-east-2:
       Arn: arn:aws:lambda:us-east-2:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
     us-west-1:
@@ -375,7 +399,7 @@ Mappings:
       Arn: arn:aws:lambda:us-west-2:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
   LayerVersions:
     All:
-      x86: 1
+      x86: 27
       arm64: 1
 
 Conditions:
@@ -386,10 +410,13 @@ Conditions:
   DeployMonitoringDashboard: !Equals [ !Ref DeployCloudWatchMonitoringDashboard, "true" ]
   IsEmailConfigured: !Not [!Equals [ !Ref NotificationsEmail, "" ]]
   IsLayerDeployment: !Equals [ !Ref DeploymentPackageType, "layer" ]
-  S3NotificationsSNSTopicProvided: !Not [!Equals [!Join ["", !Ref S3NotificationsSNSTopicArns], ""]]
+  GrantReadPermissionToBucketsProvided: !Not [!Equals [!Join ["", !Ref GrantReadPermissionToBuckets], ""]]
+  IsEventBridgeNotificationType: !Equals [ !Ref NotificationType, "EventBridge" ]
+  DeployEventBridgeNotificationType: !And [!Condition IsEventBridgeNotificationType, !Condition GrantReadPermissionToBucketsProvided]
+  DeploySNSNotificationType: !Equals [ !Ref NotificationType, "SNS" ]
+  DeployDirectSQSNotificationType: !Equals [ !Ref NotificationType, "Direct SQS" ]
   LambdaVpcConfigSpecified: !Not [!Equals [ !Join [ "", !Ref LambdaSubnetIds ], "" ]]
   LambdaVpcSecurityGroupSpecified: !Not [!Equals [!Ref LambdaSecurityGroupId, ""]]
-  GrantReadPermissionToBucketsProvided: !Not [!Equals [!Join ["", !Ref GrantReadPermissionToBuckets], ""]]
   GrantDecryptToKmsKeyArnsProvided: !Not [!Equals [!Join ["", !Ref GrantDecryptToKmsKeyArns], ""]]
   ExistingSecretsManagerSecretProvided: !Not [!Equals [!Ref DynatraceApiKeySecretsManagerSecret, ""]]
   ExistingSSMParameterProvided: !Not [!Equals [!Ref DynatraceApiKeySSMParameter, ""]]
@@ -558,17 +585,20 @@ Resources:
         Version: "2012-10-17"
         Id: "S3NotificationsSQSPolicy"
         Statement:
-          - Sid: "Allow EventBridge rules to Send Messages"
-            Effect: "Allow"
-            Principal:
-              Service: "events.amazonaws.com"
-            Action: "sqs:SendMessage"
-            Resource: !GetAtt S3NotificationsQueue.Arn
-            Condition:
-              ArnEquals:
-                "aws:SourceArn": !Sub "arn:aws:events:${AWS::Region}:${AWS::AccountId}:rule/${AWS::StackName}-*"
           - !If
-            - S3NotificationsSNSTopicProvided
+            - DeployEventBridgeNotificationType
+            - Sid: "Allow EventBridge rules to Send Messages"
+              Effect: "Allow"
+              Principal:
+                Service: "events.amazonaws.com"
+              Action: "sqs:SendMessage"
+              Resource: !GetAtt S3NotificationsQueue.Arn
+              Condition:
+                ArnEquals:
+                  "aws:SourceArn": !Sub "arn:aws:events:${AWS::Region}:${AWS::AccountId}:rule/${AWS::StackName}-*"
+            - !Ref AWS::NoValue
+          - !If
+            - DeploySNSNotificationType
             - Sid: "Allow SNS topics to Send Messages"
               Effect: "Allow"
               Principal:
@@ -580,7 +610,7 @@ Resources:
                   "aws:SourceArn": !Ref S3NotificationsSNSTopicArns
             - !Ref AWS::NoValue
           - !If
-            - GrantReadPermissionToBucketsProvided
+            - DeployDirectSQSNotificationType
             - Sid: "Allow S3 buckets to Send Messages"
               Effect: "Allow"
               Principal:
@@ -747,7 +777,7 @@ Resources:
 
   GrantReadPermissionToBucketsEventBridgeRule:
     Type: AWS::Events::Rule
-    Condition: GrantReadPermissionToBucketsProvided
+    Condition: DeployEventBridgeNotificationType
     Properties:
       Name: !Sub "${AWS::StackName}-s3-notifications"
       State: ENABLED
