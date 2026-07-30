@@ -169,12 +169,29 @@ jobs:
         id: update_forwarder
         if: steps.deploy_forwarder.outcome == 'success'
         run: |
+          SNS_TOPIC_ARN=$(aws sns create-topic \
+              --name "${STACK_NAME}-s3-notifications" \
+              --query TopicArn --output text)
+          AWS_ACCOUNT_ID=$(cut -d: -f5 <<< "${SNS_TOPIC_ARN}")
+          SNS_POLICY=$(jq -n \
+              --arg topic_arn "${SNS_TOPIC_ARN}" \
+              --arg account_id "${AWS_ACCOUNT_ID}" \
+              --arg bucket_arn "arn:aws:s3:::${E2E_TESTING_BUCKET_NAME}" \
+              '{Version:"2012-10-17",Statement:[{Sid:"AllowS3ToPublish",Effect:"Allow",Principal:{Service:"s3.amazonaws.com"},Action:"sns:Publish",Resource:$topic_arn,Condition:{StringEquals:{"aws:SourceAccount":$account_id},ArnLike:{"aws:SourceArn":$bucket_arn}}}]}')
+          aws sns set-topic-attributes \
+              --topic-arn "${SNS_TOPIC_ARN}" \
+              --attribute-name Policy \
+              --attribute-value "${SNS_POLICY}"
+
           CHANGE_SET_NAME="awscli-cloudformation-add-s3-access-$(date +%s)"
           PARAMS=$(aws cloudformation describe-stacks --stack-name "${STACK_NAME}" \
             --query 'Stacks[0].Parameters[].ParameterKey' --output json | \
             jq --arg bucket "${E2E_TESTING_BUCKET_NAME}" \
-              '[.[] | {"ParameterKey": ., "UsePreviousValue": true}]
-               + [{"ParameterKey": "GrantReadPermissionToBuckets", "ParameterValue": $bucket}]')
+               --arg topic_arn "${SNS_TOPIC_ARN}" \
+              '[.[] | select(. != "GrantReadPermissionToBuckets" and . != "NotificationType" and . != "S3NotificationsSNSTopicArns") | {"ParameterKey": ., "UsePreviousValue": true}]
+               + [{"ParameterKey": "GrantReadPermissionToBuckets", "ParameterValue": $bucket},
+                  {"ParameterKey": "NotificationType", "ParameterValue": "SNS"},
+                  {"ParameterKey": "S3NotificationsSNSTopicArns", "ParameterValue": $topic_arn}]')
           aws cloudformation create-change-set \
             --stack-name "${STACK_NAME}" \
             --change-set-name "${CHANGE_SET_NAME}" \
@@ -190,8 +207,9 @@ jobs:
       - name: Configure SNS and SQS notifications
         id: configure_sns_sqs
         if: steps.update_forwarder.outcome == 'success'
-        run: ./tests/e2e/configure_notifications.sh sns-sqs ${STACK_NAME} ${E2E_TESTING_BUCKET_NAME} ${E2E_TEST_PREFIX} ${{ secrets.CFN_ROLE_ARN }}
+        run: ./tests/e2e/configure_notifications.sh sns ${STACK_NAME} ${E2E_TESTING_BUCKET_NAME} ${E2E_TEST_PREFIX} ${{ secrets.CFN_ROLE_ARN }}
       - name: Test SNS and SQS notifications
+        id: test_sns_sqs
         if: steps.configure_sns_sqs.outcome == 'success'
         run: |
           echo "[$(date -u '+%Y-%m-%dT%H:%M:%SZ')] E2E testing validation log entry" > test.log
@@ -204,6 +222,39 @@ jobs:
           wait -n || RESULT=$?
           wait -n || RESULT=$?
           exit $RESULT
+      - name: Update forwarder for Direct SQS tests
+        id: update_forwarder_direct_sqs
+        if: steps.test_sns_sqs.outcome == 'success'
+        run: |
+          CHANGE_SET_NAME="awscli-cloudformation-direct-sqs-$(date +%s)"
+          PARAMS=$(aws cloudformation describe-stacks --stack-name "${STACK_NAME}" \
+            --query 'Stacks[0].Parameters[].ParameterKey' --output json | \
+            jq '[.[] | select(. != "NotificationType" and . != "S3NotificationsSNSTopicArns") | {"ParameterKey": ., "UsePreviousValue": true}]
+               + [{"ParameterKey": "NotificationType", "ParameterValue": "Direct SQS"},
+                  {"ParameterKey": "S3NotificationsSNSTopicArns", "ParameterValue": ""}]')
+          aws cloudformation create-change-set \
+            --stack-name "${STACK_NAME}" \
+            --change-set-name "${CHANGE_SET_NAME}" \
+            --use-previous-template \
+            --parameters "${PARAMS}" \
+            --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
+            --role-arn "${CFN_ROLE_ARN}"
+          aws cloudformation wait change-set-create-complete \
+            --stack-name "${STACK_NAME}" --change-set-name "${CHANGE_SET_NAME}"
+          aws cloudformation execute-change-set \
+            --stack-name "${STACK_NAME}" --change-set-name "${CHANGE_SET_NAME}"
+          aws cloudformation wait stack-update-complete --stack-name "${STACK_NAME}"
+      - name: Configure Direct SQS notifications
+        id: configure_direct_sqs
+        if: steps.update_forwarder_direct_sqs.outcome == 'success'
+        run: ./tests/e2e/configure_notifications.sh direct-sqs ${STACK_NAME} ${E2E_TESTING_BUCKET_NAME} ${E2E_TEST_PREFIX} ${{ secrets.CFN_ROLE_ARN }}
+      - name: Test Direct SQS notifications
+        if: steps.configure_direct_sqs.outcome == 'success'
+        run: |
+          echo "[$(date -u '+%Y-%m-%dT%H:%M:%SZ')] E2E testing validation log entry" > test.log
+          aws s3 cp test.log s3://${E2E_TESTING_BUCKET_NAME}/${E2E_TEST_PREFIX}/direct-sqs/test.log
+          sleep 180
+          ./tests/e2e/validate_logs_exist.py --bucket ${E2E_TESTING_BUCKET_NAME} --key ${E2E_TEST_PREFIX}/direct-sqs/test.log
       - name: Clean up notifications
         if: always()
         run: |
