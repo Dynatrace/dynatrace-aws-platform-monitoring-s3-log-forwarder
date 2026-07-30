@@ -236,7 +236,7 @@ Parameters:
     Description: "The mechanism used to deliver S3 Object Created notifications to the log forwarder."
     Default: "EventBridge"
     AllowedValues:
-      - "None (Manual setup)"
+      - "None"
       - "EventBridge"
       - "SNS"
       - "Direct SQS"
@@ -390,7 +390,7 @@ Mappings:
     sa-east-1:
       Arn: arn:aws:lambda:sa-east-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
     us-east-1:
-      Arn: arn:aws:lambda:us-east-1:908047316593:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder
+      Arn: arn:aws:lambda:us-east-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
     us-east-2:
       Arn: arn:aws:lambda:us-east-2:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
     us-west-1:
@@ -399,7 +399,7 @@ Mappings:
       Arn: arn:aws:lambda:us-west-2:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
   LayerVersions:
     All:
-      x86: 27
+      x86: 1
       arm64: 1
 
 Conditions:
@@ -586,7 +586,7 @@ Resources:
         Id: "S3NotificationsSQSPolicy"
         Statement:
           - !If
-            - DeployEventBridgeNotificationType
+            - IsEventBridgeNotificationType
             - Sid: "Allow EventBridge rules to Send Messages"
               Effect: "Allow"
               Principal:

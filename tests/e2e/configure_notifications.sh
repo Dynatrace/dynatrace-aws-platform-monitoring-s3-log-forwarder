@@ -45,10 +45,8 @@ case "${NOTIFICATION_TYPE}" in
 
         NEW_CONFIG=$(jq -n \
             --arg sns_arn "${SNS_TOPIC_ARN}" --arg sns_prefix "${E2E_TEST_PREFIX}/sns/" \
-            --arg sqs_arn "${QUEUE_ARN}"     --arg sqs_prefix "${E2E_TEST_PREFIX}/sqs/" \
-            '{"TopicConfigurations":[{"TopicArn":$sns_arn,"Events":["s3:ObjectCreated:*"],"Filter":{"Key":{"FilterRules":[{"Name":"prefix","Value":$sns_prefix}]}}}],
-              "QueueConfigurations":[{"QueueArn":$sqs_arn,"Events":["s3:ObjectCreated:*"],"Filter":{"Key":{"FilterRules":[{"Name":"prefix","Value":$sqs_prefix}]}}}]}')
-        log "Configuring S3 SNS+SQS notifications: sns=${E2E_TEST_PREFIX}/sns/ sqs=${E2E_TEST_PREFIX}/sqs/"
+            '{"TopicConfigurations":[{"TopicArn":$sns_arn,"Events":["s3:ObjectCreated:*"],"Filter":{"Key":{"FilterRules":[{"Name":"prefix","Value":$sns_prefix}]}}}]}')
+        log "Configuring S3 SNS notifications: sns=${E2E_TEST_PREFIX}/sns/"
         aws s3api put-bucket-notification-configuration \
             --bucket "${E2E_TESTING_BUCKET_NAME}" \
             --notification-configuration "${NEW_CONFIG}"
