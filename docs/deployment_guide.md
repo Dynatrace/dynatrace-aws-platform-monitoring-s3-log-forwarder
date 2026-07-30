@@ -74,7 +74,18 @@ Pass `DynatraceApiKeySSMParameter="/dynatrace/s3-log-forwarder/$STACK_NAME/api-k
 
 ---
 
-### Step 3. Download the CloudFormation templates
+### Step 3. Choose your S3 notification type
+
+Before deploying, decide how your S3 buckets will deliver `Object Created` notifications to the log forwarder. This determines the `NotificationType` parameter value you pass in Step 4 and the post-deployment setup in Step 5.
+
+| Notification type | `NotificationType` value | When to use |
+|---|---|---|
+| Amazon EventBridge | `EventBridge` (default) | Standard choice. S3 sends events to the default event bus; an EventBridge rule routes them to the SQS queue. Requires enabling EventBridge notifications on each bucket. |
+| SNS fan-out | `SNS` | When multiple consumers share the same S3 event stream, or you already operate an SNS topic aggregating S3 events. Requires `S3NotificationsSNSTopicArns` to be set. |
+| Direct S3 to SQS | `Direct SQS` | Simplest path — S3 writes directly to the SQS queue with no intermediate service. Works only for buckets in the same AWS region as the log forwarder. |
+| None / later | _(omit or use default)_ | Skip notification wiring now. You can configure it later by redeploying with the appropriate parameters. |
+
+### Step 4. Download the CloudFormation templates
 
 Download the CloudFormation templates for the latest release:
 
@@ -85,13 +96,13 @@ wget https://github.com/dynatrace/dynatrace-aws-platform-monitoring-s3-log-forwa
 unzip templates.zip
 ```
 
-### Step 4. Deploy the Lambda function
+### Step 5. Deploy the Lambda function
 
 #### Lambda Layer (recommended)
 
 Dynatrace provides Lambda layers with each release of the `dynatrace-aws-platform-monitoring-s3-log-forwarder`, allowing for simple deployment and updates as new versions are released.
 
-1. Deploy the main forwarder stack:
+1. Deploy the main forwarder stack, passing the `NotificationType` you chose in Step 3:
 
     ```bash
     aws cloudformation deploy \
@@ -102,6 +113,7 @@ Dynatrace provides Lambda layers with each release of the `dynatrace-aws-platfor
             DynatraceEnvironmentURL="https://$DYNATRACE_TENANT_UUID.apps.dynatrace.com" \
             DynatraceApiKeySecretsManagerSecret="$DT_TOKEN_SECRET_ARN" \
             Architecture="x86_64" \
+            NotificationType="EventBridge" \
             GrantReadPermissionToBuckets="my-bucket,another-bucket"
     ```
 
@@ -119,153 +131,75 @@ Dynatrace provides Lambda layers with each release of the `dynatrace-aws-platfor
 > * An Amazon SNS topic named `<stack-name>-Alarms` is created to receive monitoring alerts where you can subscribe HTTP endpoints to send the notification to your tools. The topic ARN is available in the stack output as `SNSAlertsTopic`.
 > * See [CloudFormation parameter reference](cloudformation_parameters.md) for all available parameters and their default values.
 
-### Step 5. Configure S3 buckets to send "S3 Object created" notifications to the log forwarder.
+### Step 6. Wire up S3 bucket notifications
 
-At this point, you have successfully deployed the `dynatrace-aws-platform-monitoring-s3-log-forwarder`. Now you need to configure each S3 bucket to send `Object Created` notifications to the log forwarder. There are three supported methods:
+Complete the steps for the `NotificationType` you chose in Step 3.
 
-#### Option A: Amazon EventBridge
+---
 
-If you provided `GrantReadPermissionToBuckets` in Step 4, the main stack has already created an EventBridge rule routing `Object Created` events from the listed buckets to the SQS queue. You must also [enable EventBridge notifications](https://docs.aws.amazon.com/AmazonS3/latest/userguide/enable-event-notifications-eventbridge.html) on each bucket.
+#### Option A: Amazon EventBridge (NotificationType = `EventBridge`)
 
-#### Option B: Direct S3 to SQS
+The main stack already creates an EventBridge rule routing `Object Created` events from the buckets listed in `GrantReadPermissionToBuckets` to the SQS queue. You only need to enable EventBridge notifications on each S3 bucket.
 
-Configure the S3 bucket to send `Object Created` notifications directly to the log forwarder's SQS queue. Retrieve the queue ARN first:
+**Required AWS actions:**
 
-```bash
-QUEUE_ARN=$(aws ssm get-parameter \
-    --name "/dynatrace/s3-log-forwarder/${STACK_NAME}/sqs-queue-arn" \
-    --query 'Parameter.Value' --output text)
-```
+1. Enable EventBridge notifications on each S3 bucket that should deliver events to the forwarder.
+   See [Enabling Amazon EventBridge](https://docs.aws.amazon.com/AmazonS3/latest/userguide/enable-event-notifications-eventbridge.html) in the Amazon S3 User Guide.
 
-Then configure the bucket notification ([AWS instructions](https://docs.aws.amazon.com/AmazonS3/latest/userguide/ways-to-add-notification-config-to-bucket.html)). The SQS queue policy already allows the buckets listed in `GrantReadPermissionToBuckets` to send notifications directly.
+> [!NOTE]
+> For buckets not listed in `GrantReadPermissionToBuckets`, or when you need prefix filtering, use the per-bucket CloudFormation template instead. See [Fine-grained access controls](#fine-grained-access-controls).
+
+---
+
+#### Option B: SNS fan-out (NotificationType = `SNS`)
+
+The flow is: `S3 bucket → SNS topic → SQS queue → Lambda`
+
+You manage the SNS topic outside this stack and pass its ARN(s) to the forwarder via `S3NotificationsSNSTopicArns`. The stack updates the SQS queue policy to allow the listed topics to deliver messages; you create the subscription and configure bucket notifications yourself.
+
+**Required AWS actions:**
+
+1. Create an SNS topic (or identify an existing one) to receive S3 `Object Created` events.
+   See [Creating an Amazon SNS topic](https://docs.aws.amazon.com/sns/latest/dg/sns-create-topic.html) in the Amazon SNS Developer Guide.
+
+2. Add a resource-based policy to the SNS topic allowing `s3.amazonaws.com` to publish to it.
+   See [Amazon SNS topic policies for S3 event notifications](https://docs.aws.amazon.com/AmazonS3/latest/userguide/ways-to-add-notification-config-to-bucket.html) in the Amazon S3 User Guide.
+
+   > [!NOTE]
+   > If the SNS topic is encrypted with a customer-managed KMS key, you must also update the KMS key policy to allow `s3.amazonaws.com` to generate and decrypt data keys. See [Enabling compatibility between event sources and encrypted queues](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-key-management.html) in the Amazon SQS Developer Guide for the required key policy statements.
+
+3. Redeploy (or deploy for the first time) the log forwarder stack with `S3NotificationsSNSTopicArns` set to the ARN(s) of your SNS topic(s). Multiple ARNs must be comma-separated.
+
+4. Subscribe the SNS topic to the forwarder's SQS queue. The SQS queue ARN is available in the stack outputs and in the SSM Parameter Store at `/dynatrace/s3-log-forwarder/<stack-name>/sqs-queue-arn`.
+   See [Subscribing an Amazon SQS queue to an Amazon SNS topic](https://docs.aws.amazon.com/sns/latest/dg/subscribe-sqs-queue-to-sns-topic.html) in the Amazon SNS Developer Guide.
+
+5. Configure `Object Created` notifications on each S3 bucket to publish to the SNS topic.
+   See [Enabling and configuring event notifications using the Amazon S3 console](https://docs.aws.amazon.com/AmazonS3/latest/userguide/enable-event-notifications.html) in the Amazon S3 User Guide.
+
+   > [!NOTE]
+   > S3 bucket notifications via SNS support native prefix and suffix filters. To forward only specific key prefixes, add a filter when configuring bucket notifications. See [Configuring S3 buckets with prefix filtering](advanced_deployments.md#configuring-s3-buckets-with-prefix-filtering) for details.
+
+---
+
+#### Option C: Direct S3 to SQS (NotificationType = `Direct SQS`)
+
+Configure each S3 bucket to send `Object Created` notifications directly to the log forwarder's SQS queue. The queue ARN is available in the stack outputs and in the SSM Parameter Store at `/dynatrace/s3-log-forwarder/<stack-name>/sqs-queue-arn`. The SQS queue policy already allows buckets listed in `GrantReadPermissionToBuckets` to send notifications.
+
+**Required AWS actions:**
+
+1. Configure `Object Created` notifications on each S3 bucket to deliver directly to the SQS queue.
+   See [Configuring a bucket for notifications (SNS topic or SQS queue)](https://docs.aws.amazon.com/AmazonS3/latest/userguide/ways-to-add-notification-config-to-bucket.html) in the Amazon S3 User Guide.
 
 > [!NOTE]
 > Direct S3 to SQS only works for buckets in the same AWS region as the log forwarder.
 
-#### Option C: SNS fan-out
+---
 
-Use this option when you want multiple consumers to receive S3 `Object Created` notifications from the same bucket (fan-out), or when you already operate an SNS topic that aggregates S3 events. The flow is:
+#### No notifications now
 
-`S3 bucket → SNS topic → SQS queue → Lambda`
+If you skipped notification type selection in Step 3, your stack is deployed but no S3 bucket is yet sending events to it. Return to Step 3 at any time, choose a notification type, and redeploy the stack with the appropriate parameters.
 
-The log forwarder's SQS queue is subscribed to your SNS topic. You manage the SNS topic outside this stack.
-
-##### Step 5c-1. Create an SNS topic
-
-Create the SNS topic that your S3 bucket(s) will publish events to. Skip this step if you already have one.
-
-```bash
-export SNS_TOPIC_ARN=$(aws sns create-topic \
-    --name ${STACK_NAME}-s3-notifications \
-    --query TopicArn --output text)
-```
-
-> [!NOTE]
-> To encrypt the topic with a customer-managed KMS key, add `--attributes KmsMasterKeyId=<key-id>` and follow the KMS prerequisite in step 5c-2 below before creating the topic.
-
-##### Step 5c-2. Configure the SNS topic policy
-
-Allow `s3.amazonaws.com` to publish `Object Created` notifications to the topic:
-
-```bash
-aws sns set-topic-attributes \
-    --topic-arn $SNS_TOPIC_ARN \
-    --attribute-name Policy \
-    --attribute-value '{
-      "Version": "2012-10-17",
-      "Statement": [
-        {
-          "Sid": "AllowS3ToPublish",
-          "Effect": "Allow",
-          "Principal": { "Service": "s3.amazonaws.com" },
-          "Action": "sns:Publish",
-          "Resource": "'"$SNS_TOPIC_ARN"'",
-          "Condition": {
-            "StringEquals": { "aws:SourceAccount": "<your-aws-account-id>" },
-            "ArnLike": { "aws:SourceArn": "arn:aws:s3:::<your-bucket-name>" }
-          }
-        }
-      ]
-    }'
-```
-
-> [!NOTE]
-> **KMS key policy** (only if the topic is encrypted with a customer-managed key) — add the following statement to the key policy before creating the topic to allow `s3.amazonaws.com` to encrypt messages when publishing:
->
-> ```json
-> {
->   "Sid": "AllowS3ToUseKey",
->   "Effect": "Allow",
->   "Principal": { "Service": "s3.amazonaws.com" },
->   "Action": [
->     "kms:GenerateDataKey",
->     "kms:Decrypt"
->   ],
->   "Resource": "*",
->   "Condition": {
->     "StringEquals": { "aws:SourceAccount": "<your-aws-account-id>" },
->     "ArnLike": { "aws:SourceArn": "arn:aws:s3:::<your-bucket-name>" }
->   }
-> }
-> ```
-
-##### Step 5c-3. Deploy the log forwarder stack with the SNS topic ARN(s)
-
-Pass the topic ARN(s) via `S3NotificationsSNSTopicArns` in Step 4. This allows the listed topics to deliver messages to the SQS queue. If you have already deployed the stack, redeploy it adding the parameter:
-
-```bash
-aws cloudformation deploy \
-    --stack-name ${STACK_NAME} \
-    --template-file template.yaml \
-    --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
-    --parameter-overrides \
-        DynatraceEnvironmentURL="https://$DYNATRACE_TENANT_UUID.apps.dynatrace.com" \
-        DynatraceApiKeySecretsManagerSecret="$DT_TOKEN_SECRET_ARN" \
-        S3NotificationsSNSTopicArns="$SNS_TOPIC_ARN"
-```
-
-To pass multiple topic ARNs, provide them as a comma-separated list:
-
-```bash
-S3NotificationsSNSTopicArns="arn:aws:sns:us-east-1:123456789012:topic-a,arn:aws:sns:us-east-1:123456789012:topic-b"
-```
-
-##### Step 5c-4. Subscribe the SNS topic to the SQS queue
-
-The stack only updates the SQS queue policy — you must create the subscription yourself. Retrieve the queue ARN and subscribe each topic to it:
-
-```bash
-QUEUE_ARN=$(aws ssm get-parameter \
-    --name "/dynatrace/s3-log-forwarder/${STACK_NAME}/sqs-queue-arn" \
-    --query 'Parameter.Value' --output text)
-
-aws sns subscribe \
-    --topic-arn $SNS_TOPIC_ARN \
-    --protocol sqs \
-    --notification-endpoint $QUEUE_ARN
-```
-
-##### Step 5c-5. Configure S3 bucket notifications to publish to the SNS topic
-
-For each S3 bucket you want to forward logs from, enable `Object Created` notifications to the SNS topic:
-
-```bash
-export BUCKET_NAME=<your-bucket-name>
-
-aws s3api put-bucket-notification-configuration \
-    --bucket $BUCKET_NAME \
-    --notification-configuration '{
-      "TopicConfigurations": [
-        {
-          "TopicArn": "'"$SNS_TOPIC_ARN"'",
-          "Events": ["s3:ObjectCreated:*"]
-        }
-      ]
-    }'
-```
-
-> [!NOTE]
-> S3 bucket notifications via SNS support native prefix and suffix filters. To forward only specific key prefixes, add a `Filter` block to the `TopicConfiguration`. See [Configuring S3 buckets with prefix filtering](advanced_deployments.md#configuring-s3-buckets-with-prefix-filtering) and the [AWS documentation](https://docs.aws.amazon.com/AmazonS3/latest/userguide/enable-event-notifications.html) for details.
+---
 
 ## Advanced deployments
 
