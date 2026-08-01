@@ -46,7 +46,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.14'
       - name: Install dependencies
@@ -145,7 +145,7 @@ jobs:
         with:
           name: ${{ matrix.artifact }}
           path: dist/
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.14'
       - name: Install dependencies
@@ -302,7 +302,7 @@ jobs:
         with:
           name: lambda-artifacts-x86_64
           path: dist/
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.14'
       - name: Install dependencies
