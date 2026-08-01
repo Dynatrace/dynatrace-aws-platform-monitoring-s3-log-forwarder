@@ -141,7 +141,7 @@ jobs:
           role-to-assume: ${{ secrets.AWS_CICD_ROLE_ARN }}
           aws-region: us-east-1
       - name: Download build artifacts
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: ${{ matrix.artifact }}
           path: dist/
@@ -298,7 +298,7 @@ jobs:
           role-to-assume: ${{ secrets.AWS_CICD_ROLE_ARN }}
           aws-region: us-east-1
       - name: Download build artifacts
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: lambda-artifacts-x86_64
           path: dist/
