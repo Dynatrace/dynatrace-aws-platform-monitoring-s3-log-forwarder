@@ -4,7 +4,7 @@ This page contains guidance and considerations for large deployments.
 
 ## Configuring S3 buckets with prefix filtering
 
-The `GrantReadPermissionToBuckets` parameter in `template.yaml` forwards logs from entire buckets. If you need to forward logs only from specific S3 key prefixes within a bucket, the approach differs depending on which notification method you configured in [Step 5](deployment_guide.md#step-5-configure-s3-buckets-to-send-s3-object-created-notifications-to-the-log-forwarder).
+The `GrantReadPermissionToBuckets` parameter in `template.yaml` forwards logs from entire buckets. If you need to forward logs only from specific S3 key prefixes within a bucket, the approach differs depending on which notification method you configured in [Step 6](deployment_guide.md#step-6-wire-up-s3-bucket-notifications).
 
 ### Option A: Amazon EventBridge
 
@@ -56,7 +56,7 @@ S3 bucket notifications to SQS natively support prefix and suffix filters. When 
 
 S3 bucket notifications to SNS topics natively support prefix and suffix filters. When configuring the bucket to send events to an SNS topic, include a filter rule to restrict which objects trigger notifications. Follow the [AWS documentation on configuring S3 event notifications](https://docs.aws.amazon.com/AmazonS3/latest/userguide/enable-event-notifications.html#enable-event-notifications-sns-sqs-lam).
 
-Pass the topic ARN(s) via `S3NotificationsSNSTopicArns` to allow them in the SQS queue policy, then subscribe each SNS topic to the SQS queue on your side. See [Option C in Step 5 of the deployment guide](deployment_guide.md#option-c-sns-fan-out) for prerequisites and full instructions.
+Pass the topic ARN(s) via `S3NotificationsSNSTopicArns` to allow them in the SQS queue policy, then subscribe each SNS topic to the SQS queue. See [Option B in Step 6 of the deployment guide](deployment_guide.md#option-b-sns-fan-out-notificationtype--sns) for prerequisites and full instructions.
 
 ## Custom log forwarding and processing rules via AppConfig
 
@@ -130,9 +130,7 @@ aws cloudformation deploy \
 ```
 
 > [!NOTE]
->
-> * `$DT_TOKEN_SECRET_ARN` is the ARN of the Secrets Manager secret created in [Step 2 of the deployment guide](deployment_guide.md#step-2-provide-the-dynatrace-platform-token). The secret must be a JSON object with the key `dt.platform_token`, e.g. `{"dt.platform_token":"<your_token>"}`.
-> * Replace `DynatraceApiKeySecretsManagerSecret="$DT_TOKEN_SECRET_ARN"` with `DynatraceApiKeySSMParameter="/dynatrace/s3-log-forwarder/$STACK_NAME/api-key"` if you stored the token in SSM Parameter Store (Step 2, Option B).
+> This example only sets `IamRolePath`. Combine it with whichever other parameters your deployment needs — see [CloudFormation parameter reference](cloudformation_parameters.md) for the full list.
 
 The path must start and end with `/`. If not specified, the role is created at the root path `/`.
 
@@ -140,7 +138,7 @@ The path must start and end with `/`. If not specified, the role is created at t
 
 > [!NOTE]
 >
-> Direct S3 to SQS notifications ([Step 5, Option B](deployment_guide.md#step-5-configure-s3-buckets-to-send-s3-object-created-notifications-to-the-log-forwarder)) do not support cross-region buckets. Follow the instructions below to set up cross-region forwarding using EventBridge.
+> Direct S3 to SQS notifications ([Step 6, Option C](deployment_guide.md#option-c-direct-s3-to-sqs-notificationtype--direct-sqs)) do not support cross-region buckets. Follow the instructions below to set up cross-region forwarding using EventBridge.
 
 It's possible to centralize log forwarding from S3 buckets on different AWS regions on a single `dynatrace-aws-platform-monitoring-s3-log-forwarder` deployment on a specific AWS region to avoid the overhead of deploying and managing multiple S3 log forwarders.
 
@@ -216,7 +214,7 @@ For each S3 bucket located in a different AWS region than where the log forwarde
 
 > [!NOTE]
 >
-> The EventBridge notification method described in [Step 5, Option A](deployment_guide.md#step-5-configure-s3-buckets-to-send-s3-object-created-notifications-to-the-log-forwarder) does not support cross-account buckets. Follow the instructions below instead.
+> The EventBridge notification method described in [Step 6, Option A](deployment_guide.md#option-a-amazon-eventbridge-notificationtype--eventbridge) does not support cross-account buckets. Follow the instructions below instead.
 
 You can centralize log forwarding for logs in multiple AWS accounts and AWS regions on a single `dynatrace-aws-platform-monitoring-s3-log-forwarder` deployment to avoid the overhead of deploying and managing multiple log forwarding instances. Before proceeding, make sure you have deployed the `dynatrace-aws-platform-monitoring-s3-log-forwarder` setting the `EnableCrossRegionCrossAccountForwarding` parameter set to "true", so a dedicated Event Bus is created to receive cross-region notifications. You also need to grant permissions to the AWS account using the `AwsAccountsToReceiveLogsFrom` parameter, which takes a comma separated list of AWS account ids to grant permission to. To do so, update your CloudFormation stack executing the command below:
 
