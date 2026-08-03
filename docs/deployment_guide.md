@@ -120,19 +120,11 @@ Dynatrace provides Lambda layers with each release of the `dynatrace-aws-platfor
             GrantReadPermissionToBuckets="my-bucket,another-bucket"
     ```
 
-    > [!NOTE]
-    >
-    > * Replace `DynatraceApiKeySecretsManagerSecret` with `DynatraceApiKeySSMParameter="/dynatrace/s3-log-forwarder/$STACK_NAME/api-key"` if you chose Option B in Step 2.
-    > * When `GrantReadPermissionToBuckets` is set, the Lambda function IAM role is granted read access to all objects in those buckets. For fine-grained access controls, leave `GrantReadPermissionToBuckets` empty and follow the instructions in [Fine-grained access controls](#fine-grained-access-controls).
-    > * See [CloudFormation parameter reference](cloudformation_parameters.md) for all available parameters.
-
----
-
 > [!NOTE]
->
-> * You can optionally configure notifications on your e-mail address to receive alerts when log files can't be processed and messages are arriving to the Dead Letter Queue. To do so, add the parameter `NotificationsEmail`=`your_email_address_here`.
-> * An Amazon SNS topic named `<stack-name>-Alarms` is created to receive monitoring alerts where you can subscribe HTTP endpoints to send the notification to your tools. The topic ARN is available in the stack output as `SNSAlertsTopic`.
-> * See [CloudFormation parameter reference](cloudformation_parameters.md) for all available parameters and their default values.
+ >
+ > * Replace `DynatraceApiKeySecretsManagerSecret` with `DynatraceApiKeySSMParameter="/dynatrace/s3-log-forwarder/$STACK_NAME/api-key"` if you chose Option B in Step 2.
+ > * When `GrantReadPermissionToBuckets` is set, the Lambda function IAM role is granted read access to all objects in those buckets. For fine-grained access controls, leave `GrantReadPermissionToBuckets` empty and follow the instructions in [Fine-grained access controls](#fine-grained-access-controls).
+ > * See [CloudFormation parameter reference](cloudformation_parameters.md) for all available parameters.
 
 ### Step 6. Wire up S3 bucket notifications
 
@@ -167,17 +159,15 @@ You manage the SNS topic outside this stack and pass its ARN(s) to the forwarder
 1. Add a resource-based policy to the SNS topic allowing `s3.amazonaws.com` to publish to it. AWS validates this policy when S3 bucket notifications are configured in step 2 below, and that call fails without it.
    See [Amazon SNS topic policies for S3 event notifications](https://docs.aws.amazon.com/AmazonS3/latest/userguide/ways-to-add-notification-config-to-bucket.html) in the Amazon S3 User Guide.
 
-   > [!NOTE]
-   > If the SNS topic is encrypted with a customer-managed KMS key, also update the key policy to allow `s3.amazonaws.com` to generate and decrypt data keys. See [Enabling compatibility between event sources and encrypted queues](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-key-management.html) in the Amazon SQS Developer Guide.
-
 2. Subscribe the SNS topic to the forwarder's SQS queue. The SQS queue ARN is available in the stack outputs and in the SSM Parameter Store at `/dynatrace/s3-log-forwarder/<stack-name>/sqs-queue-arn`.
    See [Subscribing an Amazon SQS queue to an Amazon SNS topic](https://docs.aws.amazon.com/sns/latest/dg/subscribe-sqs-queue-to-sns-topic.html) in the Amazon SNS Developer Guide.
 
 3. Configure `Object Created` notifications on each S3 bucket to publish to the SNS topic.
    See [Enabling and configuring event notifications using the Amazon S3 console](https://docs.aws.amazon.com/AmazonS3/latest/userguide/enable-event-notifications.html) in the Amazon S3 User Guide.
 
-   > [!NOTE]
-   > S3 bucket notifications via SNS support native prefix and suffix filters. To forward only specific key prefixes, add a filter when configuring bucket notifications. See [Configuring S3 buckets with prefix filtering](advanced_deployments.md#configuring-s3-buckets-with-prefix-filtering) for details.
+> [!NOTE]
+> If the SNS topic is encrypted with a customer-managed KMS key, also update the key policy to allow `s3.amazonaws.com` to generate and decrypt data keys. See [Enabling compatibility between event sources and encrypted queues](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-key-management.html) in the Amazon SQS Developer Guide.
+> S3 bucket notifications via SNS support native prefix and suffix filters. To forward only specific key prefixes, add a filter when configuring bucket notifications. See [Configuring S3 buckets with prefix filtering](advanced_deployments.md#configuring-s3-buckets-with-prefix-filtering) for details.
 
 ---
 
@@ -195,9 +185,9 @@ Configure each S3 bucket to send `Object Created` notifications directly to the 
 
 ---
 
-#### No notifications now
+#### No notifications
 
-If you skipped notification type selection in Step 3, your stack is deployed but no S3 bucket is yet sending events to it. Return to Step 3 at any time, choose a notification type, and redeploy the stack with the appropriate parameters.
+If you skipped notification type selection in Step 3, your stack is deployed but no S3 bucket is yet sending events to it.
 
 ---
 
@@ -207,7 +197,7 @@ For detailed instructions on each scenario, see [advanced_deployments.md](advanc
 
 ### Fine-grained access controls
 
-When `GrantReadPermissionToBuckets` is set, the stack creates an EventBridge rule routing all `Object Created` events from those buckets to the SQS queue, and grants the Lambda function IAM role read access to all objects in those buckets — both with no prefix filtering. To restrict access to specific key prefixes, leave `GrantReadPermissionToBuckets` empty and follow the steps for your chosen notification option.
+When `GrantReadPermissionToBuckets` is set and `NotificationType` is `EventBridge`, the stack creates an EventBridge rule routing all `Object Created` events from those buckets to the SQS queue, and grants the Lambda function IAM role read access to all objects in those buckets — both with no prefix filtering. To restrict access to specific key prefixes, leave `GrantReadPermissionToBuckets` empty and follow the steps for your chosen notification option.
 
 See [Configuring S3 buckets with prefix filtering](advanced_deployments.md#configuring-s3-buckets-with-prefix-filtering).
 
@@ -249,29 +239,22 @@ You can also perform deep log analysis with [Dynatrace Notebooks](https://docs.d
 
 ```custom
 fetch logs
-| filter log.source.aws.s3.bucket.name == "mybucket"
+| filter dt.da.aws.s3.bucket.name == "mybucket"
 ```
 
-### Query AWS CloudTrail logs:
+### Get the number of log entries per AWS resource type
 
 ```custom
 fetch logs
-| filter aws.service == "cloudtrail"
-```
-
-### Get the number of log entries per AWS Service
-
-```custom
-fetch logs
-| filter isNotNull(aws.service) 
-| summarize {count(),alias:log_entries}, by: aws.service
+| filter isNotNull(aws.resource.type) 
+| summarize {count(),alias:log_entries}, by: aws.resource.type
 ```
 
 ### Extract attributes from JSON Logs: Add sourceInstanceId log attribute from VPC DNS Query Logs
 
 ```custom
 fetch logs 
-| filter matchesValue(aws.service, "route53")
+| filter matchesValue(aws.resource.type, "AWS::EC2::VPC")
 | parse content, "JSON:record"
 | fieldsAdd record[srcids][instance], alias:sourceInstanceId
 ```
@@ -280,7 +263,7 @@ fetch logs
 
 ```custom
 fetch logs 
-| filter matchesValue(aws.service, "route53")
+| filter matchesValue(aws.resource.type, "AWS::EC2::VPC")
 | parse content, "JSON:record"
 | fieldsFlatten record
 ```
