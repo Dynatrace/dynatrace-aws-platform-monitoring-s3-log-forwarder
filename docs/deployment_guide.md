@@ -158,6 +158,8 @@ The main stack creates an EventBridge rule routing `Object Created` events from 
 
 The flow is: `S3 bucket → SNS topic → SQS queue → Lambda`
 
+![SNS fan-out](images/sns-fan-out.jpg)
+
 You manage the SNS topic outside this stack and pass its ARN(s) to the forwarder via `S3NotificationsSNSTopicArns`. The stack updates the SQS queue policy to allow the listed topics to deliver messages. You need to create the subscription and configure bucket notifications.
 
 **Required AWS actions:**
