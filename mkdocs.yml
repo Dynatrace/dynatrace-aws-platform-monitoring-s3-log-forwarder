@@ -1,23 +1,27 @@
 site_name: dynatrace-aws-platform-monitoring-s3-log-forwarder
 site_description: Serverless architecture that forwards logs from Amazon S3 to Dynatrace
-docs_dir: docs
+docs_dir: .
+exclude_docs: |
+  CODE_OF_CONDUCT.md
+  CONTRIBUTING.md
+  SECURITY.md
 
 nav:
-  - Home: index.md
+  - Home: README.md
   - Deployment:
-      - Deployment Guide: deployment_guide.md
-      - Advanced Deployments: advanced_deployments.md
-      - Update Guide: update_guide.md
+      - Deployment Guide: docs/deployment_guide.md
+      - Advanced Deployments: docs/advanced_deployments.md
+      - Update Guide: docs/update_guide.md
   - Configuration:
-      - Log Forwarding: log_forwarding.md
-      - Log Processing: log_processing.md
+      - Log Forwarding: docs/log_forwarding.md
+      - Log Processing: docs/log_processing.md
   - Operations:
-      - Function Metrics: function_metrics.md
-      - Resiliency: resiliency.md
+      - Function Metrics: docs/function_metrics.md
+      - Resiliency: docs/resiliency.md
   - Development:
-      - Local Testing: local_testing.md
-      - Build: build.md
-      - Layer Publishing Guide: layer_publishing_guide.md
+      - Local Testing: docs/development/local_testing.md
+      - Build: docs/build.md
+      - Layer Publishing Guide: docs/development/layer_publishing_guide.md
 
 plugins:
   - techdocs-core
