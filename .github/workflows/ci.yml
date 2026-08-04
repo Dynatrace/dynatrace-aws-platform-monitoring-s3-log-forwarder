@@ -6,6 +6,7 @@
 #   DT_SSO_URL                   - Dynatrace SSO URL for OAuth token exchange
 #   DT_OAUTH_CLIENT_ID           - OAuth client ID for log validation
 #   DT_OAUTH_CLIENT_SECRET       - OAuth client secret for log validation
+#   KMS_KEY_ARNS                 - ARN of the KMS key used to test SSE-KMS encrypted bucket support (e2e-test-default)
 ---
 name: CI
 
@@ -283,7 +284,7 @@ jobs:
       DT_SSO_URL: ${{ secrets.DT_SSO_URL }}
       DT_OAUTH_CLIENT_ID: ${{ secrets.DT_OAUTH_CLIENT_ID }}
       DT_OAUTH_CLIENT_SECRET: ${{ secrets.DT_OAUTH_CLIENT_SECRET }}
-      KMS_KEY_ARNS: arn:aws:kms:us-east-1:558221435292:key/23267ae3-cab2-4ef2-a2ed-4ba4b5676444
+      KMS_KEY_ARNS: ${{ secrets.KMS_KEY_ARNS }}
       IAM_ROLE_PATH: /e2e-iam-role-path/
       S3_BUCKET_NAMES: dynatrace-aws-s3-log-forwarder-e2e-testing-default
     steps:
