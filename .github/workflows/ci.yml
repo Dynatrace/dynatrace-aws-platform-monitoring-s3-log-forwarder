@@ -16,7 +16,23 @@ on:
       - '**'
     tags-ignore:
       - 'v*'
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
+      - 'mkdocs.yml'
+      - 'catalog-info.yaml'
+      - 'LICENSE'
+      - 'NOTICE'
+      - 'THIRD_PARTY_LICENSES'
   pull_request:
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
+      - 'mkdocs.yml'
+      - 'catalog-info.yaml'
+      - 'LICENSE'
+      - 'NOTICE'
+      - 'THIRD_PARTY_LICENSES'
   workflow_dispatch:
 
 permissions:
