@@ -264,12 +264,34 @@ jobs:
         if: steps.update_forwarder_direct_sqs.outcome == 'success'
         run: ./tests/e2e/configure_notifications.sh direct-sqs ${STACK_NAME} ${E2E_TESTING_BUCKET_NAME} ${E2E_TEST_PREFIX} ${{ secrets.CFN_ROLE_ARN }}
       - name: Test Direct SQS notifications
+        id: test_direct_sqs
         if: steps.configure_direct_sqs.outcome == 'success'
         run: |
           echo "[$(date -u '+%Y-%m-%dT%H:%M:%SZ')] E2E Direct SQS validation log entry" > test.log
           aws s3 cp test.log s3://${E2E_TESTING_BUCKET_NAME}/${E2E_TEST_PREFIX}/direct-sqs/test.log
           sleep 180
           ./tests/e2e/validate_logs_exist.py --bucket ${E2E_TESTING_BUCKET_NAME} --key ${E2E_TEST_PREFIX}/direct-sqs/test.log
+      # TEMPORARY DEBUG STEP — remove once the Direct SQS delivery investigation is closed.
+      # Checks whether S3 ever actually attempted to publish the real ObjectCreated event to
+      # the queue (NumberOfMessagesSent), vs. only the s3:TestEvent sent at configuration time.
+      - name: DEBUG - Check SQS delivery metrics for Direct SQS
+        if: always() && steps.configure_direct_sqs.outcome == 'success'
+        run: |
+          QUEUE_NAME="${STACK_NAME}-S3NotificationsQueue"
+          START_TIME=$(date -u -d '-6 minutes' '+%Y-%m-%dT%H:%M:%SZ')
+          END_TIME=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
+          echo "Querying CloudWatch AWS/SQS metrics for queue ${QUEUE_NAME} from ${START_TIME} to ${END_TIME}"
+          for METRIC in NumberOfMessagesSent NumberOfMessagesReceived NumberOfMessagesDeleted NumberOfEmptyReceives; do
+            echo "--- ${METRIC} ---"
+            aws cloudwatch get-metric-statistics \
+              --namespace AWS/SQS \
+              --metric-name "${METRIC}" \
+              --dimensions Name=QueueName,Value="${QUEUE_NAME}" \
+              --start-time "${START_TIME}" \
+              --end-time "${END_TIME}" \
+              --period 300 \
+              --statistics Sum
+          done
       - name: Clean up notifications
         if: always()
         run: |
