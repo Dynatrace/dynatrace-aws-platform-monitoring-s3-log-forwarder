@@ -265,8 +265,13 @@ jobs:
         if: steps.update_forwarder_direct_sqs.outcome == 'success'
         run: ./tests/e2e/configure_notifications.sh direct-sqs ${STACK_NAME} ${E2E_TESTING_BUCKET_NAME} ${E2E_TEST_PREFIX} ${{ secrets.CFN_ROLE_ARN }}
       - name: Test Direct SQS notifications
+        id: test_direct_sqs
         if: steps.configure_direct_sqs.outcome == 'success'
         run: |
+          # S3's direct-to-SQS notification delivery has no retry on failure (unlike SNS/EventBridge
+          # target delivery), so give the queue policy from the preceding change-set a moment to be
+          # fully consistent before S3 gets its one shot at publishing the real event.
+          sleep 15
           echo "[$(date -u '+%Y-%m-%dT%H:%M:%SZ')] E2E Direct SQS validation log entry" > test.log
           aws s3 cp test.log s3://${E2E_TESTING_BUCKET_NAME}/${E2E_TEST_PREFIX}/direct-sqs/test.log
           sleep 180
