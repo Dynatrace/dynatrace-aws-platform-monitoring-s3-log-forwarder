@@ -1,57 +1,39 @@
 # Snyk (https://snyk.io) policy file
 version: v1.25.1
 ignore:
-  SNYK-AMZN2023-LIBACL-18065013:
+  SNYK-AMZN2023-RPMLIBS-18531069:
     - '*':
         reason: >-
-          Vulnerability in base image public.ecr.aws/lambda/python:3.14.2026.07.22.18.
+          Vulnerability in base image public.ecr.aws/lambda/python:3.14.2026.08.04.13.
           No newer base image is available that fixes this issue.
-        expires: 2026-10-23T00:00:00.000Z
-  SNYK-AMZN2023-LIBACL-18065308:
+        expires: 2026-11-03T00:00:00.000Z
+  SNYK-AMZN2023-RPM-18529057:
     - '*':
         reason: >-
-          Vulnerability in base image public.ecr.aws/lambda/python:3.14.2026.07.22.18.
+          Vulnerability in base image public.ecr.aws/lambda/python:3.14.2026.08.04.13.
           No newer base image is available that fixes this issue.
-        expires: 2026-10-23T00:00:00.000Z
-  SNYK-AMZN2023-GLIB2-18061846:
+        expires: 2026-11-03T00:00:00.000Z
+  SNYK-AMZN2023-GLIB2-18531862:
     - '*':
         reason: >-
-          Vulnerability in base image public.ecr.aws/lambda/python:3.14.2026.07.22.18.
+          Vulnerability in base image public.ecr.aws/lambda/python:3.14.2026.08.04.13.
           No newer base image is available that fixes this issue.
-        expires: 2026-10-23T00:00:00.000Z
-  SNYK-AMZN2023-GLIB2-18062599:
+        expires: 2026-11-03T00:00:00.000Z
+  SNYK-AMZN2023-GAWK-18530924:
     - '*':
         reason: >-
-          Vulnerability in base image public.ecr.aws/lambda/python:3.14.2026.07.22.18.
+          Vulnerability in base image public.ecr.aws/lambda/python:3.14.2026.08.04.13.
           No newer base image is available that fixes this issue.
-        expires: 2026-10-23T00:00:00.000Z
-  SNYK-AMZN2023-GLIB2-18062777:
+        expires: 2026-11-03T00:00:00.000Z
+  SNYK-AMZN2023-GAWK-18530954:
     - '*':
         reason: >-
-          Vulnerability in base image public.ecr.aws/lambda/python:3.14.2026.07.22.18.
+          Vulnerability in base image public.ecr.aws/lambda/python:3.14.2026.08.04.13.
           No newer base image is available that fixes this issue.
-        expires: 2026-10-23T00:00:00.000Z
-  SNYK-AMZN2023-GLIB2-18063103:
+        expires: 2026-11-03T00:00:00.000Z
+  SNYK-AMZN2023-GAWK-18532585:
     - '*':
         reason: >-
-          Vulnerability in base image public.ecr.aws/lambda/python:3.14.2026.07.22.18.
+          Vulnerability in base image public.ecr.aws/lambda/python:3.14.2026.08.04.13.
           No newer base image is available that fixes this issue.
-        expires: 2026-10-23T00:00:00.000Z
-  SNYK-AMZN2023-GLIB2-18063125:
-    - '*':
-        reason: >-
-          Vulnerability in base image public.ecr.aws/lambda/python:3.14.2026.07.22.18.
-          No newer base image is available that fixes this issue.
-        expires: 2026-10-23T00:00:00.000Z
-  SNYK-AMZN2023-GLIB2-18063276:
-    - '*':
-        reason: >-
-          Vulnerability in base image public.ecr.aws/lambda/python:3.14.2026.07.22.18.
-          No newer base image is available that fixes this issue.
-        expires: 2026-10-23T00:00:00.000Z
-  SNYK-AMZN2023-GLIB2-18064539:
-    - '*':
-        reason: >-
-          Vulnerability in base image public.ecr.aws/lambda/python:3.14.2026.07.22.18.
-          No newer base image is available that fixes this issue.
-        expires: 2026-10-23T00:00:00.000Z
+        expires: 2026-11-03T00:00:00.000Z
