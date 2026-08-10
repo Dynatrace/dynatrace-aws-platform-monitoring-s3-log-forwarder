@@ -126,6 +126,47 @@ Dynatrace provides Lambda layers with each release of the `dynatrace-aws-platfor
  > * When `GrantReadPermissionToBuckets` is set, the Lambda function IAM role is granted read access to all objects in those buckets. For fine-grained access controls, leave `GrantReadPermissionToBuckets` empty and follow the instructions in [Fine-grained access controls](#fine-grained-access-controls).
  > * See [CloudFormation parameter reference](cloudformation_parameters.md) for all available parameters.
 
+---
+
+#### Lambda ZIP (self-hosted)
+
+Use this option when you cannot use Lambda Layers.
+
+1. Download the Lambda ZIP package for your architecture from the [GitHub Releases page](https://github.com/Dynatrace/dynatrace-aws-platform-monitoring-s3-log-forwarder/releases/latest) (`lambda-x86_64.zip` or `lambda-arm64.zip`).
+
+2. Upload the ZIP to an S3 bucket in your AWS account. The bucket must be in the same AWS region as your Lambda deployment:
+
+    ```bash
+    export LAMBDA_CODE_BUCKET=<your-s3-bucket-name>
+    export LAMBDA_CODE_KEY=dynatrace-aws-platform-monitoring-s3-log-forwarder/lambda-x86_64.zip
+
+    aws s3 cp lambda-x86_64.zip "s3://${LAMBDA_CODE_BUCKET}/${LAMBDA_CODE_KEY}"
+    ```
+
+3. Deploy the main forwarder stack, referencing the ZIP you uploaded:
+
+    ```bash
+    aws cloudformation deploy \
+        --stack-name ${STACK_NAME} \
+        --template-file template.yaml \
+        --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
+        --parameter-overrides \
+            DynatraceEnvironmentURL="https://$DYNATRACE_TENANT_UUID.apps.dynatrace.com" \
+            DynatraceApiKeySecretsManagerSecret="$DT_TOKEN_SECRET_ARN" \
+            DeploymentPackageType="zip" \
+            LambdaCodeS3Bucket="${LAMBDA_CODE_BUCKET}" \
+            LambdaCodeS3Key="${LAMBDA_CODE_KEY}" \
+            Architecture="x86_64" \
+            NotificationType="EventBridge" \
+            GrantReadPermissionToBuckets="my-bucket,another-bucket"
+    ```
+
+> [!NOTE]
+ >
+ > * The Lambda execution role is **not** automatically granted read access to `LambdaCodeS3Bucket`. CloudFormation reads the ZIP at deploy time using its own service role. If your bucket has a restrictive bucket policy, grant `s3:GetObject` to the CloudFormation service principal or to the IAM role you pass via `--role-arn`.
+ > * Replace `DynatraceApiKeySecretsManagerSecret` with `DynatraceApiKeySSMParameter="/dynatrace/s3-log-forwarder/$STACK_NAME/api-key"` if you chose Option B in Step 2.
+ > * See [CloudFormation parameter reference](cloudformation_parameters.md) for all available parameters.
+
 ### Step 6. Wire up S3 bucket notifications
 
 Complete the steps for the `NotificationType` you chose in Step 3.
