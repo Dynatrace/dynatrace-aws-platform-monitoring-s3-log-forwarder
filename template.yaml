@@ -45,6 +45,8 @@ Metadata:
         Parameters:
           - DeploymentPackageType
           - DynatraceS3LogForwarderLayerArn
+          - LambdaCodeS3Bucket
+          - LambdaCodeS3Key
           - LambdaFunctionMemorySize
           - LambdaLoggingLevel
           - LambdaMaximumExecutionTime
@@ -110,6 +112,10 @@ Metadata:
         default: Deployment Package Type
       DynatraceS3LogForwarderLayerArn:
         default: Lambda Layer ARN (optional override)
+      LambdaCodeS3Bucket:
+        default: Lambda Code S3 Bucket (ZIP deployments)
+      LambdaCodeS3Key:
+        default: Lambda Code S3 Key (ZIP deployments)
       LambdaSubnetIds:
         default: Subnet IDs
       LambdaSecurityGroupId:
@@ -178,19 +184,28 @@ Parameters:
     AllowedPattern: "(^$|^[a-zA-Z0-9._%+\\-]+@[a-zA-Z0-9.\\-]+\\.[a-zA-Z]{2,}$)"
     ConstraintDescription: "Must be a valid e-mail address or left empty."
   DeploymentPackageType:
-    Description: "How the Lambda function code is delivered. 'layer' uses a pre-built Lambda Layer published by Dynatrace."
+    Description: "How the Lambda function code is delivered. 'layer' uses a pre-built Lambda Layer published by Dynatrace. 'zip' deploys from a Lambda ZIP package stored in an S3 bucket you own — requires LambdaCodeS3Bucket and LambdaCodeS3Key."
     Type: String
     Default: layer
     AllowedValues:
       - layer
+      - zip
   DynatraceS3LogForwarderLayerArn:
     Type: String
     Default: ""
     AllowedPattern: "(arn:(aws[a-zA-Z-]*)?:lambda:[a-z]{2}(-gov)?(-iso([a-z])?)?-[a-z]+-\\d{1}:\\d{12}:layer:[a-zA-Z0-9-_]+:[0-9]+)?"
     Description: >
       (Optional) ARN of the Dynatrace S3 Log Forwarder Lambda Layer.
-      If not provided, the most recent version of the Dynatrace S3 Log Forwarder Lambda Layer will be used 
+      If not provided, the most recent version of the Dynatrace S3 Log Forwarder Lambda Layer will be used
       (if DeploymentPackageType is 'layer').
+  LambdaCodeS3Bucket:
+    Type: String
+    Default: ""
+    Description: "Name of the S3 bucket that contains the Lambda ZIP deployment package. Required when DeploymentPackageType is 'zip'."
+  LambdaCodeS3Key:
+    Type: String
+    Default: ""
+    Description: "S3 key (path) of the Lambda ZIP deployment package within LambdaCodeS3Bucket. Required when DeploymentPackageType is 'zip'."
   LambdaFunctionMemorySize:
     Description: Memory size of the queue processing Lambda function
     Type: Number
@@ -336,6 +351,14 @@ Rules:
                   - !Ref S3NotificationsSNSTopicArns
                   - ""
         AssertDescription: "S3NotificationsSNSTopicArns must be provided when NotificationType is SNS."
+  ZipDeploymentRequiresS3Location:
+    Assertions:
+      - Assert: !Or
+          - !Not [!Equals [!Ref DeploymentPackageType, "zip"]]
+          - !And
+            - !Not [!Equals [!Ref LambdaCodeS3Bucket, ""]]
+            - !Not [!Equals [!Ref LambdaCodeS3Key, ""]]
+        AssertDescription: "LambdaCodeS3Bucket and LambdaCodeS3Key must be provided when DeploymentPackageType is 'zip'."
 
 Mappings:
   LayerArns:
@@ -410,6 +433,7 @@ Conditions:
   DeployMonitoringDashboard: !Equals [ !Ref DeployCloudWatchMonitoringDashboard, "true" ]
   IsEmailConfigured: !Not [!Equals [ !Ref NotificationsEmail, "" ]]
   IsLayerDeployment: !Equals [ !Ref DeploymentPackageType, "layer" ]
+  IsZipDeployment: !Equals [ !Ref DeploymentPackageType, "zip" ]
   GrantReadPermissionToBucketsProvided: !Not [!Equals [!Join ["", !Ref GrantReadPermissionToBuckets], ""]]
   IsEventBridgeNotificationType: !Equals [ !Ref NotificationType, "EventBridge" ]
   DeployEventBridgeNotificationType: !And [!Condition IsEventBridgeNotificationType, !Condition GrantReadPermissionToBucketsProvided]
@@ -498,9 +522,12 @@ Resources:
         - IsLayerDeployment
         - |
           from app import lambda_handler as handler
-        - |
-          def lambda_handler(event, context):
-              raise NotImplementedError("Placeholder function. Update the function code with the Lambda ZIP package.")
+        - !Ref AWS::NoValue
+      CodeUri: !If
+        - IsZipDeployment
+        - Bucket: !Ref LambdaCodeS3Bucket
+          Key: !Ref LambdaCodeS3Key
+        - !Ref AWS::NoValue
       Handler: !If [IsLayerDeployment, "index.handler", "app.lambda_handler"]
       Runtime: python3.14
       Layers: !If
