@@ -51,6 +51,8 @@ unzip -o templates.zip
 
 ### Step 5. Update the stack
 
+#### Lambda Layer
+
 Redeploy with the new `template.yaml` — the latest layer ARN for your region and architecture is embedded in the template's mappings.
 
 ```bash
@@ -59,6 +61,26 @@ aws cloudformation deploy --stack-name ${STACK_NAME} \
             --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
             --parameter-overrides \
                 DeploymentPackageType="layer"
+```
+
+#### Lambda ZIP
+
+Download the new ZIP for your architecture from the GitHub release, upload it to your S3 bucket, then redeploy:
+
+```bash
+export LAMBDA_CODE_BUCKET=<your-s3-bucket-name>
+export LAMBDA_CODE_KEY=dynatrace-aws-platform-monitoring-s3-log-forwarder/lambda-x86_64.zip
+
+wget https://github.com/dynatrace/dynatrace-aws-platform-monitoring-s3-log-forwarder/releases/download/${VERSION_TAG}/lambda-x86_64.zip
+aws s3 cp lambda-x86_64.zip "s3://${LAMBDA_CODE_BUCKET}/${LAMBDA_CODE_KEY}"
+
+aws cloudformation deploy --stack-name ${STACK_NAME} \
+            --template-file template.yaml \
+            --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
+            --parameter-overrides \
+                DeploymentPackageType="zip" \
+                LambdaCodeS3Bucket="${LAMBDA_CODE_BUCKET}" \
+                LambdaCodeS3Key="${LAMBDA_CODE_KEY}"
 ```
 
 > [!NOTE]

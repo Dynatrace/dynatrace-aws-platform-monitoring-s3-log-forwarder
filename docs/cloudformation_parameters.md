@@ -18,9 +18,11 @@ This page documents all parameters for the main `template.yaml` stack.
 
 | Parameter | Type | Default                                                                                                | Allowed values | Description |
 |-----------|------|--------------------------------------------------------------------------------------------------------|----------------|-------------|
-| `DeploymentPackageType` | String | `layer`                                                                                                | `layer` | How Lambda function code is delivered. `layer` uses a pre-built Lambda Layer published by Dynatrace. |
-| `DynatraceS3LogForwarderLayerArn` | String | _(empty — layer ARN resolved from the template's built-in region mapping, based od deployment region)_ | Valid Lambda Layer ARN | ARN of a custom Lambda Layer to use instead of the Dynatrace-published layer. If not provided, the ARN is automatically selected from the template's region map. Only set this when building from source or using a self-hosted layer. |
-| `Architecture` | String | `x86_64`                                                                                               | `x86_64`, `arm64` | Instruction set architecture for the Lambda function. |
+| `DeploymentPackageType` | String | `layer` | `layer`, `zip` | How Lambda function code is delivered. `layer` uses a pre-built Lambda Layer published by Dynatrace. `zip` deploys from a Lambda ZIP package you upload to an S3 bucket you own — requires `LambdaCodeS3Bucket` and `LambdaCodeS3Key`. |
+| `DynatraceS3LogForwarderLayerArn` | String | _(empty — layer ARN resolved from the template's built-in region mapping, based on deployment region)_ | Valid Lambda Layer ARN | ARN of a custom Lambda Layer to use instead of the Dynatrace-published layer. If not provided, the ARN is automatically selected from the template's region map. Only set this when building from source or using a self-hosted layer. |
+| `LambdaCodeS3Bucket` | String | _(empty)_ | — | Name of the S3 bucket containing the Lambda ZIP deployment package. Required when `DeploymentPackageType` is `zip`. The bucket must be in the same AWS region as the stack. |
+| `LambdaCodeS3Key` | String | _(empty)_ | — | S3 key (path) of the Lambda ZIP deployment package within `LambdaCodeS3Bucket`. Required when `DeploymentPackageType` is `zip`. |
+| `Architecture` | String | `x86_64` | `x86_64`, `arm64` | Instruction set architecture for the Lambda function. |
 
 ## S3 bucket access
 
