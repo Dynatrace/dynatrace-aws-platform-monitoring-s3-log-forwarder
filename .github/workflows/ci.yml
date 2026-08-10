@@ -85,12 +85,15 @@ jobs:
         run: ./scripts/update_version.sh
       - name: Build Lambda Layer
         run: ./scripts/build_docker.sh layer dist/layer.zip x86_64
+      - name: Build Lambda ZIP
+        run: ./scripts/build_docker.sh zip dist/lambda.zip x86_64
       - name: Upload build artifacts
         uses: actions/upload-artifact@v7
         with:
           name: lambda-artifacts-x86_64
           path: |
             dist/layer.zip
+            dist/lambda.zip
           retention-days: 7
 
   build-arm64:
@@ -105,12 +108,15 @@ jobs:
         run: ./scripts/update_version.sh
       - name: Build Lambda Layer
         run: ./scripts/build_docker.sh layer dist/layer.zip arm64
+      - name: Build Lambda ZIP
+        run: ./scripts/build_docker.sh zip dist/lambda.zip arm64
       - name: Upload build artifacts
         uses: actions/upload-artifact@v7
         with:
           name: lambda-artifacts-arm64
           path: |
             dist/layer.zip
+            dist/lambda.zip
           retention-days: 7
 
   e2e-test:
@@ -135,6 +141,16 @@ jobs:
             runs-on: ubuntu-24.04-arm
             artifact: lambda-artifacts-arm64
             bucket: dynatrace-aws-s3-log-forwarder-e2e-testing-layer-arm64
+          - deploy_type: zip
+            arch: x86_64
+            runs-on: ubuntu-latest
+            artifact: lambda-artifacts-x86_64
+            bucket: dynatrace-aws-s3-log-forwarder-e2e-testing-zip-x86-64
+          - deploy_type: zip
+            arch: arm64
+            runs-on: ubuntu-24.04-arm
+            artifact: lambda-artifacts-arm64
+            bucket: dynatrace-aws-s3-log-forwarder-e2e-testing-zip-arm64
     env:
       E2E_TESTING_BUCKET_NAME: ${{ matrix.bucket }}
       CI_RUN_ID: ${{ github.run_id }}

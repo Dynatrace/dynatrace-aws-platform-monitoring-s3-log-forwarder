@@ -16,6 +16,7 @@ ARCH="${2:-x86_64}"
 
 : "${E2E_TESTING_BUCKET_NAME:?E2E_TESTING_BUCKET_NAME must be set}"
 : "${STACK_NAME:?STACK_NAME must be set}"
+: "${E2E_TEST_PREFIX:?E2E_TEST_PREFIX must be set}"
 command -v jq &>/dev/null || { echo "ERROR: jq is required but not installed" >&2; exit 1; }
 
 TIMESTAMP_FORMAT='+%Y-%m-%dT%H:%M:%SZ'
@@ -59,28 +60,23 @@ case "${DEPLOY_TYPE}" in
         log "dist/ contents: $(ls dist/ 2>/dev/null || echo '(empty or missing)')"
         [[ -f "dist/lambda.zip" ]] || { echo "ERROR: dist/lambda.zip not found" >&2; exit 1; }
 
+        LAMBDA_ZIP_S3_KEY="${E2E_TEST_PREFIX}/lambda.zip"
+        log "Uploading lambda.zip to s3://${E2E_TESTING_BUCKET_NAME}/${LAMBDA_ZIP_S3_KEY}"
+        aws s3 cp dist/lambda.zip "s3://${E2E_TESTING_BUCKET_NAME}/${LAMBDA_ZIP_S3_KEY}"
+
         log "Deploying the log forwarder template"
         aws cloudformation deploy --stack-name ${STACK_NAME} --parameter-overrides \
                         DynatraceEnvironmentURL=${DT_TENANT_PLATFORM_URL} \
                         EnableCrossRegionCrossAccountForwarding=true \
                         DeploymentPackageType=zip \
+                        LambdaCodeS3Bucket="${E2E_TESTING_BUCKET_NAME}" \
+                        LambdaCodeS3Key="${LAMBDA_ZIP_S3_KEY}" \
                         Architecture="${ARCH}" \
                         "${EXTRA_CFN_PARAMS[@]}" \
                         --template-file deploy-template.yaml --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
                         --role-arn ${CFN_ROLE_ARN}
 
         aws cloudformation wait stack-create-complete --stack-name ${STACK_NAME}
-
-        FUNCTION_NAME=$(aws cloudformation describe-stacks --stack-name ${STACK_NAME} \
-            --query 'Stacks[0].Outputs[?OutputKey==`QueueProcessingFunction`].OutputValue' \
-            --output text | cut -d':' -f7)
-
-        log "Updating Lambda function code for ${FUNCTION_NAME}"
-        aws lambda update-function-code --function-name ${FUNCTION_NAME} \
-            --zip-file "fileb://dist/lambda.zip"
-
-        log "Waiting for function update to complete"
-        aws lambda wait function-updated --function-name ${FUNCTION_NAME}
         ;;
 
     layer)
