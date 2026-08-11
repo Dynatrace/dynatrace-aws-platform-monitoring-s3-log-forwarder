@@ -433,7 +433,6 @@ Conditions:
   DeployMonitoringDashboard: !Equals [ !Ref DeployCloudWatchMonitoringDashboard, "true" ]
   IsEmailConfigured: !Not [!Equals [ !Ref NotificationsEmail, "" ]]
   IsLayerDeployment: !Equals [ !Ref DeploymentPackageType, "layer" ]
-  IsZipDeployment: !Equals [ !Ref DeploymentPackageType, "zip" ]
   GrantReadPermissionToBucketsProvided: !Not [!Equals [!Join ["", !Ref GrantReadPermissionToBuckets], ""]]
   IsEventBridgeNotificationType: !Equals [ !Ref NotificationType, "EventBridge" ]
   DeployEventBridgeNotificationType: !And [!Condition IsEventBridgeNotificationType, !Condition GrantReadPermissionToBucketsProvided]
