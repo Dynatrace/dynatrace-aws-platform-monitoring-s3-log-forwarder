@@ -449,15 +449,6 @@ Conditions:
     - !Select [ 2, !Split [ ".", !Select [ 1, !Split [ "://", !Ref DynatraceEnvironmentURL ] ] ] ]
     - 'dynatrace'
 
-Globals:
-  Function:
-    Timeout: !Ref LambdaMaximumExecutionTime
-    Environment:
-      Variables:
-        POWERTOOLS_METRICS_NAMESPACE: dynatrace-aws-platform-monitoring-s3-log-forwarder
-        DEPLOYMENT_NAME: !Ref AWS::StackName
-
-
 Resources:
   QueueProcessingFunctionRole:
     Type: AWS::IAM::Role
@@ -515,21 +506,18 @@ Resources:
           - !Ref AWS::NoValue
 
   QueueProcessingFunction:
-    Type: AWS::Serverless::Function
+    Type: AWS::Lambda::Function
     Properties:
       PackageType: Zip
-      InlineCode: !If
+      Code: !If
         - IsLayerDeployment
-        - |
-          from app import lambda_handler as handler
-        - !Ref AWS::NoValue
-      CodeUri: !If
-        - IsZipDeployment
-        - Bucket: !Ref LambdaCodeS3Bucket
-          Key: !Ref LambdaCodeS3Key
-        - !Ref AWS::NoValue
+        - ZipFile: |
+            from app import lambda_handler as handler
+        - S3Bucket: !Ref LambdaCodeS3Bucket
+          S3Key: !Ref LambdaCodeS3Key
       Handler: !If [IsLayerDeployment, "index.handler", "app.lambda_handler"]
       Runtime: python3.14
+      Timeout: !Ref LambdaMaximumExecutionTime
       Layers: !If
         - IsLayerDeployment
         - - !If
@@ -551,6 +539,8 @@ Resources:
         - !Ref Architecture
       Environment:
         Variables:
+          POWERTOOLS_METRICS_NAMESPACE: dynatrace-aws-platform-monitoring-s3-log-forwarder
+          DEPLOYMENT_NAME: !Ref AWS::StackName
           LD_LIBRARY_PATH: !If [IsLayerDeployment, !Ref "AWS::NoValue", "/var/task/lib"]
           DYNATRACE_ENV_URL: !If
             - IsDynatraceProductionEnvironment
@@ -574,23 +564,24 @@ Resources:
           VERIFY_DT_SSL_CERT: !Ref VerifyLogEndpointSSLCerts
           DYNATRACE_LOG_INGEST_CONTENT_MAX_LENGTH: !Ref DynatraceLogIngestContentMaxLength
       Role: !GetAtt QueueProcessingFunctionRole.Arn
-      Events:
-        SQSMessages:
-          Type: SQS
-          Properties:
-            BatchSize: !Ref LambdaSQSMessageBatchSize
-            Enabled: True
-            MaximumBatchingWindowInSeconds: !Ref SQSLongPollingMaxSeconds
-            Queue: !GetAtt S3NotificationsQueue.Arn
-            FunctionResponseTypes:
-              - ReportBatchItemFailures
-            ScalingConfig:
-               MaximumConcurrency: !Ref MaximumLambdaConcurrency
       ReservedConcurrentExecutions: !Ref MaximumLambdaConcurrency
       VpcConfig:
         SecurityGroupIds:
           - !If [ LambdaVpcSecurityGroupSpecified, !Ref LambdaSecurityGroupId, !Ref "AWS::NoValue" ]
         SubnetIds: !If [ LambdaVpcConfigSpecified, !Ref LambdaSubnetIds, !Ref "AWS::NoValue" ]
+
+  QueueProcessingFunctionSQSMessages:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      BatchSize: !Ref LambdaSQSMessageBatchSize
+      Enabled: True
+      EventSourceArn: !GetAtt S3NotificationsQueue.Arn
+      FunctionName: !Ref QueueProcessingFunction
+      MaximumBatchingWindowInSeconds: !Ref SQSLongPollingMaxSeconds
+      FunctionResponseTypes:
+        - ReportBatchItemFailures
+      ScalingConfig:
+        MaximumConcurrency: !Ref MaximumLambdaConcurrency
 
   S3NotificationsQueue:
     Type: AWS::SQS::Queue
