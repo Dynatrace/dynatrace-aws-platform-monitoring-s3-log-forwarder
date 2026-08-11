@@ -1,5 +1,8 @@
 # dynatrace-aws-platform-monitoring-s3-log-forwarder
 
+> [!IMPORTANT]
+> This component is not yet ready for deployment. Please check again in few days.
+
 This project deploys a Serverless architecture to forward logs from Amazon S3 to Dynatrace.
 
 ![Architecture](docs/images/architecture.jpg)
