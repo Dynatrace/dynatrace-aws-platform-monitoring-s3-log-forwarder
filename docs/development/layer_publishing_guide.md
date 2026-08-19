@@ -36,11 +36,11 @@ Both architectures must be published separately. Run the script once per archite
 ./scripts/publish_layer.sh dist/layer.zip --arch arm64 --regions us-east-1,eu-west-1,eu-central-1
 ```
 
-The script will output the `LayerVersionArn` for each region and automatically update the Layer ARN table in `README.md` and the `Mappings.LayerArns` block in `template.yaml`.
+The script will output the `LayerVersionArn` for each region and automatically update the `Mappings.LayerArns` block in `template.yaml`.
 
 ### Skip automatic file updates
 
-By default, after a successful publish the script automatically updates the Layer ARN table in `README.md` and the `Mappings.LayerArns` block in `template.yaml`. To skip these updates, pass `--no-update-files`:
+By default, after a successful publish the script automatically updates the `Mappings.LayerArns` block in `template.yaml`. To skip this update, pass `--no-update-files`:
 
 ```bash
 ./scripts/publish_layer.sh dist/layer.zip --no-update-files
@@ -68,13 +68,11 @@ aws lambda publish-layer-version \
     --description "Dynatrace AWS S3 Log Forwarder (arm64)"
 ```
 
-Note the `LayerVersionArn` from the output — update `README.md` and `template.yaml` manually with this ARN.
+Note the `LayerVersionArn` from the output — update `template.yaml` manually with this ARN.
 
 ## Step 3. Release the updated templates
 
-The publish script has already updated `README.md` and `template.yaml` with the new Layer ARNs. Release these updated files so customers can update to the new version.
-
-The [Lambda Layer ARNs table in README.md](../../README.md) serves as a reference for the published ARNs per region and architecture.
+The publish script has already updated `template.yaml` with the new Layer ARNs. Release these updated files so customers can update to the new version.
 
 ## Publishing a new version
 
