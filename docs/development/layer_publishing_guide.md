@@ -36,11 +36,11 @@ Both architectures must be published separately. Run the script once per archite
 ./scripts/publish_layer.sh dist/layer.zip --arch arm64 --regions us-east-1,eu-west-1,eu-central-1
 ```
 
-The script will output the `LayerVersionArn` for each region — share the appropriate ARN with customers based on their deployment region and architecture.
+The script will output the `LayerVersionArn` for each region and automatically update the `Mappings.LayerArns` block in `template.yaml`.
 
 ### Skip automatic file updates
 
-By default, after a successful publish the script automatically updates the Layer ARN table in `README.md` and the `Mappings.LayerArns` block in `template.yaml`. To skip these updates, pass `--no-update-files`:
+By default, after a successful publish the script automatically updates the `Mappings.LayerArns` block in `template.yaml`. To skip this update, pass `--no-update-files`:
 
 ```bash
 ./scripts/publish_layer.sh dist/layer.zip --no-update-files
@@ -68,18 +68,11 @@ aws lambda publish-layer-version \
     --description "Dynatrace AWS S3 Log Forwarder (arm64)"
 ```
 
-Note the `LayerVersionArn` from the output — this is the ARN you'll share with customers.
+Note the `LayerVersionArn` from the output — update `template.yaml` manually with this ARN.
 
-## Step 3. Share the Layer ARN with customers
+## Step 3. Release the updated templates
 
-The Layer ARNs for all published regions are maintained in the [Lambda Layer ARNs table in README.md](../README.md). Provide customers with the full Layer Version ARN for their deployment region and architecture, for example:
-
-```text
-arn:aws:lambda:us-east-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
-arn:aws:lambda:us-east-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder-arm64:1
-```
-
-Customers can then deploy the log forwarder using the [Lambda Layer](deployment_guide.md) option in the deployment guide — no build tools or SAM CLI required.
+The publish script has already updated `template.yaml` with the new Layer ARNs. Release these updated files so customers can update to the new version.
 
 ## Publishing a new version
 
@@ -89,6 +82,6 @@ When releasing an update:
 2. Publish x86_64: `./scripts/publish_layer.sh dist/layer.zip`
 3. Build arm64: `./scripts/build_docker.sh layer dist/layer.zip arm64`
 4. Publish arm64: `./scripts/publish_layer.sh dist/layer.zip --arch arm64`
-5. Communicate the new Layer Version ARNs to customers
+5. Release the updated YAML templates
 
-> **Note:** Each `publish-layer-version` call creates a new immutable version. Previous versions remain available until explicitly deleted. Customers must update the `DynatraceS3LogForwarderLayerArn` parameter and redeploy to pick up the new version.
+> **Note:** Each `publish-layer-version` call creates a new immutable version. Previous versions remain available until explicitly deleted. Customers can pick up the new version by redeploying with the updated `template.yaml`.

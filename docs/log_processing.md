@@ -6,9 +6,8 @@ The `dynatrace-aws-platform-monitoring-s3-log-forwarder` supports processing pla
 
 For all processed logs, the forwarder enriches the entries with the following contextual attributes:
 
-* `log.source.forwarder`: the Amazon Resource Name (ARN) of the AWS Lambda function that shipped the log to Dynatrace
-* `log.source.aws.s3.bucket.name`: the name of the S3 bucket where the log comes from
-* `log.source.aws.s3.key.name`: the S3 key name the log comes from
+* `dt.da.aws.s3.bucket.name`: the name of the S3 bucket where the log comes from
+* `dt.da.aws.s3.key.name`: the S3 key name the log comes from
 * Any user-defined log attributes defined on the Log Forwarding Rule matched.
 
 The processing rules are grouped into 3 main blocks (aka sources):
@@ -19,7 +18,7 @@ The processing rules are grouped into 3 main blocks (aka sources):
 
 If `aws` or `custom` is defined as source on the log_forwarding_rule and there're no matches against the processed log object, the dynatrace-aws-platform-monitoring-s3-log-forwarder falls back to the `generic` processing rule.
 
-It's possible to define your own log-processing-rules by adding them to the log-processing-rules AWS AppConfig configuration profile.
+It's possible to define your own log-processing-rules by adding them to the `Content` field of `LogProcessingRulesHostedConfiguration` in `dynatrace-aws-s3-log-forwarder-appconfig.yaml` and redeploying the AppConfig stack.
 
 ## Built-in log processing rules
 
@@ -53,7 +52,7 @@ You can ingest any text and JSON-array logs into Dynatrace as generic logs and u
 
 1. Configure an AWS VPC to publish flow logs to S3 following the instructions [here](https://docs.aws.amazon.com/vpc/latest/userguide/flow-logs-s3.html).
 
-1. Create a generic log forwarding rule for the S3 bucket where VPC Flow Logs are pushed in the log-forwarding-rules AWS AppConfig configuration profile. Add an annotation "log.source" with value "aws.vpcflowlogs" so we can use this field in Dynatrace to filtern and process these logs.
+1. Add a generic log forwarding rule for the S3 bucket to the `Content` field of `LogForwardingRulesHostedConfiguration` in `dynatrace-aws-s3-log-forwarder-appconfig.yaml` and redeploy the AppConfig stack.
 
     ```yaml
     ---
@@ -88,7 +87,7 @@ Note that you can also parse log entries directly on your queries without the ne
 
 ## Adding your own log processing rules
 
-If you really need to do custom log processing on the AWS Lambda function, you can add your own log processing rules on the log-processing-rules AWS AppConfig configuration profile.
+If you really need to do custom log processing on the AWS Lambda function, you can add your own log processing rules to the `Content` field of `LogProcessingRulesHostedConfiguration` in `dynatrace-aws-s3-log-forwarder-appconfig.yaml` and redeploy the AppConfig stack.
 
 A log processing rule has the following format:
 

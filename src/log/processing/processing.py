@@ -72,6 +72,7 @@ def _get_output_message_with_reduced_fields(attributes: dict) -> dict:
         'aws.resource.type',
         'content',
         'timestamp',
+        'aws.resource.id',
     )
     return {k: attributes.get(k) for k in allowed_keys}
 
