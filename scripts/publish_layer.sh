@@ -63,19 +63,6 @@ parse_args() {
 # Helpers
 # ---------------------------------------------------------------------------
 
-# Look up the ARN for a given region from PUBLISHED_ARNS.
-# Returns empty string (exit 0) if not found — safe to use with set -e.
-lookup_arn() {
-    local region="$1"
-    local entry
-    for entry in "${PUBLISHED_ARNS[@]}"; do
-        if [[ "${entry%%=*}" == "$region" ]]; then
-            echo "${entry#*=}"
-            return 0
-        fi
-    done
-}
-
 # Check whether a region appears in a newline-separated string.
 is_seen() {
     local region="$1" seen_list="$2"
