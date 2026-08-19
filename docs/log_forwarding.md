@@ -7,7 +7,7 @@ For runtime rule customisation without redeploying Lambda, you can optionally de
 * `log-forwarding-rules`: stores log forwarding rules.
 * `log-processing-rules`: stores custom log processing rules. For more information, check the [log_processing.md](log_processing.md) documentation.
 
-Once deployed, set `LogForwarderConfigurationLocation=aws-appconfig` on the main stack. The Lambda will pick up configuration changes within ~1 minute without requiring a redeployment.
+Once deployed, redeploy the main stack with `LogForwarderConfigurationLocation=aws-appconfig`.
 
 The section below outlines how to configure custom log forwarding rules.
 
@@ -55,9 +55,8 @@ The prefix field allows you to define a regular expression to match against the 
 
 Log forwarding rules allow you to add custom annotations to your logs (e.g team: x, environment: dev) as well as tell the log forwarding function how to process your AWS, application/3rd party logs: AWS-vended logs (source:aws), generic text logs (source: generic) or other logs that you've defined log processing rules for (source: custom). All forwarded logs are automatically annotated with the following context attributes:
 
-* log.source.aws.s3.bucket.name: name of the S3 bucket the log was forwarded from
-* log.source.aws.s3.key.name: key name of the S3 object that the log entry belongs to
-* cloud.log_forwarder: the ARN of the AWS Lambda function that forwarded the log entry (this helps if you have multiple log forwarding instances running)
+* dt.da.aws.s3.bucket.name: name of the S3 bucket the log was forwarded from
+* dt.da.aws.s3.key.name: key name of the S3 object that the log entry belongs to
 
 The `dynatrace-aws-platform-monitoring-s3-log-forwarder` automatically annotates logs and extracts relevant attributes for [supported AWS services](../README.md#supported-aws-services) with fields like `aws.account.id`, `aws.region`...
 

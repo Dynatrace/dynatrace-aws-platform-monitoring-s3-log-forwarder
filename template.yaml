@@ -33,7 +33,6 @@ Metadata:
         Parameters:
           - DynatraceEnvironmentURL
           - DynatraceApiKeySSMParameter
-          - DynatraceApiKey
           - DynatraceApiKeySecretsManagerSecret
           - VerifyLogEndpointSSLCerts
       - Label:
@@ -46,10 +45,13 @@ Metadata:
         Parameters:
           - DeploymentPackageType
           - DynatraceS3LogForwarderLayerArn
+          - LambdaCodeS3Bucket
+          - LambdaCodeS3Key
           - LambdaFunctionMemorySize
           - LambdaLoggingLevel
           - LambdaMaximumExecutionTime
           - MaximumLambdaConcurrency
+          - Architecture
       - Label:
           default: Network Configuration (VPC)
         Parameters:
@@ -65,9 +67,10 @@ Metadata:
       - Label:
           default: S3 Buckets
         Parameters:
-          - S3BucketNames
-          - KmsKeyArns
-          - CreateS3NotificationsSNSTopic
+          - GrantReadPermissionToBuckets
+          - GrantDecryptToKmsKeyArns
+          - NotificationType
+          - S3NotificationsSNSTopicArns
       - Label:
           default: Cross-Account / Cross-Region Forwarding
         Parameters:
@@ -87,8 +90,6 @@ Metadata:
         default: Dynatrace Environment URL
       DynatraceApiKeySSMParameter:
         default: Dynatrace API Key SSM Parameter Path
-      DynatraceApiKey:
-        default: Dynatrace API Key (plain text)
       DynatraceApiKeySecretsManagerSecret:
         default: Dynatrace API Key Secrets Manager Secret ARN
       VerifyLogEndpointSSLCerts:
@@ -111,6 +112,10 @@ Metadata:
         default: Deployment Package Type
       DynatraceS3LogForwarderLayerArn:
         default: Lambda Layer ARN (optional override)
+      LambdaCodeS3Bucket:
+        default: Lambda Code S3 Bucket (ZIP deployments)
+      LambdaCodeS3Key:
+        default: Lambda Code S3 Key (ZIP deployments)
       LambdaSubnetIds:
         default: Subnet IDs
       LambdaSecurityGroupId:
@@ -121,41 +126,40 @@ Metadata:
         default: SQS Long Polling Wait Time (seconds)
       MaximumSQSMessageRetries:
         default: Maximum SQS Message Retries
-      S3BucketNames:
+      GrantReadPermissionToBuckets:
         default: S3 Bucket Names
-      KmsKeyArns:
+      GrantDecryptToKmsKeyArns:
         default: KMS Key ARNs
       EnableCrossRegionCrossAccountForwarding:
         default: Enable Cross-Region/Cross-Account Forwarding
       AwsAccountsToReceiveLogsFrom:
         default: AWS Account IDs to Accept Logs From
-      CreateS3NotificationsSNSTopic:
-        default: Create SNS Topic for S3 Notifications
+      NotificationType:
+        default: S3 Notification Type
+      S3NotificationsSNSTopicArns:
+        default: Existing SNS Topic ARN(s) for S3 Notifications
       NotificationsEmail:
         default: Alarm Notifications Email
       DeployCloudWatchMonitoringDashboard:
         default: Deploy CloudWatch Monitoring Dashboard
       IamRolePath:
         default: IAM Role Path
+      Architecture:
+        default: Architecture type for Lambda function
 
 Parameters:
   DynatraceEnvironmentURL:
-    Description: "URL of your Dynatrace environment. (e.g. https://{your-environment-id}.live.dynatrace.com or https://{your-environment-id}.apps.dynatrace.com)."
+    Description: "URL of your Dynatrace environment. (e.g. https://{your-environment-id}.apps.dynatrace.com)."
     Type: String
     AllowedPattern: "^https:\\/\\/[a-zA-Z0-9-]{2,}(\\.[a-zA-Z0-9-]{2,})(\\.[a-zA-Z0-9-]{2,})*$"
   DynatraceApiKeySSMParameter:
-    Description: "Path of the SecureString Parameter in AWS Systems Manager Parameter Store that stores the Dynatrace platform token (scope: data-acquisition:logs:ingest) used to authenticate against the generic S3 logs ingest API (e.g. /dynatrace/s3-log-forwarder/my-stack/api-key). Use this or DynatraceApiKey, not both."
+    Description: "Path of the SecureString Parameter in AWS Systems Manager Parameter Store that stores the Dynatrace platform token (scope: data-acquisition:logs:ingest) used to authenticate against the generic S3 logs ingest API (e.g. /dynatrace/s3-log-forwarder/my-stack/api-key). Use this or DynatraceApiKeySecretsManagerSecret, not both."
     Type: String
     Default: ""
     AllowedPattern: "(^$|^\\/[a-zA-Z0-9._\\-\\/]+$)"
     ConstraintDescription: "Must be a valid SSM parameter path starting with '/' (e.g. /dynatrace/s3-log-forwarder/my-stack/api-key) or left empty."
-  DynatraceApiKey:
-    Description: "Dynatrace platform token with data-acquisition:logs:ingest scope. Use this or DynatraceApiKeySSMParameter or DynatraceApiKeySecretsManagerSecret, not a combination. The token is stored in an AWS Secrets Manager secret at dynatrace/s3-log-forwarder/{stack-name}/api-key."
-    Type: String
-    Default: ""
-    NoEcho: true
   DynatraceApiKeySecretsManagerSecret:
-    Description: "ARN of an existing AWS Secrets Manager secret storing the Dynatrace platform token (scope: data-acquisition:logs:ingest). Use this or DynatraceApiKey or DynatraceApiKeySSMParameter, not a combination. The secret value must be a JSON object with the key 'dt.platform_token' and the token as the value: {\"dt.platform_token\": \"<token>\"}."
+    Description: "ARN of an existing AWS Secrets Manager secret storing the Dynatrace platform token (scope: data-acquisition:logs:ingest). Use this or DynatraceApiKeySSMParameter, not both. The secret must be a JSON object with the key dt.platform_token."
     Type: String
     Default: ""
     AllowedPattern: "(^$|^arn:[a-zA-Z0-9\\-]+:secretsmanager:[a-zA-Z0-9\\-]+:[0-9]{12}:secret:.+$)"
@@ -180,7 +184,7 @@ Parameters:
     AllowedPattern: "(^$|^[a-zA-Z0-9._%+\\-]+@[a-zA-Z0-9.\\-]+\\.[a-zA-Z]{2,}$)"
     ConstraintDescription: "Must be a valid e-mail address or left empty."
   DeploymentPackageType:
-    Description: "How the Lambda function code is delivered. 'layer' uses a pre-built Lambda Layer. 'zip' expects you to upload the function ZIP package yourself after stack creation."
+    Description: "How the Lambda function code is delivered. 'layer' uses a pre-built Lambda Layer published by Dynatrace. 'zip' deploys from a Lambda ZIP package stored in an S3 bucket you own — requires LambdaCodeS3Bucket and LambdaCodeS3Key."
     Type: String
     Default: layer
     AllowedValues:
@@ -192,8 +196,16 @@ Parameters:
     AllowedPattern: "(arn:(aws[a-zA-Z-]*)?:lambda:[a-z]{2}(-gov)?(-iso([a-z])?)?-[a-z]+-\\d{1}:\\d{12}:layer:[a-zA-Z0-9-_]+:[0-9]+)?"
     Description: >
       (Optional) ARN of the Dynatrace S3 Log Forwarder Lambda Layer.
-      If not provided, the most recent version of the Dynatrace S3 Log Forwarder Lambda Layer will be used 
+      If not provided, the most recent version of the Dynatrace S3 Log Forwarder Lambda Layer will be used
       (if DeploymentPackageType is 'layer').
+  LambdaCodeS3Bucket:
+    Type: String
+    Default: ""
+    Description: "Name of the S3 bucket that contains the Lambda ZIP deployment package. Required when DeploymentPackageType is 'zip'."
+  LambdaCodeS3Key:
+    Type: String
+    Default: ""
+    Description: "S3 key (path) of the Lambda ZIP deployment package within LambdaCodeS3Bucket. Required when DeploymentPackageType is 'zip'."
   LambdaFunctionMemorySize:
     Description: Memory size of the queue processing Lambda function
     Type: Number
@@ -234,13 +246,21 @@ Parameters:
       - "true"
       - "false"
     Default: "true"
-  CreateS3NotificationsSNSTopic:
+  NotificationType:
     Type: String
-    Description: Create an SNS topic for receiving S3 Object Created notifications (useful for fan-out architectures where multiple consumers need to process S3 events)
-    Default: "false"
+    Description: "The mechanism used to deliver S3 Object Created notifications to the log forwarder."
+    Default: "EventBridge"
     AllowedValues:
-      - "true"
-      - "false"
+      - "None"
+      - "EventBridge"
+      - "SNS"
+      - "Direct SQS"
+  S3NotificationsSNSTopicArns:
+    Type: CommaDelimitedList
+    Description: >-
+      Comma-separated list of ARNs of existing SNS topics allowed to send S3 Object Created notifications to the SQS queue.
+      Subscribe the SNS topics to the SQS queue on your side. Leave empty if not using SNS topics.
+    Default: ""
   EnableCrossRegionCrossAccountForwarding:
     Type: String
     Description: Create a dedicated event bus to receive and manage cross-region and cross-account S3 Object Created notifications
@@ -280,11 +300,11 @@ Parameters:
     Type: Number
     Description: Maximum number of retries for failed processing of S3 Object Created notification messages
     Default: 3
-  S3BucketNames:
+  GrantReadPermissionToBuckets:
     Type: CommaDelimitedList
     Description: "Optional list of S3 bucket names (e.g. my-bucket,another-bucket) to grant the Lambda function s3:GetObject access and create an EventBridge routing rule for. Use the per-bucket CloudFormation template for prefix filtering or cross-account/region buckets."
     Default: ""
-  KmsKeyArns:
+  GrantDecryptToKmsKeyArns:
     Type: CommaDelimitedList
     Description: "Optional list of KMS Key ARNs (e.g. arn:aws:kms:us-east-1:123456789012:key/uuid) the Lambda function needs kms:Decrypt access to in order to read SSE-KMS encrypted S3 objects. Leave empty if your buckets are not encrypted with a customer-managed key."
     Default: ""
@@ -306,22 +326,14 @@ Rules:
   ApiKeyExactlyOneMustBeSet:
     Assertions:
       - Assert: !Or
-          - !Not [!Equals [!Ref DynatraceApiKey, ""]]
           - !Not [!Equals [!Ref DynatraceApiKeySSMParameter, ""]]
           - !Not [!Equals [!Ref DynatraceApiKeySecretsManagerSecret, ""]]
-        AssertDescription: "Provide exactly one of DynatraceApiKey, DynatraceApiKeySSMParameter, or DynatraceApiKeySecretsManagerSecret."
+        AssertDescription: "Provide exactly one of DynatraceApiKeySSMParameter or DynatraceApiKeySecretsManagerSecret."
       - Assert: !Not
-          - !Or
-            - !And
-              - !Not [!Equals [!Ref DynatraceApiKey, ""]]
-              - !Not [!Equals [!Ref DynatraceApiKeySSMParameter, ""]]
-            - !And
-              - !Not [!Equals [!Ref DynatraceApiKey, ""]]
-              - !Not [!Equals [!Ref DynatraceApiKeySecretsManagerSecret, ""]]
-            - !And
-              - !Not [!Equals [!Ref DynatraceApiKeySSMParameter, ""]]
-              - !Not [!Equals [!Ref DynatraceApiKeySecretsManagerSecret, ""]]
-        AssertDescription: "DynatraceApiKey, DynatraceApiKeySSMParameter, and DynatraceApiKeySecretsManagerSecret are mutually exclusive — provide only one."
+          - !And
+            - !Not [!Equals [!Ref DynatraceApiKeySSMParameter, ""]]
+            - !Not [!Equals [!Ref DynatraceApiKeySecretsManagerSecret, ""]]
+        AssertDescription: "DynatraceApiKeySSMParameter and DynatraceApiKeySecretsManagerSecret are mutually exclusive — provide only one."
   VpcSecurityGroupRequiredWithSubnets:
     Assertions:
       - Assert: !Or
@@ -330,67 +342,84 @@ Rules:
               - ""
           - !Not [!Equals [!Ref LambdaSecurityGroupId, ""]]
         AssertDescription: "LambdaSecurityGroupId must be set when LambdaSubnetIds is specified."
+  SNSNotificationTypeRequiresSNSTopicArns:
+    Assertions:
+      - Assert: !Or
+          - !Not [!Equals [!Ref NotificationType, "SNS"]]
+          - !Not
+              - Fn::EachMemberEquals:
+                  - !Ref S3NotificationsSNSTopicArns
+                  - ""
+        AssertDescription: "S3NotificationsSNSTopicArns must be provided when NotificationType is SNS."
+  ZipDeploymentRequiresS3Location:
+    Assertions:
+      - Assert: !Or
+          - !Not [!Equals [!Ref DeploymentPackageType, "zip"]]
+          - !And
+            - !Not [!Equals [!Ref LambdaCodeS3Bucket, ""]]
+            - !Not [!Equals [!Ref LambdaCodeS3Key, ""]]
+        AssertDescription: "LambdaCodeS3Bucket and LambdaCodeS3Key must be provided when DeploymentPackageType is 'zip'."
 
 Mappings:
   LayerArns:
     af-south-1:
-      Arn: arn:aws:lambda:af-south-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
+      Arn: arn:aws:lambda:af-south-1:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
     ap-east-1:
-      Arn: arn:aws:lambda:ap-east-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
+      Arn: arn:aws:lambda:ap-east-1:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
     ap-northeast-1:
-      Arn: arn:aws:lambda:ap-northeast-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
+      Arn: arn:aws:lambda:ap-northeast-1:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
     ap-northeast-2:
-      Arn: arn:aws:lambda:ap-northeast-2:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
+      Arn: arn:aws:lambda:ap-northeast-2:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
     ap-northeast-3:
-      Arn: arn:aws:lambda:ap-northeast-3:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
+      Arn: arn:aws:lambda:ap-northeast-3:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
     ap-south-1:
-      Arn: arn:aws:lambda:ap-south-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
+      Arn: arn:aws:lambda:ap-south-1:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
     ap-south-2:
-      Arn: arn:aws:lambda:ap-south-2:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
+      Arn: arn:aws:lambda:ap-south-2:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
     ap-southeast-1:
-      Arn: arn:aws:lambda:ap-southeast-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
+      Arn: arn:aws:lambda:ap-southeast-1:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
     ap-southeast-2:
-      Arn: arn:aws:lambda:ap-southeast-2:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
+      Arn: arn:aws:lambda:ap-southeast-2:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
     ap-southeast-3:
-      Arn: arn:aws:lambda:ap-southeast-3:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
+      Arn: arn:aws:lambda:ap-southeast-3:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
     ap-southeast-4:
-      Arn: arn:aws:lambda:ap-southeast-4:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
+      Arn: arn:aws:lambda:ap-southeast-4:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
     ca-central-1:
-      Arn: arn:aws:lambda:ca-central-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
+      Arn: arn:aws:lambda:ca-central-1:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
     ca-west-1:
-      Arn: arn:aws:lambda:ca-west-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
+      Arn: arn:aws:lambda:ca-west-1:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
     eu-central-1:
-      Arn: arn:aws:lambda:eu-central-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
+      Arn: arn:aws:lambda:eu-central-1:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
     eu-central-2:
-      Arn: arn:aws:lambda:eu-central-2:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
+      Arn: arn:aws:lambda:eu-central-2:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
     eu-north-1:
-      Arn: arn:aws:lambda:eu-north-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
+      Arn: arn:aws:lambda:eu-north-1:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
     eu-south-1:
-      Arn: arn:aws:lambda:eu-south-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
+      Arn: arn:aws:lambda:eu-south-1:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
     eu-south-2:
-      Arn: arn:aws:lambda:eu-south-2:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
+      Arn: arn:aws:lambda:eu-south-2:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
     eu-west-1:
-      Arn: arn:aws:lambda:eu-west-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
+      Arn: arn:aws:lambda:eu-west-1:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
     eu-west-2:
-      Arn: arn:aws:lambda:eu-west-2:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
+      Arn: arn:aws:lambda:eu-west-2:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
     eu-west-3:
-      Arn: arn:aws:lambda:eu-west-3:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
+      Arn: arn:aws:lambda:eu-west-3:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
     il-central-1:
-      Arn: arn:aws:lambda:il-central-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
+      Arn: arn:aws:lambda:il-central-1:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
     me-central-1:
-      Arn: arn:aws:lambda:me-central-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
+      Arn: arn:aws:lambda:me-central-1:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
     me-south-1:
-      Arn: arn:aws:lambda:me-south-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
+      Arn: arn:aws:lambda:me-south-1:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
     sa-east-1:
-      Arn: arn:aws:lambda:sa-east-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
+      Arn: arn:aws:lambda:sa-east-1:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
     us-east-1:
-      Arn: arn:aws:lambda:us-east-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
+      Arn: arn:aws:lambda:us-east-1:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
     us-east-2:
-      Arn: arn:aws:lambda:us-east-2:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
+      Arn: arn:aws:lambda:us-east-2:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
     us-west-1:
-      Arn: arn:aws:lambda:us-west-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
+      Arn: arn:aws:lambda:us-west-1:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
     us-west-2:
-      Arn: arn:aws:lambda:us-west-2:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
+      Arn: arn:aws:lambda:us-west-2:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
   LayerVersions:
     All:
       x86: 1
@@ -404,27 +433,20 @@ Conditions:
   DeployMonitoringDashboard: !Equals [ !Ref DeployCloudWatchMonitoringDashboard, "true" ]
   IsEmailConfigured: !Not [!Equals [ !Ref NotificationsEmail, "" ]]
   IsLayerDeployment: !Equals [ !Ref DeploymentPackageType, "layer" ]
-  CreateSNSTopicForS3Notifications: !Equals [ !Ref CreateS3NotificationsSNSTopic, "true" ]
+  GrantReadPermissionToBucketsProvided: !Not [!Equals [!Join ["", !Ref GrantReadPermissionToBuckets], ""]]
+  IsEventBridgeNotificationType: !Equals [ !Ref NotificationType, "EventBridge" ]
+  DeployEventBridgeNotificationType: !And [!Condition IsEventBridgeNotificationType, !Condition GrantReadPermissionToBucketsProvided]
+  DeploySNSNotificationType: !Equals [ !Ref NotificationType, "SNS" ]
+  DeployDirectSQSNotificationType: !Equals [ !Ref NotificationType, "Direct SQS" ]
   LambdaVpcConfigSpecified: !Not [!Equals [ !Join [ "", !Ref LambdaSubnetIds ], "" ]]
   LambdaVpcSecurityGroupSpecified: !Not [!Equals [!Ref LambdaSecurityGroupId, ""]]
-  S3BucketNamesProvided: !Not [!Equals [!Join ["", !Ref S3BucketNames], ""]]
-  KmsKeyArnsProvided: !Not [!Equals [!Join ["", !Ref KmsKeyArns], ""]]
-  DirectApiKeyProvided: !Not [!Equals [!Ref DynatraceApiKey, ""]]
+  GrantDecryptToKmsKeyArnsProvided: !Not [!Equals [!Join ["", !Ref GrantDecryptToKmsKeyArns], ""]]
   ExistingSecretsManagerSecretProvided: !Not [!Equals [!Ref DynatraceApiKeySecretsManagerSecret, ""]]
   ExistingSSMParameterProvided: !Not [!Equals [!Ref DynatraceApiKeySSMParameter, ""]]
   IsLayerArnProvided: !Not [!Equals [!Ref DynatraceS3LogForwarderLayerArn, ""]]
   IsDynatraceProductionEnvironment: !Equals
     - !Select [ 2, !Split [ ".", !Select [ 1, !Split [ "://", !Ref DynatraceEnvironmentURL ] ] ] ]
     - 'dynatrace'
-
-Globals:
-  Function:
-    Timeout: !Ref LambdaMaximumExecutionTime
-    Environment:
-      Variables:
-        POWERTOOLS_METRICS_NAMESPACE: dynatrace-aws-platform-monitoring-s3-log-forwarder
-        DEPLOYMENT_NAME: !Ref AWS::StackName
-
 
 Resources:
   QueueProcessingFunctionRole:
@@ -461,19 +483,16 @@ Resources:
         - !If
           - ExistingSecretsManagerSecretProvided
           - !Ref AWS::NoValue
-          - !If
-            - DirectApiKeyProvided
-            - !Ref AWS::NoValue
-            - PolicyName: SSMParameterReadPolicy
-              PolicyDocument:
-                Version: "2012-10-17"
-                Statement:
-                  - Effect: Allow
-                    Action:
-                      - ssm:GetParameter
-                      - ssm:GetParameters
-                    Resource:
-                      - !Sub arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter${DynatraceApiKeySSMParameter}
+          - PolicyName: SSMParameterReadPolicy
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - ssm:GetParameter
+                    - ssm:GetParameters
+                  Resource:
+                    - !Sub arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter${DynatraceApiKeySSMParameter}
         - !If
           - ExistingSecretsManagerSecretProvided
           - PolicyName: SecretsManagerReadPolicy
@@ -483,30 +502,21 @@ Resources:
                 - Effect: Allow
                   Action: secretsmanager:GetSecretValue
                   Resource: !Ref DynatraceApiKeySecretsManagerSecret
-          - !If
-            - DirectApiKeyProvided
-            - PolicyName: SecretsManagerReadPolicy
-              PolicyDocument:
-                Version: "2012-10-17"
-                Statement:
-                  - Effect: Allow
-                    Action: secretsmanager:GetSecretValue
-                    Resource: !Ref DynatraceApiKeySecret
-            - !Ref AWS::NoValue
+          - !Ref AWS::NoValue
 
   QueueProcessingFunction:
-    Type: AWS::Serverless::Function
+    Type: AWS::Lambda::Function
     Properties:
       PackageType: Zip
-      InlineCode: !If
+      Code: !If
         - IsLayerDeployment
-        - |
-          from app import lambda_handler as handler
-        - |
-          def lambda_handler(event, context):
-              raise NotImplementedError("Placeholder function. Update the function code with the Lambda ZIP package.")
+        - ZipFile: |
+            from app import lambda_handler as handler
+        - S3Bucket: !Ref LambdaCodeS3Bucket
+          S3Key: !Ref LambdaCodeS3Key
       Handler: !If [IsLayerDeployment, "index.handler", "app.lambda_handler"]
       Runtime: python3.14
+      Timeout: !Ref LambdaMaximumExecutionTime
       Layers: !If
         - IsLayerDeployment
         - - !If
@@ -528,6 +538,8 @@ Resources:
         - !Ref Architecture
       Environment:
         Variables:
+          POWERTOOLS_METRICS_NAMESPACE: dynatrace-aws-platform-monitoring-s3-log-forwarder
+          DEPLOYMENT_NAME: !Ref AWS::StackName
           LD_LIBRARY_PATH: !If [IsLayerDeployment, !Ref "AWS::NoValue", "/var/task/lib"]
           DYNATRACE_ENV_URL: !If
             - IsDynatraceProductionEnvironment
@@ -538,12 +550,9 @@ Resources:
               - 'https://${Subdomain}.da.dynatracelabs.com'
               - Subdomain: !Select [ 0, !Split [ ".apps", !Select [ 0, !Split [ ".dynatracelabs.com", !Select [ 1, !Split [ "://", !Ref DynatraceEnvironmentURL ] ] ] ] ] ]
           DYNATRACE_API_KEY_SECRETS_MANAGER: !If
-            - DirectApiKeyProvided
-            - !Ref DynatraceApiKeySecret
-            - !If
-              - ExistingSecretsManagerSecretProvided
-              - !Ref DynatraceApiKeySecretsManagerSecret
-              - !Ref AWS::NoValue
+            - ExistingSecretsManagerSecretProvided
+            - !Ref DynatraceApiKeySecretsManagerSecret
+            - !Ref AWS::NoValue
           DYNATRACE_API_KEY_SSM: !If
             - ExistingSSMParameterProvided
             - !Ref DynatraceApiKeySSMParameter
@@ -554,23 +563,24 @@ Resources:
           VERIFY_DT_SSL_CERT: !Ref VerifyLogEndpointSSLCerts
           DYNATRACE_LOG_INGEST_CONTENT_MAX_LENGTH: !Ref DynatraceLogIngestContentMaxLength
       Role: !GetAtt QueueProcessingFunctionRole.Arn
-      Events:
-        SQSMessages:
-          Type: SQS
-          Properties:
-            BatchSize: !Ref LambdaSQSMessageBatchSize
-            Enabled: True
-            MaximumBatchingWindowInSeconds: !Ref SQSLongPollingMaxSeconds
-            Queue: !GetAtt S3NotificationsQueue.Arn
-            FunctionResponseTypes:
-              - ReportBatchItemFailures
-            ScalingConfig:
-               MaximumConcurrency: !Ref MaximumLambdaConcurrency
       ReservedConcurrentExecutions: !Ref MaximumLambdaConcurrency
       VpcConfig:
         SecurityGroupIds:
           - !If [ LambdaVpcSecurityGroupSpecified, !Ref LambdaSecurityGroupId, !Ref "AWS::NoValue" ]
         SubnetIds: !If [ LambdaVpcConfigSpecified, !Ref LambdaSubnetIds, !Ref "AWS::NoValue" ]
+
+  QueueProcessingFunctionSQSMessages:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      BatchSize: !Ref LambdaSQSMessageBatchSize
+      Enabled: True
+      EventSourceArn: !GetAtt S3NotificationsQueue.Arn
+      FunctionName: !Ref QueueProcessingFunction
+      MaximumBatchingWindowInSeconds: !Ref SQSLongPollingMaxSeconds
+      FunctionResponseTypes:
+        - ReportBatchItemFailures
+      ScalingConfig:
+        MaximumConcurrency: !Ref MaximumLambdaConcurrency
 
   S3NotificationsQueue:
     Type: AWS::SQS::Queue
@@ -592,17 +602,20 @@ Resources:
         Version: "2012-10-17"
         Id: "S3NotificationsSQSPolicy"
         Statement:
-          - Sid: "Allow EventBridge rules to Send Messages"
-            Effect: "Allow"
-            Principal:
-              Service: "events.amazonaws.com"
-            Action: "sqs:SendMessage"
-            Resource: !GetAtt S3NotificationsQueue.Arn
-            Condition:
-              ArnEquals:
-                "aws:SourceArn": !Sub "arn:aws:events:${AWS::Region}:${AWS::AccountId}:rule/${AWS::StackName}-*"
           - !If
-            - CreateSNSTopicForS3Notifications
+            - IsEventBridgeNotificationType
+            - Sid: "Allow EventBridge rules to Send Messages"
+              Effect: "Allow"
+              Principal:
+                Service: "events.amazonaws.com"
+              Action: "sqs:SendMessage"
+              Resource: !GetAtt S3NotificationsQueue.Arn
+              Condition:
+                ArnEquals:
+                  "aws:SourceArn": !Sub "arn:aws:events:${AWS::Region}:${AWS::AccountId}:rule/${AWS::StackName}-*"
+            - !Ref AWS::NoValue
+          - !If
+            - DeploySNSNotificationType
             - Sid: "Allow SNS topics to Send Messages"
               Effect: "Allow"
               Principal:
@@ -611,18 +624,10 @@ Resources:
               Resource: !GetAtt S3NotificationsQueue.Arn
               Condition:
                 ArnEquals:
-                  "aws:SourceArn": !Ref S3NotificationsSNSTopic
-            - Sid: "Allow SNS topics to Send Messages"
-              Effect: "Allow"
-              Principal:
-                Service: "sns.amazonaws.com"
-              Action: "sqs:SendMessage"
-              Resource: !GetAtt S3NotificationsQueue.Arn
-              Condition:
-                ArnLike:
-                  "aws:SourceArn": !Sub "arn:aws:sns:*:${AWS::AccountId}:*"
+                  "aws:SourceArn": !Ref S3NotificationsSNSTopicArns
+            - !Ref AWS::NoValue
           - !If
-            - S3BucketNamesProvided
+            - DeployDirectSQSNotificationType
             - Sid: "Allow S3 buckets to Send Messages"
               Effect: "Allow"
               Principal:
@@ -641,7 +646,7 @@ Resources:
                       # Output: arn:aws:s3:::bucket1,arn:aws:s3:::bucket2,arn:aws:s3:::bucket3 -> it just adds the arn:aws:s3::: prefix to first bucket
                       - BucketList: !Join
                           - ",arn:aws:s3:::"
-                          - !Ref S3BucketNames
+                          - !Ref GrantReadPermissionToBuckets
                           # Input: bucket1,bucket2,bucket3
                           # Output: bucket1,arn:aws:s3:::bucket2,arn:aws:s3:::bucket3
             - !Ref AWS::NoValue
@@ -666,80 +671,6 @@ Resources:
               - !Ref AWS::Region
               - !Ref AWS::AccountId
               - !Sub ${AWS::StackName}-S3NotificationsQueue
-
-  S3NotificationsSNSTopicKey:
-    Type: AWS::KMS::Key
-    Condition: CreateSNSTopicForS3Notifications
-    Properties:
-      Description: CMK for S3 notifications SNS topic — allows S3 to publish to an encrypted topic
-      EnableKeyRotation: true
-      KeyPolicy:
-        Version: "2012-10-17"
-        Statement:
-          - Sid: AllowAccountAdministration
-            Effect: Allow
-            Principal:
-              AWS: !Sub arn:aws:iam::${AWS::AccountId}:root
-            Action: kms:*
-            Resource: "*"
-          - Sid: AllowSNSToUseKey
-            Effect: Allow
-            Principal:
-              Service: sns.amazonaws.com
-            Action:
-              - kms:GenerateDataKey
-              - kms:Decrypt
-            Resource: "*"
-          - Sid: AllowS3ToPublishToEncryptedTopic
-            Effect: Allow
-            Principal:
-              Service: s3.amazonaws.com
-            Action:
-              - kms:GenerateDataKey
-              - kms:Decrypt
-            Resource: "*"
-            Condition:
-              StringEquals:
-                aws:SourceAccount: !Ref AWS::AccountId
-
-  S3NotificationsSNSTopic:
-    Type: AWS::SNS::Topic
-    Condition: CreateSNSTopicForS3Notifications
-    Properties:
-      TopicName: !Sub ${AWS::StackName}-S3Notifications
-      KmsMasterKeyId: !Ref S3NotificationsSNSTopicKey
-
-  S3NotificationsSNSSubscription:
-    Type: AWS::SNS::Subscription
-    Condition: CreateSNSTopicForS3Notifications
-    DependsOn: S3NotificationsQueuePolicy
-    Properties:
-      TopicArn: !Ref S3NotificationsSNSTopic
-      Protocol: sqs
-      Endpoint: !GetAtt S3NotificationsQueue.Arn
-      RawMessageDelivery: "false"
-
-  S3NotificationsSNSTopicPolicy:
-    Type: AWS::SNS::TopicPolicy
-    Condition: CreateSNSTopicForS3Notifications
-    Properties:
-      PolicyDocument:
-        Id: "S3NotificationsSNSTopicPolicy"
-        Version: "2012-10-17"
-        Statement:
-          - Sid: "Allow_S3_to_publish"
-            Effect: Allow
-            Principal:
-              Service: "s3.amazonaws.com"
-            Action: "sns:Publish"
-            Resource: !Ref S3NotificationsSNSTopic
-            Condition:
-              StringEquals:
-                "aws:SourceAccount": !Ref AWS::AccountId
-              ArnLike:
-                "aws:SourceArn": "arn:aws:s3:::*"
-      Topics:
-        - !Ref S3NotificationsSNSTopic
 
   AlarmsSNSTopic:
     Type: AWS::SNS::Topic
@@ -861,9 +792,9 @@ Resources:
         ParentStackName: !Ref AWS::StackName
         QueueProcessingFunctionName: !Ref QueueProcessingFunction
 
-  S3BucketNamesEventBridgeRule:
+  GrantReadPermissionToBucketsEventBridgeRule:
     Type: AWS::Events::Rule
-    Condition: S3BucketNamesProvided
+    Condition: DeployEventBridgeNotificationType
     Properties:
       Name: !Sub "${AWS::StackName}-s3-notifications"
       State: ENABLED
@@ -874,14 +805,14 @@ Resources:
           - "Object Created"
         detail:
           bucket:
-            name: !Ref S3BucketNames
+            name: !Ref GrantReadPermissionToBuckets
       Targets:
         - Id: "SQSQueue"
           Arn: !GetAtt S3NotificationsQueue.Arn
 
   S3GetObjectPolicy:
     Type: AWS::IAM::Policy
-    Condition: S3BucketNamesProvided
+    Condition: GrantReadPermissionToBucketsProvided
     Properties:
       PolicyName: !Sub ${AWS::StackName}-s3-get-object
       PolicyDocument:
@@ -899,7 +830,7 @@ Resources:
                 # Output: arn:aws:s3:::bucket1/*,arn:aws:s3:::bucket2/*,arn:aws:s3:::bucket3/* -> adds arn:aws:s3::: prefix to first bucket and /* suffix to last
                 - BucketList: !Join
                     - "/*,arn:aws:s3:::"
-                    - !Ref S3BucketNames
+                    - !Ref GrantReadPermissionToBuckets
                     # Input: bucket1,bucket2,bucket3
                     # Output: bucket1/*,arn:aws:s3:::bucket2/*,arn:aws:s3:::bucket3
       Roles:
@@ -907,7 +838,7 @@ Resources:
 
   KmsDecryptPolicy:
     Type: AWS::IAM::Policy
-    Condition: KmsKeyArnsProvided
+    Condition: GrantDecryptToKmsKeyArnsProvided
     Properties:
       PolicyName: !Sub ${AWS::StackName}-kms-decrypt
       PolicyDocument:
@@ -915,17 +846,9 @@ Resources:
         Statement:
           - Effect: Allow
             Action: kms:Decrypt
-            Resource: !Ref KmsKeyArns
+            Resource: !Ref GrantDecryptToKmsKeyArns
       Roles:
         - !Ref QueueProcessingFunctionRole
-
-  DynatraceApiKeySecret:
-    Type: AWS::SecretsManager::Secret
-    Condition: DirectApiKeyProvided
-    Properties:
-      Name: !Sub dynatrace/s3-log-forwarder/${AWS::StackName}/api-key
-      SecretString: !Sub '{"dt.platform_token": "${DynatraceApiKey}"}'
-      Description: !Sub "Dynatrace API key for deployment ${AWS::StackName}"
 
   SSMParameterSQSQueueArn:
     Type: AWS::SSM::Parameter
@@ -963,12 +886,6 @@ Outputs:
   SNSAlertsTopic:
     Description: "SNS Topic receiving monitoring alerts"
     Value: !Ref AlarmsSNSTopic
-  S3NotificationsSNSTopic:
-    Condition: CreateSNSTopicForS3Notifications
-    Description: "SNS Topic for receiving S3 Object Created notifications (subscribe your S3 buckets to this topic)"
-    Value: !Ref S3NotificationsSNSTopic
-    Export:
-      Name: !Sub ${AWS::StackName}:S3NotificationsSNSTopicArn
   CrossRegionCrossAccountEventBus:
     Condition: CrossRegionCrossAccountForwardingIsEnabled
     Description: "Amazon EventBridge event bus to receive cross-region and cross-account S3 object created notifications"
@@ -987,8 +904,4 @@ Outputs:
   SSMParameterPathLambdaRoleArn:
     Description: "SSM Parameter path storing the Lambda IAM role ARN"
     Value: !Sub /dynatrace/s3-log-forwarder/${AWS::StackName}/lambda-role-arn
-  SecretsManagerSecretArnDynatraceApiKey:
-    Condition: DirectApiKeyProvided
-    Description: "ARN of the Secrets Manager secret where the Dynatrace API key was stored by the stack"
-    Value: !Ref DynatraceApiKeySecret
 
