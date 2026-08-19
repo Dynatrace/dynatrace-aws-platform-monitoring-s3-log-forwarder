@@ -18,7 +18,7 @@
 #   ./scripts/publish_layer.sh <zip>                                              # All commercial regions (x86_64)
 #   ./scripts/publish_layer.sh <zip> --arch arm64                                 # arm64 layer
 #   ./scripts/publish_layer.sh <zip> --regions us-east-1,eu-west-1,eu-central-1  # Specific regions
-#   ./scripts/publish_layer.sh <zip> --no-update-files                            # Skip README/template.yaml updates
+#   ./scripts/publish_layer.sh <zip> --no-update-files                            # Skip template.yaml update
 
 set -e
 
@@ -125,73 +125,6 @@ publish_to_region() {
 }
 
 # ---------------------------------------------------------------------------
-# Update README.md — upsert ARNs in the "Lambda Layer ARNs" table
-# ---------------------------------------------------------------------------
-
-update_readme() {
-    local readme_file="$REPO_ROOT/README.md"
-    [[ -f "$readme_file" ]] || return
-
-    echo "Updating Lambda Layer ARNs table in $readme_file..."
-
-    local table_header="$README_TABLE_HEADER"
-    local in_table=0 sep_found=0 output="" line stripped
-    local row_region row_x86_arn row_arm_arn new_arn
-
-    while IFS= read -r line || [[ -n "$line" ]]; do
-        stripped="${line#"${line%%[![:space:]]*}"}"
-        stripped="${stripped%"${stripped##*[![:space:]]}"}"
-
-        # Detect table header
-        if [[ $in_table -eq 0 && "$stripped" == "$table_header" ]]; then
-            in_table=1
-            output+="$line"$'\n'
-            continue
-        fi
-
-        # Detect separator row
-        if [[ $in_table -eq 1 && $sep_found -eq 0 && "$stripped" == \|---* ]]; then
-            sep_found=1
-            output+="$line"$'\n'
-            continue
-        fi
-
-        if [[ $in_table -eq 1 && $sep_found -eq 1 ]]; then
-            if [[ "$stripped" == \|*\| ]]; then
-                # Parse 3-column row: | region | x86_64_arn | arm64_arn |
-                row_region=$(echo "$stripped" | awk -F'|' '{gsub(/ /,"",$2); print $2}')
-                row_x86_arn=$(echo "$stripped" | awk -F'|' '{gsub(/^ +| +$/, "", $3); print $3}')
-                row_arm_arn=$(echo "$stripped" | awk -F'|' '{gsub(/^ +| +$/, "", $4); print $4}')
-
-                new_arn=$(lookup_arn "$row_region")
-                if [[ -n "$new_arn" ]]; then
-                    if [[ "$ARCH" == "x86_64" ]]; then
-                        row_x86_arn="$new_arn"
-                    else
-                        row_arm_arn="$new_arn"
-                    fi
-                fi
-                output+="| $row_region | $row_x86_arn | $row_arm_arn |"$'\n'
-                continue
-            else
-                in_table=0
-            fi
-        fi
-
-        output+="$line"$'\n'
-    done < "$readme_file"
-
-    # Preserve original trailing-newline behaviour.
-    # Note: $(...) strips trailing newlines, so check the last byte via od instead.
-    if [[ "$(tail -c1 "$readme_file" | od -An -tx1 | tr -d ' \n')" == "0a" ]]; then
-        printf '%s' "$output" > "$readme_file"
-    else
-        printf '%s' "${output%$'\n'}" > "$readme_file"
-    fi
-    echo "README.md updated."
-}
-
-# ---------------------------------------------------------------------------
 # Update template.yaml — update LayerVersions.All.{x86|arm64} with the
 # published layer version number. Version is taken from the first successfully
 # published region (all regions receive the same version for a given layer name).
@@ -248,7 +181,6 @@ update_template() {
 
 parse_args "$@"
 
-README_TABLE_HEADER="| Region | Layer ARN (x86_64) | Layer ARN (arm64) |"
 
 case "${ARCH}" in
     x86_64)
@@ -287,7 +219,6 @@ for REGION in "${REGIONS[@]}"; do
 done
 
 if [[ ${#PUBLISHED_ARNS[@]} -gt 0 && "$UPDATE_FILES" == true ]]; then
-    update_readme
     update_template
 fi
 
