@@ -59,7 +59,7 @@ DYNATRACE_READ_TIMEOUT = 12
 metrics = Metrics()
 
 default_headers = {
-    "User-Agent" : f"dynatrace-aws-s3-log-forwarder/{get_version()}"
+    "User-Agent" : f"dynatrace-aws-platform-monitoring-s3-log-forwarder/{get_version()}"
 }
 
 class DynatraceSink():
