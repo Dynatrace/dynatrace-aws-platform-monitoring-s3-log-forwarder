@@ -49,14 +49,14 @@ except Exception as exc:
         f"Unable to load ijson backend '{ijson_backend_name}' for log processing"
     )
 
-
-def _get_context_log_attributes(bucket: str, key: str):
+def _get_context_log_attributes(bucket: str, key: str, forwarder_arn: str):
     '''
     Returns context attributes to the log entry for troubleshooting purposes.
     '''
     return {
         'dt.da.aws.s3.bucket.name': bucket,
         'dt.da.aws.s3.key.name': key,
+        'dt.da.aws.forwarder.arn': forwarder_arn,
     }
 
 
@@ -73,6 +73,7 @@ def _get_output_message_with_reduced_fields(attributes: dict) -> dict:
         'content',
         'timestamp',
         'aws.resource.id',
+        'dt.da.aws.forwarder.arn',
     )
     return {k: attributes.get(k) for k in allowed_keys}
 
@@ -241,7 +242,8 @@ def process_log_object(log_processing_rule: LogProcessingRule, bucket: str, key:
     context_log_attributes.update(user_defined_annotations)
 
     # Add context annotations
-    context_log_attributes.update(_get_context_log_attributes(bucket, key))
+    forwarder_arn = lambda_context.invoked_function_arn if lambda_context else ''
+    context_log_attributes.update(_get_context_log_attributes(bucket, key, forwarder_arn))
     context_log_attributes.update(
         log_processing_rule.get_attributes_from_s3_key_name(key))
     context_log_attributes.update(

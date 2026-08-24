@@ -57,6 +57,7 @@ Log forwarding rules allow you to add custom annotations to your logs (e.g team:
 
 * dt.da.aws.s3.bucket.name: name of the S3 bucket the log was forwarded from
 * dt.da.aws.s3.key.name: key name of the S3 object that the log entry belongs to
+* dt.da.aws.forwarder.arn: AWS ARN of the forwarder lambda function
 
 The `dynatrace-aws-platform-monitoring-s3-log-forwarder` automatically annotates logs and extracts relevant attributes for [supported AWS services](../README.md#supported-aws-services) with fields like `aws.account.id`, `aws.region`...
 

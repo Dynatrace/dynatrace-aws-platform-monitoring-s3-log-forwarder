@@ -2,7 +2,6 @@
 #   - Repo variable SNYK_ORG_ID  : Snyk Organization ID (UUID) for capability_data_acquisition.
 #                                  Get it at app.snyk.io → Settings → General → Organization ID.
 #   - Repo secret  SNYK_TOKEN    : Snyk API token (set as a GitHub secret).
-#   - Repo secret  DT_TENANT_URL : Dynatrace tenant URL (already used by ci.yml e2e jobs).
 ---
 name: Snyk
 
@@ -17,7 +16,6 @@ on:
 
 permissions:
   contents: read
-  id-token: write  # required for dynatrace-apps/actions/metadata OIDC auth
 
 jobs:
   snyk-container:
@@ -29,10 +27,6 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Collect metadata
-        uses: dynatrace-apps/actions/metadata@v0
-        with:
-          sdlc-host: ${{ secrets.DT_TENANT_URL }}
       - name: Build build environment image
         run: docker build -f scripts/Dockerfile.build -t lambda-build-env .
       - name: Set up Snyk CLI
@@ -49,7 +43,7 @@ jobs:
 
   snyk-open-source:
     name: Snyk Open Source (Python deps)
-    # Skip on PRs from forks — they don't get id-token: write.
+    # Skip on PRs from forks — secrets are not available in fork PRs.
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
@@ -57,10 +51,6 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Collect metadata
-        uses: dynatrace-apps/actions/metadata@v0
-        with:
-          sdlc-host: ${{ secrets.DT_TENANT_URL }}
       - name: Set up Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
@@ -90,10 +80,6 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Collect metadata
-        uses: dynatrace-apps/actions/metadata@v0
-        with:
-          sdlc-host: ${{ secrets.DT_TENANT_URL }}
       - name: Set up Snyk CLI
         uses: snyk/actions/setup@master
       - name: Snyk Code test
@@ -110,10 +96,6 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Collect metadata
-        uses: dynatrace-apps/actions/metadata@v0
-        with:
-          sdlc-host: ${{ secrets.DT_TENANT_URL }}
       - name: Set up Snyk CLI
         uses: snyk/actions/setup@master
       - name: Snyk IaC test

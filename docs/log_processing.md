@@ -8,6 +8,7 @@ For all processed logs, the forwarder enriches the entries with the following co
 
 * `dt.da.aws.s3.bucket.name`: the name of the S3 bucket where the log comes from
 * `dt.da.aws.s3.key.name`: the S3 key name the log comes from
+* `dt.da.aws.forwarder.arn`: AWS ARN of the forwarder lambda function
 * Any user-defined log attributes defined on the Log Forwarding Rule matched.
 
 The processing rules are grouped into 3 main blocks (aka sources):

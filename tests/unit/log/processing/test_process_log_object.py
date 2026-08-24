@@ -28,7 +28,9 @@ from log.processing.log_processing_rule import LogProcessingRule
 
 os.environ['LOG_FORWARDER_CONFIGURATION_LOCATION'] = 'local'
 os.environ['DEPLOYMENT_NAME'] = 'test'
-os.environ['FORWARDER_FUNCTION_ARN'] = 'arn:aws:lambda:us-east-1:123456789012:function:test'
+
+FORWARDER_FUNCTION_ARN = 'arn:aws:lambda:us-east-1:123456789012:function:test'
+
 
 class TestProcessLogObject(unittest.TestCase):
     """Test process_log_object function with various JSON formats"""
@@ -37,6 +39,7 @@ class TestProcessLogObject(unittest.TestCase):
         """Set up test fixtures"""
         self.mock_lambda_context = Mock()
         self.mock_lambda_context.get_remaining_time_in_millis.return_value = 300000
+        self.mock_lambda_context.invoked_function_arn = FORWARDER_FUNCTION_ARN
 
         self.mock_log_sink = Mock()
         self.mock_log_sink.push = Mock()
@@ -346,6 +349,8 @@ class TestProcessLogObject(unittest.TestCase):
         self.assertEqual(call_args['dt.da.aws.s3.bucket.name'], 'my-test-bucket')
         self.assertIn('dt.da.aws.s3.key.name', call_args)
         self.assertEqual(call_args['dt.da.aws.s3.key.name'], 'logs/2024/01/01/test.json')
+        self.assertIn('dt.da.aws.forwarder.arn', call_args)
+        self.assertEqual(call_args['dt.da.aws.forwarder.arn'], FORWARDER_FUNCTION_ARN)
 
     @patch('boto3._get_default_session')
     def test_output_reduced_fields_include_missing_keys_as_none(self, mock_session):
@@ -386,6 +391,7 @@ class TestProcessLogObject(unittest.TestCase):
             'aws.region',
             'dt.da.aws.s3.bucket.name',
             'dt.da.aws.s3.key.name',
+            'dt.da.aws.forwarder.arn',
             'aws.arn',
             'aws.resource.id',
             'aws.resource.type',
@@ -393,6 +399,7 @@ class TestProcessLogObject(unittest.TestCase):
             'timestamp'
         }
         self.assertEqual(set(call_args.keys()), expected_keys)
+        self.assertEqual(call_args['dt.da.aws.forwarder.arn'], FORWARDER_FUNCTION_ARN)
         self.assertIsNone(call_args['aws.arn'])
         self.assertIsNone(call_args['aws.resource.id'])
         self.assertIsNone(call_args['aws.resource.type'])

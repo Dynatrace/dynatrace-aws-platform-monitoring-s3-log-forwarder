@@ -105,8 +105,6 @@ def lambda_handler(event, context):
 
     logger.debug(json.dumps(event, indent=2))
 
-    os.environ['FORWARDER_FUNCTION_ARN'] = context.invoked_function_arn
-
     # List for SQS messages that failed processing
     batch_item_failures = {
         'batchItemFailures': []
