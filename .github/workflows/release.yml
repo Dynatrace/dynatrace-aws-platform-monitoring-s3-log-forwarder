@@ -34,6 +34,8 @@ jobs:
           GIT_TAG: ${{ github.ref_name }}
           GIT_COMMIT: ${{ github.sha }}
         run: ./scripts/update_version.sh
+      - name: Build Lambda ZIP
+        run: ./scripts/build_docker.sh zip dist/lambda-x86_64.zip x86_64
       - name: Upload Lambda ZIP artifact
         uses: actions/upload-artifact@v7
         with:
@@ -75,6 +77,14 @@ jobs:
           GIT_TAG: ${{ github.ref_name }}
           GIT_COMMIT: ${{ github.sha }}
         run: ./scripts/update_version.sh
+      - name: Build Lambda ZIP
+        run: ./scripts/build_docker.sh zip dist/lambda-arm64.zip arm64
+      - name: Upload Lambda ZIP artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: lambda-arm64
+          path: dist/lambda-arm64.zip
+          retention-days: 1
       - name: Build Lambda Layer
         run: ./scripts/build_docker.sh layer dist/layer-arm64.zip arm64
       - name: Configure AWS credentials for layer publishing
@@ -123,8 +133,10 @@ jobs:
           aws s3 cp cloudwatch-monitoring-dashboard.yaml s3://${RELEASE_BUCKET}/${RELEASE_PREFIX}/
           aws s3 cp dynatrace-aws-s3-log-forwarder-s3-bucket-configuration.yaml s3://${RELEASE_BUCKET}/${RELEASE_PREFIX}/
           aws s3 cp eventbridge-cross-region-or-account-forward-rules.yaml s3://${RELEASE_BUCKET}/${RELEASE_PREFIX}/
+          aws s3 cp dynatrace-aws-s3-log-forwarder-appconfig.yaml s3://${RELEASE_BUCKET}/${RELEASE_PREFIX}/
           zip templates.zip -j template.yaml \
             cloudwatch-monitoring-dashboard.yaml \
+            dynatrace-aws-s3-log-forwarder-appconfig.yaml \
             dynatrace-aws-s3-log-forwarder-s3-bucket-configuration.yaml \
             eventbridge-cross-region-or-account-forward-rules.yaml
           aws s3 cp templates.zip s3://${RELEASE_BUCKET}/${RELEASE_PREFIX}/
@@ -135,6 +147,7 @@ jobs:
           path: |
             template.yaml
             cloudwatch-monitoring-dashboard.yaml
+            dynatrace-aws-s3-log-forwarder-appconfig.yaml
             dynatrace-aws-s3-log-forwarder-s3-bucket-configuration.yaml
             eventbridge-cross-region-or-account-forward-rules.yaml
             templates.zip
@@ -149,28 +162,25 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: actions/download-artifact@v8
-        with:
-          name: lambda-x86_64
-          path: release-assets
-      - uses: actions/download-artifact@v8
-        with:
-          name: lambda-arm64
-          path: release-assets
-      - uses: actions/download-artifact@v8
-        with:
           name: cfn-templates
           path: release-assets
-      - name: Create GitHub Release
+      - name: Download Lambda ZIP artifacts
+        uses: actions/download-artifact@v8
+        with:
+          pattern: lambda-*
+          path: release-assets
+          merge-multiple: true
+      - name: Upload assets to GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "${{ github.ref_name }}" \
-            release-assets/lambda-x86_64.zip \
-            release-assets/lambda-arm64.zip \
+          gh release upload "${{ github.ref_name }}" \
             release-assets/template.yaml \
             release-assets/cloudwatch-monitoring-dashboard.yaml \
+            release-assets/dynatrace-aws-s3-log-forwarder-appconfig.yaml \
             release-assets/dynatrace-aws-s3-log-forwarder-s3-bucket-configuration.yaml \
             release-assets/eventbridge-cross-region-or-account-forward-rules.yaml \
+            release-assets/lambda-x86_64.zip \
+            release-assets/lambda-arm64.zip \
             release-assets/templates.zip \
-            --title "${{ github.ref_name }}" \
-            --generate-notes
+            --clobber

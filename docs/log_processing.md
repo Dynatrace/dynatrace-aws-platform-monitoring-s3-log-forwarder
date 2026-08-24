@@ -6,9 +6,8 @@ The `dynatrace-aws-platform-monitoring-s3-log-forwarder` supports processing pla
 
 For all processed logs, the forwarder enriches the entries with the following contextual attributes:
 
-* `log.source.forwarder`: the Amazon Resource Name (ARN) of the AWS Lambda function that shipped the log to Dynatrace
-* `log.source.aws.s3.bucket.name`: the name of the S3 bucket where the log comes from
-* `log.source.aws.s3.key.name`: the S3 key name the log comes from
+* `dt.da.aws.s3.bucket.name`: the name of the S3 bucket where the log comes from
+* `dt.da.aws.s3.key.name`: the S3 key name the log comes from
 * Any user-defined log attributes defined on the Log Forwarding Rule matched.
 
 The processing rules are grouped into 3 main blocks (aka sources):

@@ -45,6 +45,8 @@ Metadata:
         Parameters:
           - DeploymentPackageType
           - DynatraceS3LogForwarderLayerArn
+          - LambdaCodeS3Bucket
+          - LambdaCodeS3Key
           - LambdaFunctionMemorySize
           - LambdaLoggingLevel
           - LambdaMaximumExecutionTime
@@ -110,6 +112,10 @@ Metadata:
         default: Deployment Package Type
       DynatraceS3LogForwarderLayerArn:
         default: Lambda Layer ARN (optional override)
+      LambdaCodeS3Bucket:
+        default: Lambda Code S3 Bucket (ZIP deployments)
+      LambdaCodeS3Key:
+        default: Lambda Code S3 Key (ZIP deployments)
       LambdaSubnetIds:
         default: Subnet IDs
       LambdaSecurityGroupId:
@@ -178,19 +184,28 @@ Parameters:
     AllowedPattern: "(^$|^[a-zA-Z0-9._%+\\-]+@[a-zA-Z0-9.\\-]+\\.[a-zA-Z]{2,}$)"
     ConstraintDescription: "Must be a valid e-mail address or left empty."
   DeploymentPackageType:
-    Description: "How the Lambda function code is delivered. 'layer' uses a pre-built Lambda Layer published by Dynatrace."
+    Description: "How the Lambda function code is delivered. 'layer' uses a pre-built Lambda Layer published by Dynatrace. 'zip' deploys from a Lambda ZIP package stored in an S3 bucket you own — requires LambdaCodeS3Bucket and LambdaCodeS3Key."
     Type: String
     Default: layer
     AllowedValues:
       - layer
+      - zip
   DynatraceS3LogForwarderLayerArn:
     Type: String
     Default: ""
     AllowedPattern: "(arn:(aws[a-zA-Z-]*)?:lambda:[a-z]{2}(-gov)?(-iso([a-z])?)?-[a-z]+-\\d{1}:\\d{12}:layer:[a-zA-Z0-9-_]+:[0-9]+)?"
     Description: >
       (Optional) ARN of the Dynatrace S3 Log Forwarder Lambda Layer.
-      If not provided, the most recent version of the Dynatrace S3 Log Forwarder Lambda Layer will be used 
+      If not provided, the most recent version of the Dynatrace S3 Log Forwarder Lambda Layer will be used
       (if DeploymentPackageType is 'layer').
+  LambdaCodeS3Bucket:
+    Type: String
+    Default: ""
+    Description: "Name of the S3 bucket that contains the Lambda ZIP deployment package. Required when DeploymentPackageType is 'zip'."
+  LambdaCodeS3Key:
+    Type: String
+    Default: ""
+    Description: "S3 key (path) of the Lambda ZIP deployment package within LambdaCodeS3Bucket. Required when DeploymentPackageType is 'zip'."
   LambdaFunctionMemorySize:
     Description: Memory size of the queue processing Lambda function
     Type: Number
@@ -336,67 +351,75 @@ Rules:
                   - !Ref S3NotificationsSNSTopicArns
                   - ""
         AssertDescription: "S3NotificationsSNSTopicArns must be provided when NotificationType is SNS."
+  ZipDeploymentRequiresS3Location:
+    Assertions:
+      - Assert: !Or
+          - !Not [!Equals [!Ref DeploymentPackageType, "zip"]]
+          - !And
+            - !Not [!Equals [!Ref LambdaCodeS3Bucket, ""]]
+            - !Not [!Equals [!Ref LambdaCodeS3Key, ""]]
+        AssertDescription: "LambdaCodeS3Bucket and LambdaCodeS3Key must be provided when DeploymentPackageType is 'zip'."
 
 Mappings:
   LayerArns:
     af-south-1:
-      Arn: arn:aws:lambda:af-south-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
+      Arn: arn:aws:lambda:af-south-1:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
     ap-east-1:
-      Arn: arn:aws:lambda:ap-east-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
+      Arn: arn:aws:lambda:ap-east-1:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
     ap-northeast-1:
-      Arn: arn:aws:lambda:ap-northeast-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
+      Arn: arn:aws:lambda:ap-northeast-1:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
     ap-northeast-2:
-      Arn: arn:aws:lambda:ap-northeast-2:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
+      Arn: arn:aws:lambda:ap-northeast-2:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
     ap-northeast-3:
-      Arn: arn:aws:lambda:ap-northeast-3:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
+      Arn: arn:aws:lambda:ap-northeast-3:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
     ap-south-1:
-      Arn: arn:aws:lambda:ap-south-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
+      Arn: arn:aws:lambda:ap-south-1:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
     ap-south-2:
-      Arn: arn:aws:lambda:ap-south-2:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
+      Arn: arn:aws:lambda:ap-south-2:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
     ap-southeast-1:
-      Arn: arn:aws:lambda:ap-southeast-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
+      Arn: arn:aws:lambda:ap-southeast-1:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
     ap-southeast-2:
-      Arn: arn:aws:lambda:ap-southeast-2:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
+      Arn: arn:aws:lambda:ap-southeast-2:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
     ap-southeast-3:
-      Arn: arn:aws:lambda:ap-southeast-3:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
+      Arn: arn:aws:lambda:ap-southeast-3:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
     ap-southeast-4:
-      Arn: arn:aws:lambda:ap-southeast-4:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
+      Arn: arn:aws:lambda:ap-southeast-4:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
     ca-central-1:
-      Arn: arn:aws:lambda:ca-central-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
+      Arn: arn:aws:lambda:ca-central-1:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
     ca-west-1:
-      Arn: arn:aws:lambda:ca-west-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
+      Arn: arn:aws:lambda:ca-west-1:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
     eu-central-1:
-      Arn: arn:aws:lambda:eu-central-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
+      Arn: arn:aws:lambda:eu-central-1:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
     eu-central-2:
-      Arn: arn:aws:lambda:eu-central-2:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
+      Arn: arn:aws:lambda:eu-central-2:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
     eu-north-1:
-      Arn: arn:aws:lambda:eu-north-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
+      Arn: arn:aws:lambda:eu-north-1:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
     eu-south-1:
-      Arn: arn:aws:lambda:eu-south-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
+      Arn: arn:aws:lambda:eu-south-1:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
     eu-south-2:
-      Arn: arn:aws:lambda:eu-south-2:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
+      Arn: arn:aws:lambda:eu-south-2:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
     eu-west-1:
-      Arn: arn:aws:lambda:eu-west-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
+      Arn: arn:aws:lambda:eu-west-1:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
     eu-west-2:
-      Arn: arn:aws:lambda:eu-west-2:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
+      Arn: arn:aws:lambda:eu-west-2:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
     eu-west-3:
-      Arn: arn:aws:lambda:eu-west-3:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
+      Arn: arn:aws:lambda:eu-west-3:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
     il-central-1:
-      Arn: arn:aws:lambda:il-central-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
+      Arn: arn:aws:lambda:il-central-1:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
     me-central-1:
-      Arn: arn:aws:lambda:me-central-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
+      Arn: arn:aws:lambda:me-central-1:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
     me-south-1:
-      Arn: arn:aws:lambda:me-south-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
+      Arn: arn:aws:lambda:me-south-1:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
     sa-east-1:
-      Arn: arn:aws:lambda:sa-east-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
+      Arn: arn:aws:lambda:sa-east-1:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
     us-east-1:
-      Arn: arn:aws:lambda:us-east-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
+      Arn: arn:aws:lambda:us-east-1:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
     us-east-2:
-      Arn: arn:aws:lambda:us-east-2:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
+      Arn: arn:aws:lambda:us-east-2:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
     us-west-1:
-      Arn: arn:aws:lambda:us-west-1:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
+      Arn: arn:aws:lambda:us-west-1:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
     us-west-2:
-      Arn: arn:aws:lambda:us-west-2:123456789012:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
+      Arn: arn:aws:lambda:us-west-2:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder{arch}
   LayerVersions:
     All:
       x86: 1
@@ -424,15 +447,6 @@ Conditions:
   IsDynatraceProductionEnvironment: !Equals
     - !Select [ 2, !Split [ ".", !Select [ 1, !Split [ "://", !Ref DynatraceEnvironmentURL ] ] ] ]
     - 'dynatrace'
-
-Globals:
-  Function:
-    Timeout: !Ref LambdaMaximumExecutionTime
-    Environment:
-      Variables:
-        POWERTOOLS_METRICS_NAMESPACE: dynatrace-aws-platform-monitoring-s3-log-forwarder
-        DEPLOYMENT_NAME: !Ref AWS::StackName
-
 
 Resources:
   QueueProcessingFunctionRole:
@@ -491,18 +505,18 @@ Resources:
           - !Ref AWS::NoValue
 
   QueueProcessingFunction:
-    Type: AWS::Serverless::Function
+    Type: AWS::Lambda::Function
     Properties:
       PackageType: Zip
-      InlineCode: !If
+      Code: !If
         - IsLayerDeployment
-        - |
-          from app import lambda_handler as handler
-        - |
-          def lambda_handler(event, context):
-              raise NotImplementedError("Placeholder function. Update the function code with the Lambda ZIP package.")
+        - ZipFile: |
+            from app import lambda_handler as handler
+        - S3Bucket: !Ref LambdaCodeS3Bucket
+          S3Key: !Ref LambdaCodeS3Key
       Handler: !If [IsLayerDeployment, "index.handler", "app.lambda_handler"]
       Runtime: python3.14
+      Timeout: !Ref LambdaMaximumExecutionTime
       Layers: !If
         - IsLayerDeployment
         - - !If
@@ -524,6 +538,8 @@ Resources:
         - !Ref Architecture
       Environment:
         Variables:
+          POWERTOOLS_METRICS_NAMESPACE: dynatrace-aws-platform-monitoring-s3-log-forwarder
+          DEPLOYMENT_NAME: !Ref AWS::StackName
           LD_LIBRARY_PATH: !If [IsLayerDeployment, !Ref "AWS::NoValue", "/var/task/lib"]
           DYNATRACE_ENV_URL: !If
             - IsDynatraceProductionEnvironment
@@ -547,23 +563,24 @@ Resources:
           VERIFY_DT_SSL_CERT: !Ref VerifyLogEndpointSSLCerts
           DYNATRACE_LOG_INGEST_CONTENT_MAX_LENGTH: !Ref DynatraceLogIngestContentMaxLength
       Role: !GetAtt QueueProcessingFunctionRole.Arn
-      Events:
-        SQSMessages:
-          Type: SQS
-          Properties:
-            BatchSize: !Ref LambdaSQSMessageBatchSize
-            Enabled: True
-            MaximumBatchingWindowInSeconds: !Ref SQSLongPollingMaxSeconds
-            Queue: !GetAtt S3NotificationsQueue.Arn
-            FunctionResponseTypes:
-              - ReportBatchItemFailures
-            ScalingConfig:
-               MaximumConcurrency: !Ref MaximumLambdaConcurrency
       ReservedConcurrentExecutions: !Ref MaximumLambdaConcurrency
       VpcConfig:
         SecurityGroupIds:
           - !If [ LambdaVpcSecurityGroupSpecified, !Ref LambdaSecurityGroupId, !Ref "AWS::NoValue" ]
         SubnetIds: !If [ LambdaVpcConfigSpecified, !Ref LambdaSubnetIds, !Ref "AWS::NoValue" ]
+
+  QueueProcessingFunctionSQSMessages:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      BatchSize: !Ref LambdaSQSMessageBatchSize
+      Enabled: True
+      EventSourceArn: !GetAtt S3NotificationsQueue.Arn
+      FunctionName: !Ref QueueProcessingFunction
+      MaximumBatchingWindowInSeconds: !Ref SQSLongPollingMaxSeconds
+      FunctionResponseTypes:
+        - ReportBatchItemFailures
+      ScalingConfig:
+        MaximumConcurrency: !Ref MaximumLambdaConcurrency
 
   S3NotificationsQueue:
     Type: AWS::SQS::Queue

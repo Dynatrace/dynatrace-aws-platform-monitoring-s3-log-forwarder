@@ -1,9 +1,5 @@
 # Update instructions
 
-> [!IMPORTANT]
->
-> Update of `dynatrace-aws-platform-monitoring-s3-log-forwarder` deployments to the latest version is supported from version `v0.4.4` and later.
-
 ## Prerequisites
 
 The update instructions are written for Linux/MacOS. If you are running on Windows, use the Linux Subsystem for Windows, AWS CloudShell or an [AWS Cloud9](https://aws.amazon.com/cloud9/) instance.
@@ -40,7 +36,7 @@ export VERSION_TAG=$(curl -s https://api.github.com/repos/dynatrace/dynatrace-aw
 > If you want to update to specific version, set the `VERSION_TAG` variable to that version (e.g. `v1.2.3`).
 >
 > ```bash
-> export VERSION_TAG=v0.5.8
+> export VERSION_TAG=v1.2.3
 > ```
 
 ### Step 4. Download the latest templates
@@ -55,6 +51,8 @@ unzip -o templates.zip
 
 ### Step 5. Update the stack
 
+#### Lambda Layer
+
 Redeploy with the new `template.yaml` — the latest layer ARN for your region and architecture is embedded in the template's mappings.
 
 ```bash
@@ -64,6 +62,30 @@ aws cloudformation deploy --stack-name ${STACK_NAME} \
             --parameter-overrides \
                 DeploymentPackageType="layer"
 ```
+
+#### Lambda ZIP
+
+Download the new ZIP for your architecture from the GitHub release, upload it to your S3 bucket, then redeploy:
+
+```bash
+export LAMBDA_CODE_BUCKET=<your-s3-bucket-name>
+export LAMBDA_CODE_KEY=dynatrace-aws-platform-monitoring-s3-log-forwarder/lambda-x86_64.zip
+
+wget https://github.com/dynatrace/dynatrace-aws-platform-monitoring-s3-log-forwarder/releases/download/${VERSION_TAG}/lambda-x86_64.zip
+aws s3 cp lambda-x86_64.zip "s3://${LAMBDA_CODE_BUCKET}/${LAMBDA_CODE_KEY}"
+
+aws cloudformation deploy --stack-name ${STACK_NAME} \
+            --template-file template.yaml \
+            --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
+            --parameter-overrides \
+                DeploymentPackageType="zip" \
+                LambdaCodeS3Bucket="${LAMBDA_CODE_BUCKET}" \
+                LambdaCodeS3Key="${LAMBDA_CODE_KEY}"
+```
+
+> [!NOTE]
+ >
+ > * See [CloudFormation parameter reference](cloudformation_parameters.md) for all available parameters.
 
 If successful, you'll see a message similar to the below at the end of the execution:
 

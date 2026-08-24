@@ -6,6 +6,7 @@
 #   DT_SSO_URL                   - Dynatrace SSO URL for OAuth token exchange
 #   DT_OAUTH_CLIENT_ID           - OAuth client ID for log validation
 #   DT_OAUTH_CLIENT_SECRET       - OAuth client secret for log validation
+#   KMS_KEY_ARNS                 - ARN of the KMS key used to test SSE-KMS encrypted bucket support (e2e-test-default)
 ---
 name: CI
 
@@ -15,7 +16,23 @@ on:
       - '**'
     tags-ignore:
       - 'v*'
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
+      - 'mkdocs.yml'
+      - 'catalog-info.yaml'
+      - 'LICENSE'
+      - 'NOTICE'
+      - 'THIRD_PARTY_LICENSES'
   pull_request:
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
+      - 'mkdocs.yml'
+      - 'catalog-info.yaml'
+      - 'LICENSE'
+      - 'NOTICE'
+      - 'THIRD_PARTY_LICENSES'
   workflow_dispatch:
 
 permissions:
@@ -46,7 +63,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.14'
       - name: Install dependencies
@@ -68,12 +85,15 @@ jobs:
         run: ./scripts/update_version.sh
       - name: Build Lambda Layer
         run: ./scripts/build_docker.sh layer dist/layer.zip x86_64
+      - name: Build Lambda ZIP
+        run: ./scripts/build_docker.sh zip dist/lambda.zip x86_64
       - name: Upload build artifacts
         uses: actions/upload-artifact@v7
         with:
           name: lambda-artifacts-x86_64
           path: |
             dist/layer.zip
+            dist/lambda.zip
           retention-days: 7
 
   build-arm64:
@@ -88,12 +108,15 @@ jobs:
         run: ./scripts/update_version.sh
       - name: Build Lambda Layer
         run: ./scripts/build_docker.sh layer dist/layer.zip arm64
+      - name: Build Lambda ZIP
+        run: ./scripts/build_docker.sh zip dist/lambda.zip arm64
       - name: Upload build artifacts
         uses: actions/upload-artifact@v7
         with:
           name: lambda-artifacts-arm64
           path: |
             dist/layer.zip
+            dist/lambda.zip
           retention-days: 7
 
   e2e-test:
@@ -118,6 +141,16 @@ jobs:
             runs-on: ubuntu-24.04-arm
             artifact: lambda-artifacts-arm64
             bucket: dynatrace-aws-s3-log-forwarder-e2e-testing-layer-arm64
+          - deploy_type: zip
+            arch: x86_64
+            runs-on: ubuntu-latest
+            artifact: lambda-artifacts-x86_64
+            bucket: dynatrace-aws-s3-log-forwarder-e2e-testing-zip-x86-64
+          - deploy_type: zip
+            arch: arm64
+            runs-on: ubuntu-24.04-arm
+            artifact: lambda-artifacts-arm64
+            bucket: dynatrace-aws-s3-log-forwarder-e2e-testing-zip-arm64
     env:
       E2E_TESTING_BUCKET_NAME: ${{ matrix.bucket }}
       CI_RUN_ID: ${{ github.run_id }}
@@ -145,7 +178,7 @@ jobs:
         with:
           name: ${{ matrix.artifact }}
           path: dist/
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.14'
       - name: Install dependencies
@@ -248,8 +281,13 @@ jobs:
         if: steps.update_forwarder_direct_sqs.outcome == 'success'
         run: ./tests/e2e/configure_notifications.sh direct-sqs ${STACK_NAME} ${E2E_TESTING_BUCKET_NAME} ${E2E_TEST_PREFIX} ${{ secrets.CFN_ROLE_ARN }}
       - name: Test Direct SQS notifications
+        id: test_direct_sqs
         if: steps.configure_direct_sqs.outcome == 'success'
         run: |
+          # S3's direct-to-SQS notification delivery has no retry on failure (unlike SNS/EventBridge
+          # target delivery), so give the queue policy from the preceding change-set a moment to be
+          # fully consistent before S3 gets its one shot at publishing the real event.
+          sleep 15
           echo "[$(date -u '+%Y-%m-%dT%H:%M:%SZ')] E2E Direct SQS validation log entry" > test.log
           aws s3 cp test.log s3://${E2E_TESTING_BUCKET_NAME}/${E2E_TEST_PREFIX}/direct-sqs/test.log
           sleep 180
@@ -283,7 +321,7 @@ jobs:
       DT_SSO_URL: ${{ secrets.DT_SSO_URL }}
       DT_OAUTH_CLIENT_ID: ${{ secrets.DT_OAUTH_CLIENT_ID }}
       DT_OAUTH_CLIENT_SECRET: ${{ secrets.DT_OAUTH_CLIENT_SECRET }}
-      KMS_KEY_ARNS: arn:aws:kms:us-east-1:558221435292:key/23267ae3-cab2-4ef2-a2ed-4ba4b5676444
+      KMS_KEY_ARNS: ${{ secrets.KMS_KEY_ARNS }}
       IAM_ROLE_PATH: /e2e-iam-role-path/
       S3_BUCKET_NAMES: dynatrace-aws-s3-log-forwarder-e2e-testing-default
     steps:
@@ -302,7 +340,7 @@ jobs:
         with:
           name: lambda-artifacts-x86_64
           path: dist/
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.14'
       - name: Install dependencies

@@ -43,9 +43,9 @@ Before deploying either option, complete the following steps.
     export DYNATRACE_TENANT_UUID=replace_with_your_dynatrace_tenant_uuid
     ```
 
-    > [!IMPORTANT]
-    >
-    > Your stack name should have a maximum of 47 characters, otherwise deployment will fail.
+ > [!IMPORTANT]
+ >
+ > Your stack name should have a maximum of 47 characters, otherwise deployment will fail.
 
 1. Provide the Dynatrace platform token.
 
