@@ -50,8 +50,8 @@ def get_oauth_bearer_token():
 POLL_INTERVAL_SECONDS = 10
 POLL_MAX_ATTEMPTS = 18
 
-RETRY_INTERVAL_SECONDS = 30
-RETRY_MAX_ATTEMPTS = 5
+RETRY_INTERVAL_SECONDS = 60
+RETRY_MAX_ATTEMPTS = 10
 
 def get_logs_from_dynatrace(source_bucket_name,source_key_name):
     base_url = os.environ['DT_TENANT_PLATFORM_URL']
