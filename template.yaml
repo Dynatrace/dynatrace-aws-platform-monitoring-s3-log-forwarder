@@ -184,7 +184,7 @@ Parameters:
     AllowedPattern: "(^$|^[a-zA-Z0-9._%+\\-]+@[a-zA-Z0-9.\\-]+\\.[a-zA-Z]{2,}$)"
     ConstraintDescription: "Must be a valid e-mail address or left empty."
   DeploymentPackageType:
-    Description: "How the Lambda function code is delivered. 'layer' uses a pre-built Lambda Layer published by Dynatrace. 'zip' deploys from a Lambda ZIP package stored in an S3 bucket you own — requires LambdaCodeS3Bucket and LambdaCodeS3Key."
+    Description: "How the Lambda function code is delivered. 'layer' uses a pre-built Lambda Layer published by Dynatrace. 'zip' deploys from a Lambda ZIP package stored in an S3 bucket you own - requires LambdaCodeS3Bucket and LambdaCodeS3Key."
     Type: String
     Default: layer
     AllowedValues:
@@ -333,7 +333,7 @@ Rules:
           - !And
             - !Not [!Equals [!Ref DynatraceApiKeySSMParameter, ""]]
             - !Not [!Equals [!Ref DynatraceApiKeySecretsManagerSecret, ""]]
-        AssertDescription: "DynatraceApiKeySSMParameter and DynatraceApiKeySecretsManagerSecret are mutually exclusive — provide only one."
+        AssertDescription: "DynatraceApiKeySSMParameter and DynatraceApiKeySecretsManagerSecret are mutually exclusive - provide only one."
   VpcSecurityGroupRequiredWithSubnets:
     Assertions:
       - Assert: !Or
