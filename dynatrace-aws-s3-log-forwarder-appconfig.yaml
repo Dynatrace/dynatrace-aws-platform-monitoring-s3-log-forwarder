@@ -9,7 +9,7 @@ Description: |
   Deploy this template once per dynatrace-aws-platform-monitoring-s3-log-forwarder deployment
   when you want to customise forwarding or processing rules. To update rules, edit the Content
   field of LogForwardingRulesHostedConfiguration or LogProcessingRulesHostedConfiguration in
-  this template and redeploy the stack — the Lambda will pick up changes within ~1 minute.
+  this template and redeploy the stack - the Lambda will pick up changes within ~1 minute.
 
   For more information: https://github.com/Dynatrace/dynatrace-aws-platform-monitoring-s3-log-forwarder
 
