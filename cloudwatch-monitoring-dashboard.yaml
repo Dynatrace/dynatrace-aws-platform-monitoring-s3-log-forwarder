@@ -36,7 +36,7 @@ Resources:
   CloudWatchDashboard:
     Type: AWS::CloudWatch::Dashboard
     Properties:
-      DashboardName: !Sub ${ParentStackName}-monitoring-dashboard
+      DashboardName: !Sub ${ParentStackName}-monitoring-dashboard-${AWS::Region}
       DashboardBody:
         !Sub >
           {
