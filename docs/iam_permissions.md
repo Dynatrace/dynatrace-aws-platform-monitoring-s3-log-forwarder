@@ -107,7 +107,7 @@ cloudwatch:TagResource
 cloudwatch:ListTagsForResource
 ```
 
-**CloudWatch dashboard** — `arn:aws:cloudwatch:<region>:<account-id>:dashboard/<stack-name>-monitoring-dashboard`
+**CloudWatch dashboard** — `arn:aws:cloudwatch:<region>:<account-id>:dashboard/<stack-name>-monitoring-dashboard-<region>`
 
 ```text
 cloudwatch:PutDashboard
