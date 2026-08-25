@@ -50,6 +50,9 @@ def get_oauth_bearer_token():
 POLL_INTERVAL_SECONDS = 10
 POLL_MAX_ATTEMPTS = 18
 
+RETRY_INTERVAL_SECONDS = 30
+RETRY_MAX_ATTEMPTS = 5
+
 def get_logs_from_dynatrace(source_bucket_name,source_key_name):
     base_url = os.environ['DT_TENANT_PLATFORM_URL']
     execute_url = f"{base_url}/platform/storage/query/v1/query:execute"
@@ -89,7 +92,7 @@ def get_logs_from_dynatrace(source_bucket_name,source_key_name):
 
     # Poll until the query completes
     attempts = 0
-    while state == "RUNNING" and attempts < POLL_MAX_ATTEMPTS:
+    while state in ("NOT_STARTED", "RUNNING") and attempts < POLL_MAX_ATTEMPTS:
         time.sleep(POLL_INTERVAL_SECONDS)
         attempts += 1
 
@@ -114,19 +117,23 @@ def main():
 
     args = parser.parse_args()
 
-    result = get_logs_from_dynatrace(args.bucket, args.key)
+    for attempt in range(1, RETRY_MAX_ATTEMPTS + 1):
+        print(f"Attempt {attempt}/{RETRY_MAX_ATTEMPTS}: querying Dynatrace for logs...")
+        result = get_logs_from_dynatrace(args.bucket, args.key)
 
-    print("Query result: " + str(result))
+        state = result.get("state")
+        if state != "SUCCEEDED":
+            print(f"Error. Query did not succeed. Final state: {state}")
+            exit(1)
 
-    state = result.get("state")
-    if state != "SUCCEEDED":
-        print(f"Error. Query did not succeed. Final state: {state}")
-        exit(1)
+        records = result.get("result", {}).get("records", [])
+        if len(records) > 0:
+            print("Success. Log entries found!")
+            exit(0)
 
-    records = result.get("result", {}).get("records", [])
-    if len(records) > 0:
-        print("Success. Log entries found!")
-        exit(0)
+        if attempt < RETRY_MAX_ATTEMPTS:
+            print(f"No log entries found yet. Retrying in {RETRY_INTERVAL_SECONDS}s...")
+            time.sleep(RETRY_INTERVAL_SECONDS)
 
     print("Error. No log entries found for given bucket and key")
     exit(1)
