@@ -75,6 +75,18 @@ To apply such a file to a template later:
 python3 scripts/update_layer_arns.py --template template.yaml --arch-key x86 < layer-arns-x86.txt
 ```
 
+### ARN validation
+
+Before writing anything, `update_layer_arns.py` checks every ARN it is given: the
+ARN must be a well-formed Lambda layer ARN, its region must match the region it is
+being filed under, its version suffix must be a positive integer, and its layer
+name must carry the `-arm64` suffix if and only if `--arch-key arm64` was passed.
+Any problem aborts the run with a non-zero exit and leaves the template untouched.
+
+That last check is the one that matters most in CI: it catches the two
+`layer-arns-*.txt` files being crossed, which would otherwise silently pin arm64
+ARNs under `x86:` keys and only surface as a deployment failure.
+
 ### If granting public access fails
 
 If `publish-layer-version` succeeds but `add-layer-version-permission` fails, the layer version **already exists** and has consumed a version number in that region. Do not re-run the publish for that region — that burns another version and pushes it further out of step. The script prints a ready-to-run `add-layer-version-permission` command for the exact version that was created; use that instead.
