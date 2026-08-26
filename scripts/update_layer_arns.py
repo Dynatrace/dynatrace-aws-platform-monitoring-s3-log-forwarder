@@ -214,7 +214,7 @@ def main():
             unchanged.append(region)
 
     lines[start + 1:end] = render(regions)
-    with open(args.template, "w") as fh:
+    with open(args.template, "w", encoding="utf-8", newline="\n") as fh:
         fh.write("\n".join(lines) + ("\n" if trailing_newline else ""))
 
     print(f"Updated {args.arch_key} ARNs for {len(published)} region(s) "
