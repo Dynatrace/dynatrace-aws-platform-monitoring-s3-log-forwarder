@@ -1,0 +1,24 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Minimal fixture mirroring the shape of template.yaml.
+
+Mappings:
+  # Fully-qualified, versioned Lambda Layer ARNs per region and architecture.
+  #
+  # Comments above the mapping key must survive a rewrite.
+  LayerArns:
+    eu-west-1:
+      x86: arn:aws:lambda:eu-west-1:335651422829:layer:test-layer:3
+      arm64: arn:aws:lambda:eu-west-1:335651422829:layer:test-layer-arm64:2
+    us-east-1:
+      x86: arn:aws:lambda:us-east-1:335651422829:layer:test-layer:4
+      arm64: arn:aws:lambda:us-east-1:335651422829:layer:test-layer-arm64:2
+    us-west-2:
+      x86: arn:aws:lambda:us-west-2:335651422829:layer:test-layer:4
+      arm64: arn:aws:lambda:us-west-2:335651422829:layer:test-layer-arm64:1
+
+Conditions:
+  IsArm64: !Equals [!Ref Architecture, arm64]
+
+Resources:
+  Placeholder:
+    Type: AWS::CloudFormation::WaitConditionHandle

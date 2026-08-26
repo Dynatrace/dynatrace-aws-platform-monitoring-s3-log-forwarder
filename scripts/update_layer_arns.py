@@ -15,7 +15,8 @@
 
 Reads ``region=layer_version_arn`` pairs on stdin (as emitted by
 publish_layer.sh) and rewrites the entry for the given architecture in each of
-those regions, leaving every other region untouched.
+those regions, leaving every other region untouched. Each ARN is checked against
+its region key and the target architecture before anything is written.
 
 Layer version numbers are a per-region, per-layer-name counter in AWS and are
 not synchronized across regions, so each region must carry its own
@@ -33,9 +34,34 @@ import sys
 
 ARCH_KEYS = ("x86", "arm64")
 
-MAP_KEY_RE = re.compile(r"^  LayerArns:\s*$")
-REGION_RE = re.compile(r"^    ([a-z0-9-]+):\s*$")
-ARCH_RE = re.compile(r"^      ([a-z0-9]+):\s*(\S+)\s*$")
+# A published layer ARN, split on ":", has exactly these eight fields:
+#   arn:<partition>:lambda:<region>:<account>:layer:<name>:<version>
+ARN_FIELD_COUNT = 8
+# The arm64 layer is published under a separate layer name carrying this suffix.
+ARM64_LAYER_SUFFIX = "-arm64"
+PARTITION_RE = re.compile(r"^aws[a-z-]*$")
+ACCOUNT_RE = re.compile(r"^\d{12}$")
+LAYER_VERSION_RE = re.compile(r"^[1-9]\d*$")
+
+# Indentation, in spaces, of the template.yaml keys this script reads and
+# writes. Patterns use explicit ` {N}` repetition rather than runs of literal
+# spaces so the widths stay readable and stay in step with the renderer.
+MAP_KEY_INDENT = 2   # "  LayerArns:"
+REGION_INDENT = 4    # "    us-east-1:"
+ARCH_INDENT = 6      # "      x86: arn:..."
+
+
+def _at_indent(width, rest):
+    """Compile a pattern anchoring `rest` at exactly `width` spaces of indent."""
+    return re.compile(rf"^ {{{width}}}{rest}")
+
+
+MAP_KEY_RE = _at_indent(MAP_KEY_INDENT, r"LayerArns:\s*$")
+REGION_RE = _at_indent(REGION_INDENT, r"([a-z0-9-]+):\s*$")
+# Restricted to the known architectures on purpose: any other key at this indent
+# would be parsed but silently dropped by render(), so let it fall through to the
+# "unexpected line" error in parse_regions() instead.
+ARCH_RE = _at_indent(ARCH_INDENT, rf"({'|'.join(ARCH_KEYS)}):\s*(\S+)\s*$")
 
 
 def parse_pairs(stream):
@@ -55,6 +81,46 @@ def parse_pairs(stream):
     return pairs
 
 
+def validate_published_arns(pairs, arch_key):
+    """Reject ARNs that are malformed, or that contradict their region or arch.
+
+    The pairs describe a publish result and reach this script through a file
+    handed between CI jobs, so a truncated, garbled or crossed-over file would
+    otherwise be written into the template verbatim and only surface much later
+    as a deployment failure. Every problem is collected before exiting so one run
+    reports the full picture.
+    """
+    wants_arm64 = arch_key == "arm64"
+    errors = []
+
+    for region, arn in sorted(pairs.items()):
+        fields = arn.split(":")
+        if len(fields) != ARN_FIELD_COUNT:
+            errors.append(f"{region}: expected {ARN_FIELD_COUNT} colon-separated "
+                          f"ARN fields, got {len(fields)}: {arn}")
+            continue
+
+        prefix, partition, service, arn_region, account, kind, name, version = fields
+
+        if prefix != "arn" or not PARTITION_RE.match(partition):
+            errors.append(f"{region}: not a well-formed ARN: {arn}")
+        if service != "lambda" or kind != "layer":
+            errors.append(f"{region}: not a Lambda layer ARN: {arn}")
+        if arn_region != region:
+            errors.append(f"{region}: ARN belongs to region {arn_region!r}: {arn}")
+        if not ACCOUNT_RE.match(account):
+            errors.append(f"{region}: {account!r} is not a 12-digit account id: {arn}")
+        if name.endswith(ARM64_LAYER_SUFFIX) is not wants_arm64:
+            errors.append(f"{region}: layer name {name!r} does not match "
+                          f"--arch-key {arch_key}: {arn}")
+        if not LAYER_VERSION_RE.match(version):
+            errors.append(f"{region}: version suffix must be a positive integer: {arn}")
+
+    if errors:
+        sys.exit("error: refusing to write invalid published layer ARNs:\n  "
+                 + "\n  ".join(errors))
+
+
 def find_block(lines):
     """Return (key_index, end_index) bounding the LayerArns region entries."""
     start = next((i for i, l in enumerate(lines) if MAP_KEY_RE.match(l)), None)
@@ -67,7 +133,7 @@ def find_block(lines):
         if not line.strip() or line.lstrip().startswith("#"):
             continue
         # A key at the mapping's own indent or shallower ends the block.
-        if len(line) - len(line.lstrip()) <= 2:
+        if len(line) - len(line.lstrip()) <= MAP_KEY_INDENT:
             end = i
             break
 
@@ -104,11 +170,11 @@ def parse_regions(lines, start, end):
 def render(regions):
     out = []
     for region in sorted(regions):
-        out.append(f"    {region}:")
+        out.append(f"{' ' * REGION_INDENT}{region}:")
         for arch in ARCH_KEYS:
             arn = regions[region].get(arch)
             if arn is not None:
-                out.append(f"      {arch}: {arn}")
+                out.append(f"{' ' * ARCH_INDENT}{arch}: {arn}")
     return out
 
 
@@ -122,6 +188,8 @@ def main():
     if not published:
         print("No published ARNs on stdin — template left unchanged.")
         return 0
+
+    validate_published_arns(published, args.arch_key)
 
     with open(args.template) as fh:
         text = fh.read()

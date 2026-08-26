@@ -145,6 +145,10 @@ jobs:
         run: |
           NESTED_URL="https://${RELEASE_BUCKET}.s3.amazonaws.com/${RELEASE_PREFIX}/cloudwatch-monitoring-dashboard.yaml"
           ./scripts/rewrite_nested_template_url.sh "${NESTED_URL}"
+      # ci.yml validates the committed template, but the two steps above rewrite
+      # it after that gate. Validate the artifact that is actually released.
+      - name: Validate rewritten CloudFormation template
+        run: aws cloudformation validate-template --template-body file://template.yaml
       - name: Upload CloudFormation templates to S3
         run: |
           aws s3 cp template.yaml s3://${RELEASE_BUCKET}/${RELEASE_PREFIX}/
