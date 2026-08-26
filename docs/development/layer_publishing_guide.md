@@ -38,6 +38,21 @@ Both architectures must be published separately. Run the script once per archite
 
 The script will output the `LayerVersionArn` for each region and automatically update the `Mappings.LayerArns` block in `template.yaml`.
 
+### How versions are tracked
+
+Layer version numbers are a **per-region, per-layer-name counter** in AWS — they are not synchronized across regions. Publishing to 29 regions does not guarantee they all land on the same version number. Versions diverge whenever:
+
+* a publish fails in some regions but succeeds in others;
+* you re-publish to a subset of regions with `--regions`;
+* AWS adds a region, which starts at version 1 while the others are further along.
+
+`Mappings.LayerArns` in `template.yaml` therefore stores a **fully-qualified, versioned ARN per region and architecture**, and the publish script rewrites only the entries for the regions it actually published to. Regions left untouched keep their previous ARN.
+
+The script reports this explicitly after each run, so watch for:
+
+* `WARNING: N region(s) not published to in this run` — those regions still point at their previous version. Expected when using `--regions`; worth investigating otherwise.
+* `WARNING: N region(s) are missing an ARN for one architecture` — deployments in those regions will fail until you publish the other architecture too.
+
 ### Skip automatic file updates
 
 By default, after a successful publish the script automatically updates the `Mappings.LayerArns` block in `template.yaml`. To skip this update, pass `--no-update-files`:
@@ -45,6 +60,24 @@ By default, after a successful publish the script automatically updates the `Map
 ```bash
 ./scripts/publish_layer.sh dist/layer.zip --no-update-files
 ```
+
+### Export the published ARNs
+
+`--arns-output <file>` writes one `region=arn` pair per line for every region successfully published to. This is how the release workflow hands results between jobs: `release-s3` runs on a fresh checkout and so does not inherit the template edits made by the publish jobs, and a single version number cannot represent a per-region result.
+
+```bash
+./scripts/publish_layer.sh dist/layer.zip --arns-output layer-arns-x86.txt
+```
+
+To apply such a file to a template later:
+
+```bash
+python3 scripts/update_layer_arns.py --template template.yaml --arch-key x86 < layer-arns-x86.txt
+```
+
+### If granting public access fails
+
+If `publish-layer-version` succeeds but `add-layer-version-permission` fails, the layer version **already exists** and has consumed a version number in that region. Do not re-run the publish for that region — that burns another version and pushes it further out of step. The script prints a ready-to-run `add-layer-version-permission` command for the exact version that was created; use that instead.
 
 ### Manual publishing
 
@@ -68,7 +101,18 @@ aws lambda publish-layer-version \
     --description "Dynatrace AWS S3 Log Forwarder (arm64)"
 ```
 
-Note the `LayerVersionArn` from the output — update `template.yaml` manually with this ARN.
+Note the `LayerVersionArn` from the output, then set it as the `x86` or `arm64` entry for that
+region under `Mappings.LayerArns` in `template.yaml`. Each region has its own entry — update the
+one for the region you published to, and remember to grant public access:
+
+```bash
+aws lambda add-layer-version-permission \
+    --layer-name dynatrace-aws-platform-monitoring-s3-log-forwarder \
+    --version-number <version> \
+    --statement-id allow-all-accounts \
+    --principal '*' \
+    --action lambda:GetLayerVersion
+```
 
 ## Step 3. Release the updated templates
 

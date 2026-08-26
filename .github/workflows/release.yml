@@ -17,8 +17,6 @@ jobs:
   release-x86_64:
     name: Release (x86_64)
     runs-on: ubuntu-latest
-    outputs:
-      layer-version: ${{ steps.layer-version.outputs.version }}
     env:
       RELEASE_BUCKET: dynatrace-aws-s3-log-forwarder-assets
       RELEASE_PREFIX: platform-monitoring/${{ github.ref_name }}
@@ -50,18 +48,20 @@ jobs:
           role-to-assume: ${{ secrets.AWS_LAYER_PUBLISHING_ROLE_ARN }}
           aws-region: us-east-1
       - name: Publish Lambda Layer to all commercial regions
-        run: ./scripts/publish_layer.sh dist/layer-x86_64.zip
-      - name: Export layer version
-        id: layer-version
-        run: |
-          version=$(grep -E '^\s+x86: [0-9]+' template.yaml | grep -o '[0-9]*$')
-          echo "version=$version" >> $GITHUB_OUTPUT
+        run: ./scripts/publish_layer.sh dist/layer-x86_64.zip --arns-output layer-arns-x86.txt
+      # Layer versions are a per-region counter in AWS and diverge between regions,
+      # so the full region=arn list is handed to release-s3 as an artifact rather
+      # than collapsed into a single version number.
+      - name: Upload published layer ARNs
+        uses: actions/upload-artifact@v7
+        with:
+          name: layer-arns-x86
+          path: layer-arns-x86.txt
+          retention-days: 1
 
   release-arm64:
     name: Release (arm64)
     runs-on: ubuntu-24.04-arm
-    outputs:
-      layer-version: ${{ steps.layer-version.outputs.version }}
     env:
       RELEASE_BUCKET: dynatrace-aws-s3-log-forwarder-assets
       RELEASE_PREFIX: platform-monitoring/${{ github.ref_name }}
@@ -93,12 +93,13 @@ jobs:
           role-to-assume: ${{ secrets.AWS_LAYER_PUBLISHING_ROLE_ARN }}
           aws-region: us-east-1
       - name: Publish Lambda Layer to all commercial regions
-        run: ./scripts/publish_layer.sh dist/layer-arm64.zip --arch arm64
-      - name: Export layer version
-        id: layer-version
-        run: |
-          version=$(grep -E '^\s+arm64: [0-9]+' template.yaml | grep -o '[0-9]*$')
-          echo "version=$version" >> $GITHUB_OUTPUT
+        run: ./scripts/publish_layer.sh dist/layer-arm64.zip --arch arm64 --arns-output layer-arns-arm64.txt
+      - name: Upload published layer ARNs
+        uses: actions/upload-artifact@v7
+        with:
+          name: layer-arns-arm64
+          path: layer-arns-arm64.txt
+          retention-days: 1
 
   release-s3:
     name: Upload CloudFormation templates to S3
@@ -119,10 +120,27 @@ jobs:
           GIT_TAG: ${{ github.ref_name }}
           GIT_COMMIT: ${{ github.sha }}
         run: ./scripts/update_version.sh
-      - name: Set layer versions in template
+      # This job runs on a fresh checkout, so it does not inherit the template edits
+      # made by the publish jobs. Re-apply them from the published ARNs instead.
+      - name: Download published layer ARNs
+        uses: actions/download-artifact@v7
+        with:
+          pattern: layer-arns-*
+          path: layer-arns
+          merge-multiple: true
+      - name: Set layer ARNs in template
         run: |
-          sed -i "s/^\( *x86: \)[0-9]*/\1${{ needs.release-x86_64.outputs.layer-version }}/" template.yaml
-          sed -i "s/^\( *arm64: \)[0-9]*/\1${{ needs.release-arm64.outputs.layer-version }}/" template.yaml
+          set -euo pipefail
+          for arch in x86 arm64; do
+            file="layer-arns/layer-arns-${arch}.txt"
+            if [[ ! -s "${file}" ]]; then
+              echo "::error::${file} is missing or empty — the ${arch} layer publish produced no ARNs."
+              echo "::error::Refusing to release a template that still points at the checked-in layer versions."
+              exit 1
+            fi
+            python3 scripts/update_layer_arns.py \
+              --template template.yaml --arch-key "${arch}" < "${file}"
+          done
       - name: Rewrite nested TemplateURL to release S3 URL
         run: |
           NESTED_URL="https://${RELEASE_BUCKET}.s3.amazonaws.com/${RELEASE_PREFIX}/cloudwatch-monitoring-dashboard.yaml"
