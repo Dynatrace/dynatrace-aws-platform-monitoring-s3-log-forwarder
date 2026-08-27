@@ -371,6 +371,9 @@ Mappings:
     ap-east-1:
       x86: arn:aws:lambda:ap-east-1:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
       arm64: arn:aws:lambda:ap-east-1:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder-arm64:1
+    ap-east-2:
+      x86: arn:aws:lambda:ap-east-2:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
+      arm64: arn:aws:lambda:ap-east-2:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder-arm64:1
     ap-northeast-1:
       x86: arn:aws:lambda:ap-northeast-1:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
       arm64: arn:aws:lambda:ap-northeast-1:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder-arm64:1
@@ -398,6 +401,15 @@ Mappings:
     ap-southeast-4:
       x86: arn:aws:lambda:ap-southeast-4:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
       arm64: arn:aws:lambda:ap-southeast-4:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder-arm64:1
+    ap-southeast-5:
+      x86: arn:aws:lambda:ap-southeast-5:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
+      arm64: arn:aws:lambda:ap-southeast-5:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder-arm64:1
+    ap-southeast-6:
+      x86: arn:aws:lambda:ap-southeast-6:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
+      arm64: arn:aws:lambda:ap-southeast-6:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder-arm64:1
+    ap-southeast-7:
+      x86: arn:aws:lambda:ap-southeast-7:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
+      arm64: arn:aws:lambda:ap-southeast-7:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder-arm64:1
     ca-central-1:
       x86: arn:aws:lambda:ca-central-1:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
       arm64: arn:aws:lambda:ca-central-1:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder-arm64:1
@@ -431,12 +443,9 @@ Mappings:
     il-central-1:
       x86: arn:aws:lambda:il-central-1:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
       arm64: arn:aws:lambda:il-central-1:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder-arm64:1
-    me-central-1:
-      x86: arn:aws:lambda:me-central-1:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
-      arm64: arn:aws:lambda:me-central-1:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder-arm64:1
-    me-south-1:
-      x86: arn:aws:lambda:me-south-1:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
-      arm64: arn:aws:lambda:me-south-1:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder-arm64:1
+    mx-central-1:
+      x86: arn:aws:lambda:mx-central-1:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
+      arm64: arn:aws:lambda:mx-central-1:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder-arm64:1
     sa-east-1:
       x86: arn:aws:lambda:sa-east-1:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder:1
       arm64: arn:aws:lambda:sa-east-1:335651422829:layer:dynatrace-aws-platform-monitoring-s3-log-forwarder-arm64:1

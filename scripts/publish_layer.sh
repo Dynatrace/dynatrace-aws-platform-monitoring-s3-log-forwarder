@@ -33,6 +33,10 @@ PERMISSION_FAILED_ARNS=()  # Published, but not made public — see the summary
 UPDATE_FILES=true
 ARNS_OUTPUT=""             # Optional file to write "region=arn" pairs to
 
+# Regions excluded from the publish.
+# These are regions where Lambda Layer publishing is not supported or not desired.
+EXCLUDED_REGIONS=(me-central-1 me-south-1)
+
 # ---------------------------------------------------------------------------
 # Argument parsing
 # ---------------------------------------------------------------------------
@@ -185,8 +189,11 @@ fi
 
 if [[ ${#REGIONS[@]} -eq 0 ]]; then
     echo "Querying available AWS regions..."
-    # me-* regions (Middle East) are excluded — currently defunct and publishing fails there
-    REGIONS=($(aws ec2 describe-regions --query "Regions[].RegionName" --output text | tr '\t' '\n' | grep -v '^me-'))
+    # Joined with a subshell IFS rather than an external tool: BSD paste(1) on
+    # macOS requires a file operand and would abort the script under `set -e`.
+    exclude_pattern=$(IFS='|'; echo "${EXCLUDED_REGIONS[*]}")
+    REGIONS=($(aws ec2 describe-regions --query "Regions[].RegionName" --output text | tr '\t' '\n' | grep -Ev "^(${exclude_pattern})$"))
+    echo "Excluded regions: ${EXCLUDED_REGIONS[*]}"
 fi
 
 echo "Publishing Lambda Layer: $LAYER_NAME"
@@ -198,12 +205,6 @@ for REGION in "${REGIONS[@]}"; do
     publish_to_region "$REGION"
     echo ""
 done
-
-if [[ ${#PUBLISHED_ARNS[@]} -gt 0 && "$UPDATE_FILES" == true ]]; then
-    update_template
-fi
-
-write_arns_output
 
 echo ""
 echo "=== Publishing Summary ==="
@@ -226,7 +227,14 @@ fi
 if [[ ${#FAILED_REGIONS[@]} -gt 0 ]]; then
     echo ""
     echo "Failed regions: ${FAILED_REGIONS[*]}"
+    echo "template.yaml and ARN output file were NOT updated due to failures in some regions."
     exit 1
 fi
+
+if [[ ${#PUBLISHED_ARNS[@]} -gt 0 && "$UPDATE_FILES" == true ]]; then
+    update_template
+fi
+
+write_arns_output
 
 echo "All regions published successfully."
