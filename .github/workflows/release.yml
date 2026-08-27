@@ -40,6 +40,7 @@ jobs:
           name: lambda-x86_64
           path: dist/lambda-x86_64.zip
           retention-days: 1
+          overwrite: true
       - name: Build Lambda Layer
         run: ./scripts/build_docker.sh layer dist/layer-x86_64.zip x86_64
       - name: Configure AWS credentials for layer publishing
@@ -58,6 +59,7 @@ jobs:
           name: layer-arns-x86
           path: layer-arns-x86.txt
           retention-days: 1
+          overwrite: true
 
   release-arm64:
     name: Release (arm64)
@@ -85,6 +87,7 @@ jobs:
           name: lambda-arm64
           path: dist/lambda-arm64.zip
           retention-days: 1
+          overwrite: true
       - name: Build Lambda Layer
         run: ./scripts/build_docker.sh layer dist/layer-arm64.zip arm64
       - name: Configure AWS credentials for layer publishing
@@ -100,6 +103,7 @@ jobs:
           name: layer-arns-arm64
           path: layer-arns-arm64.txt
           retention-days: 1
+          overwrite: true
 
   release-s3:
     name: Upload CloudFormation templates to S3
@@ -174,6 +178,7 @@ jobs:
             eventbridge-cross-region-or-account-forward-rules.yaml
             templates.zip
           retention-days: 1
+          overwrite: true
 
   release-github:
     name: Publish GitHub Release
@@ -207,3 +212,14 @@ jobs:
             release-assets/lambda-arm64.zip \
             release-assets/templates.zip \
             --clobber
+      - name: Add Lambda Layer ARN table to release notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release view "${{ github.ref_name }}" --json body -q .body > current-notes.md
+          python3 scripts/render_layer_arns_table.py \
+            --template release-assets/template.yaml \
+            --notes current-notes.md \
+            --output updated-notes.md
+          gh release edit "${{ github.ref_name }}" --notes-file updated-notes.md
