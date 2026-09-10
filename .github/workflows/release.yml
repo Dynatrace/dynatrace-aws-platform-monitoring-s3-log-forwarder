@@ -127,7 +127,7 @@ jobs:
       # This job runs on a fresh checkout, so it does not inherit the template edits
       # made by the publish jobs. Re-apply them from the published ARNs instead.
       - name: Download published layer ARNs
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           pattern: layer-arns-*
           path: layer-arns
@@ -188,12 +188,12 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
         with:
           name: cfn-templates
           path: release-assets
       - name: Download Lambda ZIP artifacts
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           pattern: lambda-*
           path: release-assets
