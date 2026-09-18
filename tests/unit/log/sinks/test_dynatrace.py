@@ -12,6 +12,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+import importlib
 import os
 import unittest
 from datetime import datetime
@@ -138,6 +139,32 @@ class TestDynatraceSink(unittest.TestCase):
 
         self.assertRaises(dynatrace.DynatraceIngestionException,
                           dynatrace_sink.ingest_logs, [{'content': 'hello'}])
+
+
+class TestDynatraceSinkConstants(unittest.TestCase):
+
+    def tearDown(self):
+        importlib.reload(dynatrace)
+
+    def test_content_max_length_env_var_override(self):
+        with patch.dict(os.environ, {'DYNATRACE_LOG_INGEST_CONTENT_MAX_LENGTH': '65536'}):
+            importlib.reload(dynatrace)
+            self.assertEqual(dynatrace.DYNATRACE_LOG_INGEST_CONTENT_MAX_LENGTH, 65536)
+
+    def test_content_max_length_invalid_env_var_uses_default(self):
+        with patch.dict(os.environ, {'DYNATRACE_LOG_INGEST_CONTENT_MAX_LENGTH': 'not_a_number'}):
+            importlib.reload(dynatrace)
+            self.assertEqual(dynatrace.DYNATRACE_LOG_INGEST_CONTENT_MAX_LENGTH, 10 * 1024 * 1024)
+
+    def test_payload_max_size_env_var_override(self):
+        with patch.dict(os.environ, {'DYNATRACE_LOG_INGEST_PAYLOAD_MAX_SIZE': '5242880'}):
+            importlib.reload(dynatrace)
+            self.assertEqual(dynatrace.DYNATRACE_LOG_INGEST_PAYLOAD_MAX_SIZE, 5242880)
+
+    def test_payload_max_size_invalid_env_var_uses_default(self):
+        with patch.dict(os.environ, {'DYNATRACE_LOG_INGEST_PAYLOAD_MAX_SIZE': 'not_a_number'}):
+            importlib.reload(dynatrace)
+            self.assertEqual(dynatrace.DYNATRACE_LOG_INGEST_PAYLOAD_MAX_SIZE, 20 * 1024 * 1024)
 
 
 mock_dt_secret_arn = 'arn:aws:secretsmanager:us-east-1:123456789012:secret:dynatrace-s3-log-forwarder-test-api-key-AbCdEf'
