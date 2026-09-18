@@ -78,6 +78,7 @@ This page documents all parameters for the main `template.yaml` stack.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `DynatraceLogIngestContentMaxLength` | Number | `65536` | Maximum log entry content size in bytes (8192–1048576). Entries exceeding this limit are truncated. |
+| `DynatraceLogIngestContentMaxLength` | Number | `10485760` | Maximum log entry content size in bytes (8192–10485760). Entries exceeding this limit are truncated. |
+| `DynatraceLogIngestPayloadMaxLength` | Number | `20971520` | Dynatrace API http request payload maximum byte size, can be adjusted for better handling of large files. |
 | `VerifyLogEndpointSSLCerts` | String | `true` | Set to `false` to disable SSL certificate verification when posting logs to the Dynatrace endpoint. Only disable when routing traffic through an intercepting proxy with a custom CA. |
 | `IamRolePath` | String | `/` | IAM path for the Lambda execution role, e.g. `/engineering/platform/`. Must start and end with `/`. Use when your organization requires IAM roles under a specific path. |
