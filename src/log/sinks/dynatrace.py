@@ -48,6 +48,12 @@ try:
 except (ValueError, TypeError):
     DYNATRACE_LOG_INGEST_PAYLOAD_MAX_SIZE = 20 * 1024 * 1024
 
+# Payload size must be at least single message size + headroom for additional attributes.
+# This check is for corner cases when someone tinkered with env vars - it is not allowed to set invalid values
+# using CloudFormation stack parameters.
+if DYNATRACE_LOG_INGEST_PAYLOAD_MAX_SIZE < DYNATRACE_LOG_INGEST_CONTENT_MAX_LENGTH + 10000:
+    DYNATRACE_LOG_INGEST_PAYLOAD_MAX_SIZE = DYNATRACE_LOG_INGEST_CONTENT_MAX_LENGTH + 10000
+
 DYNATRACE_LOG_INGEST_MAX_RECORD_AGE = 86340  # 1 day
 DYNATRACE_LOG_INGEST_MAX_ENTRIES_COUNT = 50000
 
@@ -110,7 +116,7 @@ class DynatraceSink():
         self.check_log_message_size_and_truncate(message)
 
         # Check if we'd be exceeding limits before appending the message
-        new_message_size = sys.getsizeof(json.dumps(message).encode(ENCODING))
+        new_message_size = sys.getsizeof(json.dumps(message, ensure_ascii=False).encode(ENCODING))
         new_num_of_buffered_messages = self.get_num_of_buffered_messages() + 1
         new_approx_size_of_buffered_messages = (
                     self._approx_buffered_messages_size + new_message_size + COMMA_SEPARATOR_LENGTH)
@@ -142,10 +148,11 @@ class DynatraceSink():
         Gets a Dynatrace LogMessageJson object. If message size exceeds Dynatrace limit, returns
         truncated message.
         '''
-        if len(message['content'].encode('utf-8')) > DYNATRACE_LOG_INGEST_CONTENT_MAX_LENGTH:
+        content_bytes = message['content'].encode('utf-8')
+        if len(content_bytes) > DYNATRACE_LOG_INGEST_CONTENT_MAX_LENGTH:
             trimmed_length = DYNATRACE_LOG_INGEST_CONTENT_MAX_LENGTH - \
-                len(DYNATRACE_LOG_INGEST_CONTENT_MARK_TRIMMED)
-            message['content'] = message['content'][0:trimmed_length] + \
+                len(DYNATRACE_LOG_INGEST_CONTENT_MARK_TRIMMED.encode('utf-8'))
+            message['content'] = content_bytes[:trimmed_length].decode('utf-8', errors='ignore') + \
                 DYNATRACE_LOG_INGEST_CONTENT_MARK_TRIMMED
             metrics.add_metric(name='LogMessagesTrimmed',
                                unit=MetricUnit.Count, value=1)
@@ -207,7 +214,7 @@ class DynatraceSink():
         if session is None:
             session = self.session
 
-        data = json.dumps(logs).encode(ENCODING)
+        data = json.dumps(logs, ensure_ascii=False).encode(ENCODING)
 
         # POST to dynatrace
         start_time = time.time()
