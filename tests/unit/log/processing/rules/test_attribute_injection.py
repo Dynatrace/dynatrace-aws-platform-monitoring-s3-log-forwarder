@@ -30,6 +30,9 @@ nlb_key_name = 'random_prefix/AWSLogs/012345678910/elasticloadbalancing/us-east-
 waf_key_name = 'random_prefix/AWSLogs/012345678910/WAFLogs/eu-west-1/my-web-acl/2023/02/15/14/30/012345678910_waflogs_us-east-1_my-web-acl_20230215T1430Z_ec507835.log.gz'
 cloudfront_key_name = 'example/E1SFLUZKKLSP61.2023-02-16-14.e519cdee.gz'
 cloudfront_short_dist_key_name = 'cloudfront/EI40887JFNMEK.2026-05-27-08.b7c58fd5.gz'
+cloudfront_v2_key_name = 'AWSLogs/012345678910/CloudFront/E1SFLUZKKLSP61.2025-09-23-08.abcdef01.gz'
+cloudfront_v2_hive_key_name = 'AWSLogs/aws-account-id=012345678910/CloudFront/E1SFLUZKKLSP61.2025-09-23-08.abcdef01.gz'
+cloudfront_v2_partitioned_key_name = 'AWSLogs/012345678910/CloudFront/myFolder/2025/09/23/08/E1SFLUZKKLSP61.2025-09-23-08.abcdef01.gz'
 vpcflowlog_key_name = 'optional_prefix/AWSLogs/012345678910/vpcflowlogs/us-east-1/2023/02/14/012345678910_vpcflowlogs_us-east-1_fl-07f38b767c7cd46e3_20230214T0000Z_129a0cf7.log.gz'
 network_firewall_key_name = 'random_prefix/AWSLogs/012345678910/network-firewall/flow/us-east-1/my-test-firewall/2023/02/20/16/012345678910_network-firewall_flow_us-east-1_my-test-firewall_202302201610_e5c84094.log.gz'
 msk_key_name = 'AWSLogs/012345678910/KafkaBrokerLogs/us-east-1/demo-cluster-2-043b6d76-352c-494a-9eee-fbff5cc1687d-20/2023-02-20-17/Broker-1_17-05_5b17f696.log.gz'
@@ -125,6 +128,24 @@ class TestAWSAttributeInjection(unittest.TestCase):
 
         self.assertEqual(attributes,expected_attributes)
 
+    def test_cloudfront_v2_attributes(self):
+        cloudfront_v2_processing_rule = processing_rules['aws']['cloudfront-v2']
+        attributes = cloudfront_v2_processing_rule.get_attributes_from_s3_key_name(cloudfront_v2_key_name)
+        expected_attributes = {'aws.account.id': '012345678910'}
+        self.assertEqual(attributes, expected_attributes)
+
+    def test_cloudfront_v2_hive_attributes(self):
+        cloudfront_v2_processing_rule = processing_rules['aws']['cloudfront-v2']
+        attributes = cloudfront_v2_processing_rule.get_attributes_from_s3_key_name(cloudfront_v2_hive_key_name)
+        expected_attributes = {'aws.account.id': '012345678910'}
+        self.assertEqual(attributes, expected_attributes)
+
+    def test_cloudfront_v2_partitioned_attributes(self):
+        cloudfront_v2_processing_rule = processing_rules['aws']['cloudfront-v2']
+        attributes = cloudfront_v2_processing_rule.get_attributes_from_s3_key_name(cloudfront_v2_partitioned_key_name)
+        expected_attributes = {'aws.account.id': '012345678910'}
+        self.assertEqual(attributes, expected_attributes)
+
     def test_vpcflowlog_attributes(self):
         expected_attributes = {
             'aws.vpc.flow_log_id': 'fl-07f38b767c7cd46e3',
@@ -197,6 +218,10 @@ class TestAWSAttributeInjection(unittest.TestCase):
         annotations = processing_rules['aws']['cloudfront'].get_processing_log_annotations()
         self.assertEqual(annotations['aws.resource.type'], 'AWS::CloudFront::Distribution')
 
+    def test_cloudfront_v2_annotations_include_resource_type(self):
+        annotations = processing_rules['aws']['cloudfront-v2'].get_processing_log_annotations()
+        self.assertEqual(annotations['aws.resource.type'], 'AWS::CloudFront::Distribution')
+
     def test_global_accelerator_annotations_include_resource_type(self):
         annotations = processing_rules['aws']['global-accelerator'].get_processing_log_annotations()
         self.assertEqual(annotations['aws.resource.type'], 'AWS::GlobalAccelerator::Accelerator')
@@ -236,7 +261,7 @@ class TestAWSAttributeInjection(unittest.TestCase):
 
     def test_all_aws_rules_have_cloud_provider_annotation(self):
         rules = [
-            'ALB', 'NLB', 'Classic-ELB', 'CloudTrail', 'cloudfront',
+            'ALB', 'NLB', 'Classic-ELB', 'CloudTrail', 'cloudfront', 'cloudfront-v2',
             'global-accelerator', 'msk', 'network-firewall', 'redshift',
             's3', 'vpcflowlogs', 'vpcdnsquerylogs', 'waf', 'appfabric-ocsf-json',
         ]
@@ -247,6 +272,10 @@ class TestAWSAttributeInjection(unittest.TestCase):
 
     def test_cloudfront_annotations_include_static_region(self):
         annotations = processing_rules['aws']['cloudfront'].get_processing_log_annotations()
+        self.assertEqual(annotations.get('aws.region'), 'global')
+
+    def test_cloudfront_v2_annotations_include_static_region(self):
+        annotations = processing_rules['aws']['cloudfront-v2'].get_processing_log_annotations()
         self.assertEqual(annotations.get('aws.region'), 'global')
 
     def test_aws_arn_pattern_resolution_from_yaml_rules(self):
@@ -340,6 +369,21 @@ class TestS3KeyMatchingExpression(unittest.TestCase):
 
     def test_cloudfront_short_distribution_id_s3_key(self):
         self.assertTrue(processing_rules['aws']['cloudfront'].match_s3_key(cloudfront_short_dist_key_name))
+
+    def test_cloudfront_v1_key_does_not_match_v2_rule(self):
+        self.assertFalse(processing_rules['aws']['cloudfront-v2'].match_s3_key(cloudfront_key_name))
+
+    def test_cloudfront_v2_key_does_not_match_v1_rule(self):
+        self.assertFalse(processing_rules['aws']['cloudfront'].match_s3_key(cloudfront_v2_key_name))
+
+    def test_cloudfront_v2_s3_key(self):
+        self.assertTrue(processing_rules['aws']['cloudfront-v2'].match_s3_key(cloudfront_v2_key_name))
+
+    def test_cloudfront_v2_hive_s3_key(self):
+        self.assertTrue(processing_rules['aws']['cloudfront-v2'].match_s3_key(cloudfront_v2_hive_key_name))
+
+    def test_cloudfront_v2_partitioned_s3_key(self):
+        self.assertTrue(processing_rules['aws']['cloudfront-v2'].match_s3_key(cloudfront_v2_partitioned_key_name))
 
     def test_vpcflowlogs_s3_key(self):
         self.assertTrue(processing_rules['aws']['vpcflowlogs'].match_s3_key(vpcflowlog_key_name))

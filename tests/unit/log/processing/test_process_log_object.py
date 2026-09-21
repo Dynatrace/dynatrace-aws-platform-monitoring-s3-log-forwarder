@@ -641,5 +641,132 @@ class TestProcessLogObject(unittest.TestCase):
         self.assertEqual(self.mock_log_sink.push.call_count, 1000)
 
 
+class TestHeaderLinePrefix(unittest.TestCase):
+    """Test header_line_prefix skipping for CloudFront standard logging."""
+
+    def setUp(self):
+        self.mock_lambda_context = Mock()
+        self.mock_lambda_context.get_remaining_time_in_millis.return_value = 300000
+        self.mock_lambda_context.invoked_function_arn = FORWARDER_FUNCTION_ARN
+
+        self.mock_log_sink = Mock()
+        self.mock_log_sink.push = Mock()
+        self.mock_log_sink.set_s3_source = Mock()
+
+    def _create_gzipped_s3_response(self, text_content):
+        buffer = io.BytesIO()
+        with gzip.GzipFile(fileobj=buffer, mode='wb') as gz:
+            gz.write(text_content.encode('utf-8'))
+        body = io.BytesIO(buffer.getvalue())
+        return {'Body': body, 'ContentLength': len(text_content), 'ContentEncoding': 'gzip'}
+
+    def _make_rule(self, header_line_prefix):
+        return LogProcessingRule(
+            name='test_header_prefix',
+            source='s3',
+            known_key_path_pattern='.*',
+            log_format='text',
+            annotations={},
+            header_line_prefix=header_line_prefix,
+        )
+
+    @patch('boto3._get_default_session')
+    def test_two_hash_headers_v1(self, mock_session):
+        """v1 file: #Version + #Fields lines are skipped; 3 data lines are emitted."""
+        content = (
+            '#Version: 1.0\n'
+            '#Fields: date time x-edge-location\n'
+            '2025-09-23\t08:00:00\tSOF50\n'
+            '2025-09-23\t08:00:01\tSOF50\n'
+            '2025-09-23\t08:00:02\tSOF50\n'
+        )
+        mock_s3 = Mock()
+        mock_s3.get_object.return_value = self._create_gzipped_s3_response(content)
+        mock_session_instance = Mock()
+        mock_session_instance.client.return_value = mock_s3
+        mock_session.return_value = mock_session_instance
+
+        rule = self._make_rule('#')
+        result = process_log_object(
+            log_processing_rule=rule,
+            bucket='b', key='v1.log.gz', bucket_region='us-east-1',
+            log_sinks=[self.mock_log_sink], lambda_context=self.mock_lambda_context,
+        )
+        self.assertEqual(result, 3)
+        self.assertEqual(self.mock_log_sink.push.call_count, 3)
+
+    @patch('boto3._get_default_session')
+    def test_one_hash_header_v2_w3c(self, mock_session):
+        """v2 w3c file: only #Fields line is skipped; 2 data lines are emitted."""
+        content = (
+            '#Fields: date time x-edge-location\n'
+            '2025-09-23\t08:30:00\tSOF50\n'
+            '2025-09-23\t08:30:01\tSOF50\n'
+        )
+        mock_s3 = Mock()
+        mock_s3.get_object.return_value = self._create_gzipped_s3_response(content)
+        mock_session_instance = Mock()
+        mock_session_instance.client.return_value = mock_s3
+        mock_session.return_value = mock_session_instance
+
+        rule = self._make_rule('#')
+        result = process_log_object(
+            log_processing_rule=rule,
+            bucket='b', key='v2.log.gz', bucket_region='us-east-1',
+            log_sinks=[self.mock_log_sink], lambda_context=self.mock_lambda_context,
+        )
+        self.assertEqual(result, 2)
+        self.assertEqual(self.mock_log_sink.push.call_count, 2)
+
+    @patch('boto3._get_default_session')
+    def test_no_header_v2_plain(self, mock_session):
+        """v2 plain file: no header lines; all 4 data lines are emitted."""
+        content = (
+            '2025-09-23\t08:30:00\tSOF50\n'
+            '2025-09-23\t08:30:01\tSOF50\n'
+            '2025-09-23\t08:30:02\tSOF50\n'
+            '2025-09-23\t08:30:03\tSOF50\n'
+        )
+        mock_s3 = Mock()
+        mock_s3.get_object.return_value = self._create_gzipped_s3_response(content)
+        mock_session_instance = Mock()
+        mock_session_instance.client.return_value = mock_s3
+        mock_session.return_value = mock_session_instance
+
+        rule = self._make_rule('#')
+        result = process_log_object(
+            log_processing_rule=rule,
+            bucket='b', key='v2plain.log.gz', bucket_region='us-east-1',
+            log_sinks=[self.mock_log_sink], lambda_context=self.mock_lambda_context,
+        )
+        self.assertEqual(result, 4)
+        self.assertEqual(self.mock_log_sink.push.call_count, 4)
+
+    @patch('boto3._get_default_session')
+    def test_header_prefix_only_skips_leading_lines(self, mock_session):
+        """A '#' line that appears after data lines is NOT skipped."""
+        content = (
+            '#Fields: date time\n'
+            '2025-09-23\t08:30:00\n'
+            '#not-a-header\n'
+            '2025-09-23\t08:30:01\n'
+        )
+        mock_s3 = Mock()
+        mock_s3.get_object.return_value = self._create_gzipped_s3_response(content)
+        mock_session_instance = Mock()
+        mock_session_instance.client.return_value = mock_s3
+        mock_session.return_value = mock_session_instance
+
+        rule = self._make_rule('#')
+        result = process_log_object(
+            log_processing_rule=rule,
+            bucket='b', key='mixed.log.gz', bucket_region='us-east-1',
+            log_sinks=[self.mock_log_sink], lambda_context=self.mock_lambda_context,
+        )
+        # 3 records: the two data lines plus the mid-file '#' line
+        self.assertEqual(result, 3)
+        self.assertEqual(self.mock_log_sink.push.call_count, 3)
+
+
 if __name__ == '__main__':
     unittest.main()

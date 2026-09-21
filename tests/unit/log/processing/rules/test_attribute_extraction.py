@@ -261,6 +261,21 @@ class testCloudFrontLogs(unittest.TestCase):
         extracted_attributes = self.cloudfront_processing_rule.get_extracted_log_attributes(self.log_entry)
         self.assertEqual(extracted_attributes, self.expected_attributes)
 
+class testCloudFrontV2Logs(unittest.TestCase):
+    # Default-field-set v2 record (tab-separated, same column order as v1 plus c-country and cache-behavior-path-pattern)
+    log_entry = '2025-09-23\t08:30:25\tSOF50-P2\t926\t213.27.198.18\tGET\td111111abcdef8.cloudfront.net\t/\t200\t-\tcurl/7.79.1\t-\t-\tHit\tabcXYZ123==\td111111abcdef8.cloudfront.net\thttps\t51\t0.026\t-\tTLSv1.3\tTLS_AES_128_GCM_SHA256\tHit\tHTTP/2.0\t-\t-\t9428\t0.026\tHit\ttext/html\t615\t-\t-\tUS\t/*'
+
+    expected_attributes = {
+        'timestamp': '2025-09-23T08:30:25'
+    }
+
+    cloudfront_v2_processing_rule = processing_rules['aws']['cloudfront-v2']
+
+    def test_cloudfrontv2logs_attribute_extraction(self):
+        extracted_attributes = self.cloudfront_v2_processing_rule.get_extracted_log_attributes(self.log_entry)
+        self.assertEqual(extracted_attributes, self.expected_attributes)
+
+
 class testMSKLogs(unittest.TestCase):
     log_entry = '[2023-02-20 17:10:36,845] INFO App info kafka.consumer for consumer-consumer-lag-19 unregistered (org.apache.kafka.common.utils.AppInfoParser)'
 

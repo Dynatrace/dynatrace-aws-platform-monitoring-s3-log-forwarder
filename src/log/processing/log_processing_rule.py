@@ -20,7 +20,7 @@ import datetime as stdlib_datetime
 from pygrok import Grok
 import jmespath
 import dateutil.parser as dateparser
-from utils.helpers import helper_regexes, custom_grok_expressions, get_attributes_from_cloudwatch_logs_data
+from utils.helpers import helper_regexes, custom_grok_expressions, get_attributes_from_cloudwatch_logs_data, ENCODING
 
 logger = logging.getLogger(__name__)
 
@@ -84,6 +84,11 @@ class LogProcessingRule:
     skip_header_lines: Optional[int] = None
     multiline_record_start_pattern: Optional[str] = None
     multiline_record_start_regex: Optional[re.Pattern] = field(init=False)
+    # header_line_prefix: skip leading lines that start with this prefix (text only).
+    # Unlike skip_header_lines, skipping stops at the first non-matching line, so
+    # files with zero or more header lines are all handled correctly.
+    header_line_prefix: Optional[str] = None
+    header_line_prefix_bytes: Optional[bytes] = field(init=False)
 
     def validate(self):
         '''
@@ -141,7 +146,8 @@ class LogProcessingRule:
 
         # validate skip_header_lines is int if defined, and not defined for non text log
         if self.log_format == "text":
-            if not isinstance(self.skip_header_lines, int):
+            # skip_header_lines may be None when header_line_prefix is used instead
+            if self.skip_header_lines is not None and not isinstance(self.skip_header_lines, int):
                 raise ValueError(
                     "skip_header_lines must be an int."
                 )
@@ -154,6 +160,15 @@ class LogProcessingRule:
                 raise ValueError("multiline_record_start_pattern is only valid for text log format")
             if not isinstance(self.multiline_record_start_pattern, str):
                 raise ValueError("multiline_record_start_pattern must be a string")
+
+        # validate header_line_prefix is only for text log format and not combined with skip_header_lines
+        if self.header_line_prefix is not None:
+            if not isinstance(self.header_line_prefix, str):
+                raise ValueError("header_line_prefix must be a string")
+            if self.log_format != "text":
+                raise ValueError("header_line_prefix is only valid for text log format")
+            if self.skip_header_lines and self.skip_header_lines != 0:
+                raise ValueError("header_line_prefix and skip_header_lines cannot both be set")
 
     def __post_init__(self):
         self.validate()
@@ -186,6 +201,12 @@ class LogProcessingRule:
                                re.compile(self.multiline_record_start_pattern))
         else:
             object.__setattr__(self, "multiline_record_start_regex", None)
+
+        if self.header_line_prefix is not None:
+            object.__setattr__(self, "header_line_prefix_bytes",
+                               self.header_line_prefix.encode(ENCODING))
+        else:
+            object.__setattr__(self, "header_line_prefix_bytes", None)
 
     def get_attributes_from_s3_key_name(self, key: str):
         '''

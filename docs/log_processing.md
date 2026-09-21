@@ -33,12 +33,18 @@ The processing rules for these services' logs are defined in `src/log/processing
 
 For some AWS services, certain attributes cannot be extracted because the data is absent from both the S3 key path and the log record content:
 
-| Service          | Fields                      |
-|------------------|-----------------------------|
-| CloudTrail       | `aws.arn`                   |
-| AppFabric        | `aws.arn`                   |
-| CloudFront       | `aws.account.id`, `aws.arn` |
-| S3 Server Access | `aws.account.id`            |
+| Service                              | Fields                      |
+|--------------------------------------|-----------------------------|
+| CloudTrail                           | `aws.arn`                   |
+| AppFabric                            | `aws.arn`                   |
+| CloudFront (legacy / v1)             | `aws.account.id`, `aws.arn` |
+| CloudFront standard logging v2       | `aws.arn`                   |
+| S3 Server Access                     | `aws.account.id`            |
+
+> **CloudFront standard logging v2 notes:**
+> - Only the **plain-text / W3C** output format delivered to S3 is supported. JSON and Parquet output formats are not supported.
+> - `aws.account.id` is extracted automatically when the default `AWSLogs/<account-id>/CloudFront/` prefix is used (no custom bucket prefix configured).
+> - When a custom bucket prefix is configured by the user, the `AWSLogs/` prefix segment is absent; those files are handled by the legacy (v1) rule and `aws.account.id` cannot be extracted. To extract `aws.account.id` in this case, add a **custom processing rule** (see [Adding your own log processing rules](#adding-your-own-log-processing-rules)) with an `attribute_extraction_from_key_name` regex tailored to your prefix layout, and point at it from a `custom`-source log forwarding rule.
 
 ### Generic log ingestion
 
@@ -119,6 +125,12 @@ attribute_extraction_jmespath_expression: Optional[dict] # --> JMESPATH expressi
                                                          #       - timestamp: eventTime 
 attribute_extraction_from_top_level_json: Optional[dict] # --> valid only for json_stream processing with array of log entries inside. Adds as attributes the defined JSON keys to 
                                                          #     all the log entries
+skip_header_lines: Optional[int]                         # --> Number of leading lines to skip unconditionally (text only). Use header_line_prefix instead
+                                                         #     when the number of header lines may vary (e.g. CloudFront standard logging v2).
+header_line_prefix: Optional[str]                        # --> Skip leading lines that start with this prefix (text only). Skipping stops at the first
+                                                         #     line that does NOT start with the prefix, so files with zero, one, or two header lines
+                                                         #     are all handled correctly. Cannot be combined with a non-zero skip_header_lines.
+                                                         #     Example: '#' to skip '#Version: 1.0' and '#Fields: ...' lines in W3C log files.
 attribute_mapping_from_json_keys: Optional[dict]         # --> (Experimental) Allows to define which original JSON keys should be converted into log attributes 
                                                          #     and whether a custom prefix/postfix should be appended to them.
                                                          #     It is especially useful when processing rule is used for different JSON schemas.
