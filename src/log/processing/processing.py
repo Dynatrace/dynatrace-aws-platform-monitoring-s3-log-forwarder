@@ -255,6 +255,8 @@ def process_log_object(log_processing_rule: LogProcessingRule, bucket: str, key:
     # Count log entries (can't len() a stream)
     num_log_entries = 0
     decompressed_log_object_size = 0
+    # Track whether we are still in the header region for header_line_prefix-based skipping
+    in_header = True
 
     for log_entry in log_entries:
 
@@ -326,8 +328,13 @@ def process_log_object(log_processing_rule: LogProcessingRule, bucket: str, key:
 
         # if log is text, json list or json stream
         elif log_processing_rule.log_format == 'text':
+            # skip lines matching header_line_prefix (dynamic header detection)
+            if in_header and log_processing_rule.header_line_prefix_bytes is not None:
+                if isinstance(log_entry, bytes) and log_entry.startswith(log_processing_rule.header_line_prefix_bytes):
+                    continue  # header line: skip without counting as a log entry
+                in_header = False
             # check if we need to skip header lines
-            if num_log_entries+1 <= log_processing_rule.skip_header_lines:
+            if log_processing_rule.skip_header_lines and num_log_entries+1 <= log_processing_rule.skip_header_lines:
                 num_log_entries +=1
                 continue
             if isinstance(log_entry, bytes):

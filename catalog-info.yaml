@@ -4,7 +4,7 @@ metadata:
   name: dynatrace-aws-platform-monitoring-s3-log-forwarder
   description: |
     Serverless architecture that forwards logs from Amazon S3 to Dynatrace.
-    Supports out-of-the-box parsing for ALB/NLB/ELB, CloudFront, CloudTrail,
+    Supports out-of-the-box parsing for ALB/NLB/ELB, CloudFront (legacy and v2 standard logging), CloudTrail,
     Global Accelerator, MSK, Network Firewall, Redshift, S3 access logs,
     VPC DNS/Flow logs, WAF, and AppFabric, as well as generic text and JSON logs.
   links:

@@ -60,7 +60,8 @@ def create_log_processing_rule(rule_dict):
                            'attribute_extraction_from_key_name', 'attribute_extraction_grok_expression',
                            'attribute_extraction_jmespath_expression', 'filter_json_objects_key',
                            'filter_json_objects_value', 'attribute_extraction_from_top_level_json',
-                           'attribute_mapping_from_json_keys', 'multiline_record_start_pattern']
+                           'attribute_mapping_from_json_keys', 'multiline_record_start_pattern',
+                           'header_line_prefix']
 
     for attribute in required_attributes:
         if attribute not in rule_dict:
@@ -99,7 +100,8 @@ def create_log_processing_rule(rule_dict):
             }
             if rule_dict.get('attribute_mapping_from_json_keys') else None,
             skip_header_lines=rule_dict.get('skip_header_lines', 0),
-            multiline_record_start_pattern=rule_dict['multiline_record_start_pattern']
+            multiline_record_start_pattern=rule_dict['multiline_record_start_pattern'],
+            header_line_prefix=rule_dict['header_line_prefix']
         )
     except ValueError as ex:
         raise InvalidLogProcessingRuleFile(
