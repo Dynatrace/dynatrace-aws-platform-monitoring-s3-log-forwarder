@@ -142,7 +142,7 @@ class DynatraceSink():
         Gets a Dynatrace LogMessageJson object. If message size exceeds Dynatrace limit, returns
         truncated message.
         '''
-        if len(message['content']) > DYNATRACE_LOG_INGEST_CONTENT_MAX_LENGTH:
+        if len(message['content'].encode('utf-8')) > DYNATRACE_LOG_INGEST_CONTENT_MAX_LENGTH:
             trimmed_length = DYNATRACE_LOG_INGEST_CONTENT_MAX_LENGTH - \
                 len(DYNATRACE_LOG_INGEST_CONTENT_MARK_TRIMMED)
             message['content'] = message['content'][0:trimmed_length] + \
