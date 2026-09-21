@@ -59,6 +59,7 @@ class TestDynatraceSink(unittest.TestCase):
         test_message = {'content': '€' * 7}
         dynatrace_sink.check_log_message_size_and_truncate(test_message)
         self.assertIn(dynatrace.DYNATRACE_LOG_INGEST_CONTENT_MARK_TRIMMED, test_message['content'])
+        self.assertLessEqual(len(test_message['content'].encode('utf-8')), 20)
 
     @patch('log.sinks.dynatrace.DYNATRACE_LOG_INGEST_CONTENT_MAX_LENGTH', 20)
     def test_message_no_truncation_when_within_byte_limit(self):
