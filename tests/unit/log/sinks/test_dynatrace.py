@@ -52,22 +52,23 @@ class TestDynatraceSink(unittest.TestCase):
         self.assertEqual(test_message['content'],expected_message)
     
     @patch('log.sinks.dynatrace.DYNATRACE_LOG_INGEST_CONTENT_MAX_LENGTH', 20)
-    def test_message_truncation_multibyte_exceeds_byte_limit(self):
-        # '€' is 3 bytes in UTF-8; 7 chars = 21 bytes > 20-byte limit
-        # but len('€' * 7) == 7 < 20, so a char-based check would NOT have truncated
-        dynatrace_sink = dynatrace.DynatraceSink(mock_dt_url, mock_dt_key_parameter, token_source='ssm')
-        test_message = {'content': '€' * 7}
-        dynatrace_sink.check_log_message_size_and_truncate(test_message)
-        self.assertIn(dynatrace.DYNATRACE_LOG_INGEST_CONTENT_MARK_TRIMMED, test_message['content'])
-        self.assertLessEqual(len(test_message['content'].encode('utf-8')), 20)
-
-    @patch('log.sinks.dynatrace.DYNATRACE_LOG_INGEST_CONTENT_MAX_LENGTH', 20)
     def test_message_no_truncation_when_within_byte_limit(self):
-        # '€' is 3 bytes in UTF-8; 6 chars = 18 bytes < 20-byte limit → no truncation
+        # '€' is 3 bytes in UTF-8; 6 '€' chars is 18 bytes - below 20-byte limit → no truncation
         dynatrace_sink = dynatrace.DynatraceSink(mock_dt_url, mock_dt_key_parameter, token_source='ssm')
         test_message = {'content': '€' * 6}
         dynatrace_sink.check_log_message_size_and_truncate(test_message)
         self.assertNotIn(dynatrace.DYNATRACE_LOG_INGEST_CONTENT_MARK_TRIMMED, test_message['content'])
+
+    @patch('log.sinks.dynatrace.DYNATRACE_LOG_INGEST_CONTENT_MAX_LENGTH', 20)
+    def test_message_truncation_multibyte_result_within_byte_limit(self):
+        # '€' is 3 bytes in UTF-8; 7 '€' chars is 21 bytes - above 20-byte limit - should truncate
+        # Byte-based slicing must keep the final result (content + mark) within the byte limit.
+        dynatrace_sink = dynatrace.DynatraceSink(mock_dt_url, mock_dt_key_parameter, token_source='ssm')
+        test_message = {'content': '€' * 7}
+        dynatrace_sink.check_log_message_size_and_truncate(test_message)
+        self.assertLessEqual(len(test_message['content'].encode('utf-8')),
+                             dynatrace.DYNATRACE_LOG_INGEST_CONTENT_MAX_LENGTH)
+        self.assertIn(dynatrace.DYNATRACE_LOG_INGEST_CONTENT_MARK_TRIMMED, test_message['content'])
 
     @responses.activate
     def test_exceed_max_entries_on_payload(self):
