@@ -177,7 +177,7 @@ Parameters:
     Description: Dynatrace API http request payload maximum byte size, can be adjusted for better handling of large files
     Type: Number
     Default: 20971520
-    MinValue: 5242880
+    MinValue: 10485760
     MaxValue: 52428800
   VerifyLogEndpointSSLCerts:
     Description: Leave the default value unless you need to disable SSL certificate verification when posting logs to the Dynatrace endpoint (e.g. when routing traffic through an intercepting proxy with a custom CA).
