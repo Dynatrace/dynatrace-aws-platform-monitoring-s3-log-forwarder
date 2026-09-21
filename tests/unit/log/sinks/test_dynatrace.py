@@ -176,9 +176,9 @@ class TestDynatraceSinkConstants(unittest.TestCase):
             self.assertEqual(dynatrace.DYNATRACE_LOG_INGEST_CONTENT_MAX_LENGTH, 10 * 1024 * 1024)
 
     def test_payload_max_size_env_var_override(self):
-        with patch.dict(os.environ, {'DYNATRACE_LOG_INGEST_PAYLOAD_MAX_SIZE': '5242880'}):
+        with patch.dict(os.environ, {'DYNATRACE_LOG_INGEST_PAYLOAD_MAX_SIZE': '10495760'}):
             importlib.reload(dynatrace)
-            self.assertEqual(dynatrace.DYNATRACE_LOG_INGEST_PAYLOAD_MAX_SIZE, 5242880)
+            self.assertEqual(dynatrace.DYNATRACE_LOG_INGEST_PAYLOAD_MAX_SIZE, 10495760)
 
     def test_payload_max_size_invalid_env_var_uses_default(self):
         with patch.dict(os.environ, {'DYNATRACE_LOG_INGEST_PAYLOAD_MAX_SIZE': 'not_a_number'}):
