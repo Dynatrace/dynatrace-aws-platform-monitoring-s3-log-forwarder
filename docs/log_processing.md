@@ -50,6 +50,11 @@ and only the combinations below are supported.
 
 Only the **W3C / Plain** text output format is supported. `JSON`, `Raw` and `Parquet` are not.
 
+JSON (`.json.gz`) and Parquet (`.parquet`) deliveries are excluded by this rule on their file
+extension, so they are ingested as generic logs instead of being mis-parsed as W3C text. `Raw` is
+not distinguishable by extension — if you select it, records are ingested but attribute extraction
+and timestamp parsing will not produce meaningful results.
+
 > The output format is fixed when the delivery destination is first created and cannot be changed
 > afterwards — if an existing delivery uses an unsupported format you must recreate it.
 

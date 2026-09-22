@@ -27,7 +27,13 @@ name: cloudfront-v2
 #
 # Note: when a user specifies a custom bucket prefix the AWSLogs segment is absent;
 # such files fall back to the cloudfront (v1/legacy) rule.
-known_key_path_pattern: '^.*?{aws_logs_prefix}/(aws-account-id=)?{aws_account_id_pattern}/CloudFront/.*\.gz$'
+#
+# Rules are selected by key alone, so the only way to keep unsupported output
+# formats out of this text rule is to exclude their extensions here. JSON
+# deliveries land as '.json.gz' and are rejected by the lookbehind; Parquet
+# ('.parquet') is already excluded by the '.gz' suffix. Both then fall through
+# to generic processing rather than being mis-parsed as W3C text.
+known_key_path_pattern: '^.*?{aws_logs_prefix}/(aws-account-id=)?{aws_account_id_pattern}/CloudFront/.*(?<!\.json)\.gz$'
 
 source: aws
 
@@ -48,9 +54,11 @@ attribute_extraction_from_key_name:
   # The distribution ID is not guaranteed a fixed position: it appears in the
   # file name (E1SFLUZKKLSP61.2025-09-23-08.abcdef01.gz) and, when the customer
   # partitions with {DistributionId}, as its own path segment. Match it anywhere,
-  # with boundaries so it can't match inside a longer alphanumeric token.
+  # requiring a non-alphanumeric boundary on both sides so it cannot match inside
+  # a longer token. Lowercase counts as a boundary character: without it a custom
+  # suffix path such as 'folderE1SFLUZKKLSP61part' would yield a bogus ARN.
   # If it is absent entirely, aws.arn.pattern is left unresolved and dropped.
-  cloudfront.distribution.id: '(?<![A-Z0-9]){cloudfront_distribution_id_pattern}(?![A-Z0-9])'
+  cloudfront.distribution.id: '(?<![A-Za-z0-9]){cloudfront_distribution_id_pattern}(?![A-Za-z0-9])'
 
 attribute_extraction_grok_expression: "%{CLOUDFRONTTIMESTAMP:timestamp_to_transform}"
 
