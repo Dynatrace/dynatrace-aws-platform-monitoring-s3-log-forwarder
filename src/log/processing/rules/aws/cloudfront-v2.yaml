@@ -45,10 +45,12 @@ attribute_extraction_from_key_name:
   # re.search returns the account-id portion; the lookahead (?=/CloudFront/) is
   # not consumed, so attrib.group() yields just the 12-digit account number.
   aws.account.id: '{aws_account_id_pattern}(?=/CloudFront/)'
-  # Extract the distribution ID from the filename (e.g. E1SFLUZKKLSP61 in
-  # E1SFLUZKKLSP61.2025-09-23-08.abcdef01.gz); the lookahead anchors it to the
-  # date field that always follows.
-  cloudfront.distribution.id: '{cloudfront_distribution_id_pattern}(?=\.\d{{4}}-\d{{2}}-\d{{2}}-\d{{2}}\.)'
+  # The distribution ID is not guaranteed a fixed position: it appears in the
+  # file name (E1SFLUZKKLSP61.2025-09-23-08.abcdef01.gz) and, when the customer
+  # partitions with {DistributionId}, as its own path segment. Match it anywhere,
+  # with boundaries so it can't match inside a longer alphanumeric token.
+  # If it is absent entirely, aws.arn.pattern is left unresolved and dropped.
+  cloudfront.distribution.id: '(?<![A-Z0-9]){cloudfront_distribution_id_pattern}(?![A-Z0-9])'
 
 attribute_extraction_grok_expression: "%{CLOUDFRONTTIMESTAMP:timestamp_to_transform}"
 
