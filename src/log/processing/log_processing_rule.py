@@ -161,10 +161,11 @@ class LogProcessingRule:
             if not isinstance(self.multiline_record_start_pattern, str):
                 raise ValueError("multiline_record_start_pattern must be a string")
 
-        # validate header_line_prefix is only for text log format and not combined with skip_header_lines
         if self.header_line_prefix is not None:
             if not isinstance(self.header_line_prefix, str):
                 raise ValueError("header_line_prefix must be a string")
+            if not self.header_line_prefix:
+                raise ValueError("header_line_prefix must not be empty")
             if self.log_format != "text":
                 raise ValueError("header_line_prefix is only valid for text log format")
             if self.skip_header_lines and self.skip_header_lines != 0:
