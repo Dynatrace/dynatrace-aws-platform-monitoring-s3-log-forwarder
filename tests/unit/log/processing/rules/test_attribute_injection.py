@@ -36,6 +36,11 @@ cloudfront_v2_partitioned_key_name = 'AWSLogs/012345678910/CloudFront/myFolder/2
 # {DistributionId} used as a partitioning variable: the ID is a path segment, not in the file name
 cloudfront_v2_distribution_id_partition_key_name = 'AWSLogs/012345678910/CloudFront/E1SFLUZKKLSP61/2025/09/23/08/abcdef01.gz'
 cloudfront_v2_hive_distribution_id_partition_key_name = 'AWSLogs/aws-account-id=012345678910/CloudFront/distributionid=E1SFLUZKKLSP61/year=2025/month=09/abcdef01.gz'
+# A distribution ID embedded in a longer lowercase token is not a real distribution ID
+cloudfront_v2_embedded_id_key_name = 'AWSLogs/012345678910/CloudFront/folderE1SFLUZKKLSP61part/2025/09/23/abcdef01.gz'
+# Unsupported output formats must not be picked up by the text rule
+cloudfront_v2_json_key_name = 'AWSLogs/012345678910/CloudFront/E1SFLUZKKLSP61.2025-09-23-08.abcdef01.json.gz'
+cloudfront_v2_parquet_key_name = 'AWSLogs/012345678910/CloudFront/E1SFLUZKKLSP61.2025-09-23-08.abcdef01.parquet'
 vpcflowlog_key_name = 'optional_prefix/AWSLogs/012345678910/vpcflowlogs/us-east-1/2023/02/14/012345678910_vpcflowlogs_us-east-1_fl-07f38b767c7cd46e3_20230214T0000Z_129a0cf7.log.gz'
 network_firewall_key_name = 'random_prefix/AWSLogs/012345678910/network-firewall/flow/us-east-1/my-test-firewall/2023/02/20/16/012345678910_network-firewall_flow_us-east-1_my-test-firewall_202302201610_e5c84094.log.gz'
 msk_key_name = 'AWSLogs/012345678910/KafkaBrokerLogs/us-east-1/demo-cluster-2-043b6d76-352c-494a-9eee-fbff5cc1687d-20/2023-02-20-17/Broker-1_17-05_5b17f696.log.gz'
@@ -155,6 +160,16 @@ class TestAWSAttributeInjection(unittest.TestCase):
             cloudfront_v2_distribution_id_partition_key_name)
         expected_attributes = {'aws.account.id': '012345678910', 'cloudfront.distribution.id': 'E1SFLUZKKLSP61'}
         self.assertEqual(attributes, expected_attributes)
+
+    def test_cloudfront_v2_embedded_id_is_not_extracted(self):
+        # Must not produce an ARN for a distribution ID embedded in a longer token
+        cloudfront_v2_processing_rule = processing_rules['aws']['cloudfront-v2']
+        attributes = cloudfront_v2_processing_rule.get_attributes_from_s3_key_name(
+            cloudfront_v2_embedded_id_key_name)
+        self.assertNotIn('cloudfront.distribution.id', attributes)
+        attributes.update(cloudfront_v2_processing_rule.get_processing_log_annotations())
+        _resolve_aws_arn_from_pattern(attributes)
+        self.assertIsNone(attributes.get('aws.arn'))
 
     def test_cloudfront_v2_hive_distribution_id_partition_attributes(self):
         cloudfront_v2_processing_rule = processing_rules['aws']['cloudfront-v2']
@@ -406,6 +421,17 @@ class TestS3KeyMatchingExpression(unittest.TestCase):
 
     def test_cloudfront_v2_partitioned_s3_key(self):
         self.assertTrue(processing_rules['aws']['cloudfront-v2'].match_s3_key(cloudfront_v2_partitioned_key_name))
+
+    def test_cloudfront_v2_distribution_id_partition_s3_key(self):
+        self.assertTrue(processing_rules['aws']['cloudfront-v2'].match_s3_key(
+            cloudfront_v2_distribution_id_partition_key_name))
+
+    def test_cloudfront_v2_json_output_format_key_does_not_match(self):
+        # JSON output is not supported by this text rule; it must fall through to generic
+        self.assertFalse(processing_rules['aws']['cloudfront-v2'].match_s3_key(cloudfront_v2_json_key_name))
+
+    def test_cloudfront_v2_parquet_output_format_key_does_not_match(self):
+        self.assertFalse(processing_rules['aws']['cloudfront-v2'].match_s3_key(cloudfront_v2_parquet_key_name))
 
     def test_vpcflowlogs_s3_key(self):
         self.assertTrue(processing_rules['aws']['vpcflowlogs'].match_s3_key(vpcflowlog_key_name))
