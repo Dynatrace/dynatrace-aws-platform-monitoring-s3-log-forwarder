@@ -38,14 +38,55 @@ For some AWS services, certain attributes cannot be extracted because the data i
 | CloudTrail                           | `aws.arn`                   |
 | AppFabric                            | `aws.arn`                   |
 | CloudFront (legacy / v1)             | `aws.account.id`, `aws.arn` |
-| CloudFront standard logging v2       | `aws.arn`                   |
 | S3 Server Access                     | `aws.account.id`            |
 
-> **CloudFront standard logging v2 notes:**
->
-> * Only the **plain-text / W3C** output format delivered to S3 is supported. JSON and Parquet output formats are not supported.
-> * `aws.account.id` is extracted automatically when the default `AWSLogs/<account-id>/CloudFront/` prefix is used (no custom bucket prefix configured).
-> * When a custom bucket prefix is configured by the user, the `AWSLogs/` prefix segment is absent; those files are handled by the legacy (v1) rule and `aws.account.id` cannot be extracted. To extract `aws.account.id` in this case, add a **custom processing rule** (see [Adding your own log processing rules](#adding-your-own-log-processing-rules)) with an `attribute_extraction_from_key_name` regex tailored to your prefix layout, and point at it from a `custom`-source log forwarding rule.
+#### CloudFront standard logging (v2) requirements
+
+CloudFront standard logging (v2) is delivered to S3 through CloudWatch vended logs. Both the
+**output format** and the **S3 key partitioning** are chosen by you when you create the delivery,
+and only the combinations below are supported.
+
+##### Output format
+
+Only the **W3C / Plain** text output format is supported. `JSON`, `Raw` and `Parquet` are not.
+
+> The output format is fixed when the delivery destination is first created and cannot be changed
+> afterwards — if an existing delivery uses an unsupported format you must recreate it.
+
+Leading `#Version:` / `#Fields:` header lines are skipped automatically, so both header-carrying
+and header-less text output are handled.
+
+##### Record fields
+
+The default `recordFields` selection is assumed, in which `date` and `time` are the first two
+fields. Timestamp parsing reads these leading fields; if you reorder `recordFields` so that `date`
+and `time` are no longer first, timestamps will not be parsed and the ingest time is used instead.
+
+##### S3 key partitioning
+
+The delivery must keep the `AWSLogs/` path segment, i.e. configure the destination **without a
+custom bucket prefix**. CloudFront then appends `AWSLogs/{account-id}/CloudFront/` (or
+`AWSLogs/aws-account-id=<id>/CloudFront/` for Hive-compatible deliveries) automatically. Both
+variants are recognised, and any suffix path you add after that segment is supported — including
+the `{DistributionId}`, `{yyyy}`, `{MM}`, `{dd}` and `{HH}` partitioning variables, in Hive-compatible
+form or not.
+
+Entity linking needs two values, resolved from the S3 key:
+
+| Attribute      | Source                                                                                  |
+|----------------|-----------------------------------------------------------------------------------------|
+| `aws.account.id` | The account ID segment before `/CloudFront/`. Always present in a default-prefix delivery. |
+| `aws.arn`      | Built from `aws.account.id` plus the distribution ID, which is read either from the log file name or from a `{DistributionId}` path segment. |
+
+If the distribution ID is not present anywhere in the key, logs are still ingested but `aws.arn`
+is omitted and the logs will not link to the CloudFront distribution entity.
+
+> **Custom bucket prefixes are not supported.** When you configure one, the `AWSLogs/` segment is
+> absent and the file is handled by the legacy (v1) rule, which extracts neither `aws.account.id`
+> nor `aws.arn`. To support a custom prefix, add a **custom processing rule**
+> (see [Adding your own log processing rules](#adding-your-own-log-processing-rules)) with an
+> `attribute_extraction_from_key_name` regex tailored to your prefix layout, and point at it from a
+> `custom`-source log forwarding rule.
 
 ### Generic log ingestion
 
