@@ -42,9 +42,10 @@ For some AWS services, certain attributes cannot be extracted because the data i
 | S3 Server Access                     | `aws.account.id`            |
 
 > **CloudFront standard logging v2 notes:**
-> - Only the **plain-text / W3C** output format delivered to S3 is supported. JSON and Parquet output formats are not supported.
-> - `aws.account.id` is extracted automatically when the default `AWSLogs/<account-id>/CloudFront/` prefix is used (no custom bucket prefix configured).
-> - When a custom bucket prefix is configured by the user, the `AWSLogs/` prefix segment is absent; those files are handled by the legacy (v1) rule and `aws.account.id` cannot be extracted. To extract `aws.account.id` in this case, add a **custom processing rule** (see [Adding your own log processing rules](#adding-your-own-log-processing-rules)) with an `attribute_extraction_from_key_name` regex tailored to your prefix layout, and point at it from a `custom`-source log forwarding rule.
+>
+> * Only the **plain-text / W3C** output format delivered to S3 is supported. JSON and Parquet output formats are not supported.
+> * `aws.account.id` is extracted automatically when the default `AWSLogs/<account-id>/CloudFront/` prefix is used (no custom bucket prefix configured).
+> * When a custom bucket prefix is configured by the user, the `AWSLogs/` prefix segment is absent; those files are handled by the legacy (v1) rule and `aws.account.id` cannot be extracted. To extract `aws.account.id` in this case, add a **custom processing rule** (see [Adding your own log processing rules](#adding-your-own-log-processing-rules)) with an `attribute_extraction_from_key_name` regex tailored to your prefix layout, and point at it from a `custom`-source log forwarding rule.
 
 ### Generic log ingestion
 
