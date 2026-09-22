@@ -37,12 +37,18 @@ annotations:
   cloud.provider: aws
   aws.region: global
   aws.resource.type: "AWS::CloudFront::Distribution"
+  # CloudFront ARNs have no region component.
+  aws.arn.pattern: "arn:aws:cloudfront::{aws.account.id}:distribution/{cloudfront.distribution.id}"
 
-# Extract the AWS account ID from the path segment before /CloudFront/.
-# re.search returns the account-id portion; the lookahead (?=/CloudFront/) is
-# not consumed, so attrib.group() yields just the 12-digit account number.
 attribute_extraction_from_key_name:
+  # Extract the AWS account ID from the path segment before /CloudFront/.
+  # re.search returns the account-id portion; the lookahead (?=/CloudFront/) is
+  # not consumed, so attrib.group() yields just the 12-digit account number.
   aws.account.id: '{aws_account_id_pattern}(?=/CloudFront/)'
+  # Extract the distribution ID from the filename (e.g. E1SFLUZKKLSP61 in
+  # E1SFLUZKKLSP61.2025-09-23-08.abcdef01.gz); the lookahead anchors it to the
+  # date field that always follows.
+  cloudfront.distribution.id: '{cloudfront_distribution_id_pattern}(?=\.\d{{4}}-\d{{2}}-\d{{2}}-\d{{2}}\.)'
 
 attribute_extraction_grok_expression: "%{CLOUDFRONTTIMESTAMP:timestamp_to_transform}"
 

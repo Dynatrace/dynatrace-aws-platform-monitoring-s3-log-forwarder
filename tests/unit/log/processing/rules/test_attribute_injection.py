@@ -131,19 +131,19 @@ class TestAWSAttributeInjection(unittest.TestCase):
     def test_cloudfront_v2_attributes(self):
         cloudfront_v2_processing_rule = processing_rules['aws']['cloudfront-v2']
         attributes = cloudfront_v2_processing_rule.get_attributes_from_s3_key_name(cloudfront_v2_key_name)
-        expected_attributes = {'aws.account.id': '012345678910'}
+        expected_attributes = {'aws.account.id': '012345678910', 'cloudfront.distribution.id': 'E1SFLUZKKLSP61'}
         self.assertEqual(attributes, expected_attributes)
 
     def test_cloudfront_v2_hive_attributes(self):
         cloudfront_v2_processing_rule = processing_rules['aws']['cloudfront-v2']
         attributes = cloudfront_v2_processing_rule.get_attributes_from_s3_key_name(cloudfront_v2_hive_key_name)
-        expected_attributes = {'aws.account.id': '012345678910'}
+        expected_attributes = {'aws.account.id': '012345678910', 'cloudfront.distribution.id': 'E1SFLUZKKLSP61'}
         self.assertEqual(attributes, expected_attributes)
 
     def test_cloudfront_v2_partitioned_attributes(self):
         cloudfront_v2_processing_rule = processing_rules['aws']['cloudfront-v2']
         attributes = cloudfront_v2_processing_rule.get_attributes_from_s3_key_name(cloudfront_v2_partitioned_key_name)
-        expected_attributes = {'aws.account.id': '012345678910'}
+        expected_attributes = {'aws.account.id': '012345678910', 'cloudfront.distribution.id': 'E1SFLUZKKLSP61'}
         self.assertEqual(attributes, expected_attributes)
 
     def test_vpcflowlog_attributes(self):
@@ -324,6 +324,11 @@ class TestAWSAttributeInjection(unittest.TestCase):
                 'key': 'OptionalPrefix/AWSLogs/012345678910/vpcdnsquerylogs/vpc-0123456789abcdf12/2023/02/15/vpc-0123456789abcdf12_vpcdnsquerylogs_012345678910_20230215T0000Z_213be99c.log.gz',
                 'message': vpcdnsquery_log_entry,
                 'expected_arn': 'arn:aws:ec2:us-east-1:012345678910:vpc/vpc-0123456789abcdef12'
+            },
+            'cloudfront-v2': {
+                'key': cloudfront_v2_key_name,
+                'message': '',
+                'expected_arn': 'arn:aws:cloudfront::012345678910:distribution/E1SFLUZKKLSP61'
             }
             #'vpcflowlogs': {
             #    'key': vpcflowlog_key_name,
