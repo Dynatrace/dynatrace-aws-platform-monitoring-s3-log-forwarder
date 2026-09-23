@@ -31,31 +31,70 @@ logger = logging.getLogger(__name__)
 # (e.g. a json_array file) is mismatched to a text-format processing rule.
 GROK_MAX_INPUT_LENGTH = 8192
 
+# Plausibility window for timestamps: values outside this range are discarded.
+# A numeric field whose value is in the ~1e9 range (e.g. a byte count from a custom
+# VPC flow log format) cannot be distinguished from a real Unix epoch second and will
+# still be mis-converted. This guard reduces blast radius; it does not replace using a
+# custom processing rule for a custom log format.
+_TIMESTAMP_MIN = stdlib_datetime.datetime(2000, 1, 1, tzinfo=stdlib_datetime.timezone.utc)
+_TIMESTAMP_MAX = stdlib_datetime.datetime(2100, 1, 1, tzinfo=stdlib_datetime.timezone.utc)
+
+
+def _is_plausible_datetime(dt: stdlib_datetime.datetime) -> bool:
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=stdlib_datetime.timezone.utc)
+    return _TIMESTAMP_MIN <= dt < _TIMESTAMP_MAX
+
+
 def parse_date_from_string(date_string: str):
     '''
-    Uses dateutil to parse a date from a given str.
-    Also handles pure-integer strings as Unix epoch (seconds if 10 digits, milliseconds if 13+).
+    Parses a timestamp string and returns an ISO-format string, or None on failure.
+
+    Handles pure-integer strings as Unix epoch (seconds if 10 digits, milliseconds if 13+).
+    A plausibility window of 2000-01-01 to 2100-01-01 UTC is enforced on all paths; values
+    outside the window return None.  Naive datetimes are assumed to be UTC for the check.
+
+    Returns None (instead of the raw input or a wrong timestamp) when the value cannot be
+    parsed, falls outside the plausibility window, or would otherwise crash the invocation.
+    A None return means no timestamp attribute is set; Dynatrace then falls back to ingest time.
     '''
-    # Unix epoch seconds (10 digits) or milliseconds (13 digits)
+    # Unix epoch seconds (10 digits) or milliseconds (13+ digits)
     if date_string.isdigit():
         epoch_val = int(date_string)
         if len(date_string) >= 13:
             epoch_val = epoch_val / 1000
-        return stdlib_datetime.datetime.fromtimestamp(epoch_val, tz=stdlib_datetime.timezone.utc).isoformat()
-
-    datetime = date_string
-
-    try:
-        datetime = dateparser.parse(date_string,fuzzy=True).isoformat()
-    except dateparser.ParserError:
-        # Redshift timestamp doesn't include timezone, but logs are UTC. Example:
-        # authenticated |Tue, 21 Feb 2023 16:58:20:471|[local]
         try:
-            datetime = dateparser.parse(date_string + "Z",fuzzy=True).isoformat()
-        except dateparser.ParserError:
-            logger.exception("Unable to convert string timestamp")
+            dt = stdlib_datetime.datetime.fromtimestamp(epoch_val, tz=stdlib_datetime.timezone.utc)
+        except (OverflowError, OSError, ValueError):
+            return None
+        if not _is_plausible_datetime(dt):
+            return None
+        return dt.isoformat()
 
-    return datetime
+    def _try_parse(s):
+        try:
+            dt = dateparser.parse(s, fuzzy=True)
+        except (ValueError, OverflowError, TypeError):
+            return None
+        if dt is None or not _is_plausible_datetime(dt):
+            return None
+        return dt
+
+    dt = _try_parse(date_string)
+    if dt is not None:
+        return dt.isoformat()
+
+    # Redshift timestamp doesn't include timezone, but logs are UTC. Example:
+    # authenticated |Tue, 21 Feb 2023 16:58:20:471|[local]
+    dt = _try_parse(date_string + "Z")
+    if dt is not None:
+        return dt.isoformat()
+
+    logger.warning(
+        "Unable to parse timestamp %r; the field value may indicate a log format mismatch.",
+        date_string,
+    )
+    return None
 
 
 @dataclass(frozen=True)
