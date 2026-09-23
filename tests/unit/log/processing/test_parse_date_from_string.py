@@ -12,14 +12,9 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import os
 import unittest
 
-os.environ['LOG_FORWARDER_CONFIGURATION_LOCATION'] = 'local'
-os.environ['DEPLOYMENT_NAME'] = 'test'
-
 from log.processing.log_processing_rule import parse_date_from_string
-
 
 class TestParseDateFromStringEpoch(unittest.TestCase):
 
