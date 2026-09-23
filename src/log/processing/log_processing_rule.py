@@ -60,10 +60,10 @@ def parse_date_from_string(date_string: str):
     '''
     # Unix epoch seconds (10 digits) or milliseconds (13+ digits)
     if date_string.isdigit():
-        epoch_val = int(date_string)
-        if len(date_string) >= 13:
-            epoch_val = epoch_val / 1000
         try:
+            epoch_val = int(date_string)
+            if len(date_string) >= 13:
+                epoch_val = epoch_val / 1000
             dt = stdlib_datetime.datetime.fromtimestamp(epoch_val, tz=stdlib_datetime.timezone.utc)
         except (OverflowError, OSError, ValueError):
             return None
@@ -91,8 +91,8 @@ def parse_date_from_string(date_string: str):
         return dt.isoformat()
 
     logger.warning(
-        "Unable to parse timestamp %r; the field value may indicate a log format mismatch.",
-        date_string,
+        "Unable to parse timestamp field (length=%d); the field value may indicate a log format mismatch.",
+         len(date_string),
     )
     return None
 
