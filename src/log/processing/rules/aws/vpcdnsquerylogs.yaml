@@ -27,7 +27,6 @@ annotations:
   aws.resource.type: "AWS::EC2::VPC"
   aws.arn.pattern: "arn:aws:ec2:{aws.region}:{aws.account.id}:vpc/{aws.resource.id}"
 
-# map message keys to Dynatrace log ingest format
 attribute_extraction_jmespath_expression:
   timestamp: query_timestamp
   aws.account.id: account_id
