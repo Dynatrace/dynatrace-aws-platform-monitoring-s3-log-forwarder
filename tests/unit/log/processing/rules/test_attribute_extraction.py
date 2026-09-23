@@ -80,7 +80,7 @@ class TestALBAttributeExtraction(unittest.TestCase):
     alb_test_entry = 'http 2022-09-27T15:28:18.612792Z app/k8s-podinfo-podinfoi-ffbc3dc280/82a34fae168ba1aa 54.25.124.220:63763 192.168.15.219:9898 0.016 0.001 0.000 200 200 134 543 "GET http://k8s-podinfo-podinfoi-ffbc3dc280-1325129400.us-east-1.elb.amazonaws.com:80/ HTTP/1.1" "curl/7.79.1" - - arn:aws:elasticloadbalancing:us-east-1:012345678910:targetgroup/k8s-podinfo-frontend-b634dbe3b4/c0bcccc5dfc7c29c "Root=1-63331692-0dd6b14130c01d3e378a6ea5" "-" "-" 1 2022-09-27T15:28:18.565000Z "forward" "-" "-" "192.168.15.219:9898" "200" "-" "-"'
     expected_attributes = {
                             'timestamp': '2022-09-27T15:28:18.612792Z',
-                            'elbv2_id': 'app/k8s-podinfo-podinfoi-ffbc3dc280/82a34fae168ba1aa',
+                            '__elbv2_id': 'app/k8s-podinfo-podinfoi-ffbc3dc280/82a34fae168ba1aa',
                          }
     alb_processing_rule = processing_rules['aws']['ALB']
 
@@ -92,7 +92,7 @@ class TestALBAttributeExtraction(unittest.TestCase):
         log_entry = 'http 2018-07-02T22:23:00.186641Z app/my-loadbalancer/50dc6c495c0c9188 192.168.131.39:2817 10.0.0.1:80 0.000 0.001 0.000 200 200 34 366 "GET http://www.example.com:80/ HTTP/1.1" "curl/7.46.0" - - arn:aws:elasticloadbalancing:us-east-2:123456789012:targetgroup/my-targets/73e2d6bc24d8a067 "Root=1-58337262-36d228ad5d99923122bbe354" "-" "-" 0 2018-07-02T22:22:48.364000Z "forward" "-" "-" "10.0.0.1:80" "200" "-" "-"'
         expected_attributes = {
             'timestamp': '2018-07-02T22:23:00.186641Z',
-            'elbv2_id': 'app/my-loadbalancer/50dc6c495c0c9188'
+            '__elbv2_id': 'app/my-loadbalancer/50dc6c495c0c9188'
         }
 
         extracted_attributes = self.alb_processing_rule.get_extracted_log_attributes(log_entry)
@@ -102,7 +102,7 @@ class TestALBAttributeExtraction(unittest.TestCase):
         log_entry = 'https 2018-07-02T22:23:00.186641Z app/my-loadbalancer/50dc6c495c0c9188 192.168.131.39:2817 10.0.0.1:80 0.086 0.048 0.037 200 200 0 57 "GET https://www.example.com:443/ HTTP/1.1" "curl/7.46.0" ECDHE-RSA-AES128-GCM-SHA256 TLSv1.2 arn:aws:elasticloadbalancing:us-east-2:123456789012:targetgroup/my-targets/73e2d6bc24d8a067 "Root=1-58337281-1d84f3d73c47ec4e58577259" "www.example.com" "arn:aws:acm:us-east-2:123456789012:certificate/12345678-1234-1234-1234-123456789012" 1 2018-07-02T22:22:48.364000Z "authenticate,forward" "-" "-" "10.0.0.1:80" "200" "-" "-"'
         expected_attributes = {
             'timestamp': '2018-07-02T22:23:00.186641Z',
-            'elbv2_id': 'app/my-loadbalancer/50dc6c495c0c9188'
+            '__elbv2_id': 'app/my-loadbalancer/50dc6c495c0c9188'
         }
         extracted_attributes = self.alb_processing_rule.get_extracted_log_attributes(log_entry)
         self.assertEqual(expected_attributes,extracted_attributes)
@@ -111,7 +111,7 @@ class TestALBAttributeExtraction(unittest.TestCase):
         log_entry = 'h2 2018-07-02T22:23:00.186641Z app/my-loadbalancer/50dc6c495c0c9188 10.0.1.252:48160 10.0.0.66:9000 0.000 0.002 0.000 200 200 5 257 "GET https://10.0.2.105:773/ HTTP/2.0" "curl/7.46.0" ECDHE-RSA-AES128-GCM-SHA256 TLSv1.2 arn:aws:elasticloadbalancing:us-east-2:123456789012:targetgroup/my-targets/73e2d6bc24d8a067 "Root=1-58337327-72bd00b0343d75b906739c42" "-" "-" 1 2018-07-02T22:22:48.364000Z "redirect" "https://example.com:80/" "-" "10.0.0.66:9000" "200" "-" "-"'
         expected_attributes = {
             'timestamp': '2018-07-02T22:23:00.186641Z',
-            'elbv2_id': 'app/my-loadbalancer/50dc6c495c0c9188'
+            '__elbv2_id': 'app/my-loadbalancer/50dc6c495c0c9188'
         }
         extracted_attributes = self.alb_processing_rule.get_extracted_log_attributes(log_entry)
         self.assertEqual(expected_attributes,extracted_attributes)
@@ -120,7 +120,7 @@ class TestALBAttributeExtraction(unittest.TestCase):
         log_entry = 'ws 2018-07-02T22:23:00.186641Z app/my-loadbalancer/50dc6c495c0c9188 10.0.0.140:40914 10.0.1.192:8010 0.001 0.003 0.000 101 101 218 587 "GET http://10.0.0.30:80/ HTTP/1.1" "-" - - arn:aws:elasticloadbalancing:us-east-2:123456789012:targetgroup/my-targets/73e2d6bc24d8a067 "Root=1-58337364-23a8c76965a2ef7629b185e3" "-" "-" 1 2018-07-02T22:22:48.364000Z "forward" "-" "-" "10.0.1.192:8010" "101" "-" "-"'
         expected_attributes = {
             'timestamp': '2018-07-02T22:23:00.186641Z',
-            'elbv2_id': 'app/my-loadbalancer/50dc6c495c0c9188'
+            '__elbv2_id': 'app/my-loadbalancer/50dc6c495c0c9188'
         }
         extracted_attributes = self.alb_processing_rule.get_extracted_log_attributes(log_entry)
         self.assertEqual(expected_attributes,extracted_attributes)
@@ -129,7 +129,7 @@ class TestALBAttributeExtraction(unittest.TestCase):
         log_entry = 'https 2018-07-02T22:23:00.186641Z app/my-loadbalancer/50dc6c495c0c9188 10.0.0.140:40914 10.0.1.192:8010 0.001 0.003 0.000 101 101 218 587 "- http://10.0.0.30:80/ HTTP/1.1" "-" - - arn:aws:elasticloadbalancing:us-east-2:123456789012:targetgroup/my-targets/73e2d6bc24d8a067 "Root=1-58337364-23a8c76965a2ef7629b185e3" "-" "-" 1 2018-07-02T22:22:48.364000Z "forward" "-" "-" "10.0.1.192:8010" "101" "-" "-"'
         expected_attributes = {
             'timestamp': '2018-07-02T22:23:00.186641Z',
-            'elbv2_id': 'app/my-loadbalancer/50dc6c495c0c9188'
+            '__elbv2_id': 'app/my-loadbalancer/50dc6c495c0c9188'
         }
         extracted_attributes = self.alb_processing_rule.get_extracted_log_attributes(log_entry)
         self.assertEqual(expected_attributes,extracted_attributes)
@@ -138,7 +138,7 @@ class TestALBAttributeExtraction(unittest.TestCase):
         log_entry = 'https 2018-07-02T22:23:00.186641Z app/my-loadbalancer/50dc6c495c0c9188 10.0.0.140:40914 10.0.1.192:8010 0.001 0.003 0.000 101 101 218 587 "- http://10.0.0.30:80- -" "-" - - arn:aws:elasticloadbalancing:us-east-2:123456789012:targetgroup/my-targets/73e2d6bc24d8a067 "Root=1-58337364-23a8c76965a2ef7629b185e3" "-" "-" 1 2018-07-02T22:22:48.364000Z "forward" "-" "-" "10.0.1.192:8010" "101" "-" "-"'
         expected_attributes = {
             'timestamp': '2018-07-02T22:23:00.186641Z',
-            'elbv2_id': 'app/my-loadbalancer/50dc6c495c0c9188'
+            '__elbv2_id': 'app/my-loadbalancer/50dc6c495c0c9188'
         }
         extracted_attributes = self.alb_processing_rule.get_extracted_log_attributes(log_entry)
         self.assertEqual(expected_attributes, extracted_attributes)
@@ -147,7 +147,7 @@ class TestALBAttributeExtraction(unittest.TestCase):
         log_entry = f'https 2018-07-02T22:23:00.186641Z app/my-loadbalancer/50dc6c495c0c9188 10.0.0.140:40914 10.0.1.192:8010 0.001 0.003 0.000 101 101 218 587 "POST http://10.0.0.30:80/index.php?{uriparam} HTTP/1.1" "-" - - arn:aws:elasticloadbalancing:us-east-2:123456789012:targetgroup/my-targets/73e2d6bc24d8a067 "Root=1-58337364-23a8c76965a2ef7629b185e3" "-" "-" 1 2018-07-02T22:22:48.364000Z "forward" "-" "-" "10.0.1.192:8010" "101" "-" "-"'
         expected_attributes = {
             'timestamp': '2018-07-02T22:23:00.186641Z',
-            'elbv2_id': 'app/my-loadbalancer/50dc6c495c0c9188'
+            '__elbv2_id': 'app/my-loadbalancer/50dc6c495c0c9188'
         }
         extracted_attributes = self.alb_processing_rule.get_extracted_log_attributes(log_entry)
         self.assertEqual(expected_attributes,extracted_attributes)
@@ -165,7 +165,7 @@ class TestALBAttributeExtraction(unittest.TestCase):
 class TestClassicELBAttributeExtraction(unittest.TestCase):
     classic_elb_test_entry = '2022-09-27T22:48:26.330387Z a2e8277e0e09143fbb06db5dcd2a14c2 3.67.7.163:8596 192.168.18.161:32728 0.000042 0.004504 0.000036 404 404 0 1086 "GET http://a2e8277e0e09143fbb06db5dcd2a14c2-1086714162.us-east-1.elb.amazonaws.com:80/n9BxiYVakde9.php HTTP/1.1" "Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 5.1; Trident/4.0)" - -'
     expected_attributes = {"timestamp": "2022-09-27T22:48:26.330387Z",
-                           "elb_id": "a2e8277e0e09143fbb06db5dcd2a14c2",}
+                           "__elb_id": "a2e8277e0e09143fbb06db5dcd2a14c2",}
 
     classic_elb_processing_rule = processing_rules['aws']['Classic-ELB']
 
@@ -177,7 +177,7 @@ class TestClassicELBAttributeExtraction(unittest.TestCase):
 class TestNLBAttributeExtraction(unittest.TestCase):
     nlb_test_entry = 'tls 2.0 2022-09-27T17:10:23 net/k8s-podinfo-frontend-352ef7564b/809b86b470cfa0ff f0f22c45225e4663 192.168.18.161:60808 192.168.103.168:443 24 16 140 518 - arn:aws:acm:us-east-1:012345678910:certificate/ae6e87cd-9848-465b-9433-b0d34850a685 - ECDHE-RSA-AES128-GCM-SHA256 tlsv12 - k8s-podinfo-frontend-352ef7564b-809b86b470cfa0ff.elb.us-east-1.amazonaws.com - - -'
     expected_attributes = {'timestamp': '2022-09-27T17:10:23',
-                           'elbv2_id': 'net/k8s-podinfo-frontend-352ef7564b/809b86b470cfa0ff',}
+                           '__elbv2_id': 'net/k8s-podinfo-frontend-352ef7564b/809b86b470cfa0ff',}
     nlb_processing_rule = processing_rules['aws']['NLB']
 
     def test_nlb_attribute_extraction(self):
@@ -187,7 +187,7 @@ class TestNLBAttributeExtraction(unittest.TestCase):
 class TestS3AccessLogsAttributeExtraction(unittest.TestCase):
     s3_access_log_entry = '79a59df900b949e55d96a1e698fbacedfd6e09d98eacf8f8d5218e7cd47ef2be DOC-EXAMPLE-BUCKET1 [06/Feb/2019:00:00:38 +0000] 192.0.2.3 79a59df900b949e55d96a1e698fbacedfd6e09d98eacf8f8d5218e7cd47ef2be 3E57427F3EXAMPLE REST.GET.VERSIONING - "GET /DOC-EXAMPLE-BUCKET1?versioning HTTP/1.1" 200 - 113 - 7 - "-" "S3Console/0.4" - s9lzHYrFp76ZVxRcpX9+5cjAnEH2ROuNkd2BHfIa6UkFVdtjf5mKR3/eTPFvsiP/XV/VLi31234= SigV4 ECDHE-RSA-AES128-GCM-SHA256 AuthHeader DOC-EXAMPLE-BUCKET1.s3.us-west-1.amazonaws.com TLSV1.2 arn:aws:s3:us-west-1:123456789012:accesspoint/example-AP Yes'
 
-    expected_attributes = {'bucket_name': 'DOC-EXAMPLE-BUCKET1', 'timestamp': '2019-02-06T00:00:38+00:00'}
+    expected_attributes = {'__bucket_name': 'DOC-EXAMPLE-BUCKET1', 'timestamp': '2019-02-06T00:00:38+00:00'}
 
     s3_processing_rule = processing_rules['aws']['s3']
 
@@ -462,14 +462,14 @@ class TestRedshiftTimestampExtraction(unittest.TestCase):
         line = "'2026-06-01T08:59:05Z UTC [ db=dev user=rdsdb pid=1073955200 userid=1 xid=1823 ]' LOG: select pg_backend_pid()"
         attrs = processing_rules['aws']['redshift'].get_extracted_log_attributes(line)
         self.assertIn('timestamp', attrs)
-        self.assertNotIn('timestamp_to_transform', attrs)
+        self.assertNotIn('__timestamp_to_transform', attrs)
         self.assertIn('2026-06-01', attrs['timestamp'])
 
     def test_legacy_timestamp_extracted(self):
         line = "authenticated |Tue, 21 Feb 2023 16:58:20:471|[local]|rdsdb|dev|0|1|0|Authentication succeeded"
         attrs = processing_rules['aws']['redshift'].get_extracted_log_attributes(line)
         self.assertIn('timestamp', attrs)
-        self.assertNotIn('timestamp_to_transform', attrs)
+        self.assertNotIn('__timestamp_to_transform', attrs)
         self.assertIn('2023', attrs['timestamp'])
 
     def test_no_timestamp_returns_empty(self):

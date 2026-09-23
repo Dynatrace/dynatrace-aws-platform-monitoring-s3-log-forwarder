@@ -44,7 +44,7 @@ annotations:
   aws.region: global
   aws.resource.type: "AWS::CloudFront::Distribution"
   # CloudFront ARNs have no region component.
-  aws.arn.pattern: "arn:aws:cloudfront::{aws.account.id}:distribution/{cloudfront.distribution.id}"
+  aws.arn.pattern: "arn:aws:cloudfront::{aws.account.id}:distribution/{__cloudfront.distribution.id}"
 
 attribute_extraction_from_key_name:
   # Extract the AWS account ID from the path segment before /CloudFront/.
@@ -58,9 +58,9 @@ attribute_extraction_from_key_name:
   # a longer token. Lowercase counts as a boundary character: without it a custom
   # suffix path such as 'folderE1SFLUZKKLSP61part' would yield a bogus ARN.
   # If it is absent entirely, aws.arn.pattern is left unresolved and dropped.
-  cloudfront.distribution.id: '(?<![A-Za-z0-9]){cloudfront_distribution_id_pattern}(?![A-Za-z0-9])'
+  __cloudfront.distribution.id: '(?<![A-Za-z0-9]){cloudfront_distribution_id_pattern}(?![A-Za-z0-9])'
 
-attribute_extraction_grok_expression: "%{CLOUDFRONTTIMESTAMP:timestamp_to_transform}"
+attribute_extraction_grok_expression: "%{CLOUDFRONTTIMESTAMP:__timestamp_to_transform}"
 
 # The W3C output format starts with one or more '#'-prefixed header lines
 # (e.g. "#Fields: date time ...").  The plain output format has none.

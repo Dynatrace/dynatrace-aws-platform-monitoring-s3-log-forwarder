@@ -25,7 +25,7 @@ log_format: text
 annotations:
   cloud.provider: aws
   aws.resource.type: "AWS::S3::Bucket"
-  aws.arn.pattern: "arn:aws:s3:::{bucket_name}"
+  aws.arn.pattern: "arn:aws:s3:::{__bucket_name}"
 
-attribute_extraction_grok_expression: "%{DATA} %{DATA:bucket_name} \\[%{DATA:timestamp_to_transform}\\]"
+attribute_extraction_grok_expression: "%{DATA} %{DATA:__bucket_name} \\[%{DATA:__timestamp_to_transform}\\]"
 

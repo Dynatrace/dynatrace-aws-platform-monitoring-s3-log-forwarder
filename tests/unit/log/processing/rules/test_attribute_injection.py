@@ -139,26 +139,26 @@ class TestAWSAttributeInjection(unittest.TestCase):
     def test_cloudfront_v2_attributes(self):
         cloudfront_v2_processing_rule = processing_rules['aws']['cloudfront-v2']
         attributes = cloudfront_v2_processing_rule.get_attributes_from_s3_key_name(cloudfront_v2_key_name)
-        expected_attributes = {'aws.account.id': '012345678910', 'cloudfront.distribution.id': 'E1SFLUZKKLSP61'}
+        expected_attributes = {'aws.account.id': '012345678910', '__cloudfront.distribution.id': 'E1SFLUZKKLSP61'}
         self.assertEqual(attributes, expected_attributes)
 
     def test_cloudfront_v2_hive_attributes(self):
         cloudfront_v2_processing_rule = processing_rules['aws']['cloudfront-v2']
         attributes = cloudfront_v2_processing_rule.get_attributes_from_s3_key_name(cloudfront_v2_hive_key_name)
-        expected_attributes = {'aws.account.id': '012345678910', 'cloudfront.distribution.id': 'E1SFLUZKKLSP61'}
+        expected_attributes = {'aws.account.id': '012345678910', '__cloudfront.distribution.id': 'E1SFLUZKKLSP61'}
         self.assertEqual(attributes, expected_attributes)
 
     def test_cloudfront_v2_partitioned_attributes(self):
         cloudfront_v2_processing_rule = processing_rules['aws']['cloudfront-v2']
         attributes = cloudfront_v2_processing_rule.get_attributes_from_s3_key_name(cloudfront_v2_partitioned_key_name)
-        expected_attributes = {'aws.account.id': '012345678910', 'cloudfront.distribution.id': 'E1SFLUZKKLSP61'}
+        expected_attributes = {'aws.account.id': '012345678910', '__cloudfront.distribution.id': 'E1SFLUZKKLSP61'}
         self.assertEqual(attributes, expected_attributes)
 
     def test_cloudfront_v2_distribution_id_partition_attributes(self):
         cloudfront_v2_processing_rule = processing_rules['aws']['cloudfront-v2']
         attributes = cloudfront_v2_processing_rule.get_attributes_from_s3_key_name(
             cloudfront_v2_distribution_id_partition_key_name)
-        expected_attributes = {'aws.account.id': '012345678910', 'cloudfront.distribution.id': 'E1SFLUZKKLSP61'}
+        expected_attributes = {'aws.account.id': '012345678910', '__cloudfront.distribution.id': 'E1SFLUZKKLSP61'}
         self.assertEqual(attributes, expected_attributes)
 
     def test_cloudfront_v2_embedded_id_is_not_extracted(self):
@@ -166,7 +166,7 @@ class TestAWSAttributeInjection(unittest.TestCase):
         cloudfront_v2_processing_rule = processing_rules['aws']['cloudfront-v2']
         attributes = cloudfront_v2_processing_rule.get_attributes_from_s3_key_name(
             cloudfront_v2_embedded_id_key_name)
-        self.assertNotIn('cloudfront.distribution.id', attributes)
+        self.assertNotIn('__cloudfront.distribution.id', attributes)
         attributes.update(cloudfront_v2_processing_rule.get_processing_log_annotations())
         _resolve_aws_arn_from_pattern(attributes)
         self.assertIsNone(attributes.get('aws.arn'))
@@ -175,12 +175,12 @@ class TestAWSAttributeInjection(unittest.TestCase):
         cloudfront_v2_processing_rule = processing_rules['aws']['cloudfront-v2']
         attributes = cloudfront_v2_processing_rule.get_attributes_from_s3_key_name(
             cloudfront_v2_hive_distribution_id_partition_key_name)
-        expected_attributes = {'aws.account.id': '012345678910', 'cloudfront.distribution.id': 'E1SFLUZKKLSP61'}
+        expected_attributes = {'aws.account.id': '012345678910', '__cloudfront.distribution.id': 'E1SFLUZKKLSP61'}
         self.assertEqual(attributes, expected_attributes)
 
     def test_vpcflowlog_attributes(self):
         expected_attributes = {
-            'aws.vpc.flow_log_id': 'fl-07f38b767c7cd46e3',
+            '__aws.vpc.flow_log_id': 'fl-07f38b767c7cd46e3',
             'aws.account.id': '012345678910',
             'aws.region': 'us-east-1'
         }
@@ -211,7 +211,7 @@ class TestAWSAttributeInjection(unittest.TestCase):
             'aws.account.id': '012345678910',
             'aws.region': 'us-east-1',
             'aws.resource.id': 'demo-cluster-2',
-            'aws.msk.cluster.uuid': '043b6d76-352c-494a-9eee-fbff5cc1687d-20',
+            '__aws.msk.cluster.uuid': '043b6d76-352c-494a-9eee-fbff5cc1687d-20',
         }
 
         msk_processing_rule = processing_rules['aws']['msk']

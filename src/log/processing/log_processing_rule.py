@@ -228,7 +228,7 @@ class LogProcessingRule:
         Receives the log message (dict or str) and extracts attributes.
         Text log: apply grok expression if it exists; then apply jmespath expression if it exists to calculate additional fields.
         JSON log: apply JMESPATH expressions to extract attributes.
-        Tries to generate an ISO timestamp if the attribute timestamp_to_transform is present after extraction
+        Tries to generate an ISO timestamp if the attribute __timestamp_to_transform is present after extraction
         Cleans up attributes with Null values
         '''
 
@@ -292,10 +292,10 @@ class LogProcessingRule:
             attributes_dict.update(_attributes_dict)
 
         # Check if timestamp needs to be translated to ISO format
-        if "timestamp_to_transform" in attributes_dict:
+        if "__timestamp_to_transform" in attributes_dict:
             attributes_dict['timestamp'] = parse_date_from_string(
-                                            attributes_dict['timestamp_to_transform'])
-            attributes_dict.pop('timestamp_to_transform')
+                                            attributes_dict['__timestamp_to_transform'])
+            attributes_dict.pop('__timestamp_to_transform')
 
         # Check if aws.log_group exists to extract aws.service and aws.resource.id
         if "aws.log_group" in json_message and "aws.log_stream" in json_message:

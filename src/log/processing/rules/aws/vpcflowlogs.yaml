@@ -26,14 +26,14 @@ log_format: text
 annotations:
   cloud.provider: aws
   aws.resource.type: "AWS::EC2::FlowLog"
-  aws.arn.pattern: "arn:aws:ec2:{aws.region}:{aws.account.id}:vpc-flow-log/{aws.vpc.flow_log_id}"
+  aws.arn.pattern: "arn:aws:ec2:{aws.region}:{aws.account.id}:vpc-flow-log/{__aws.vpc.flow_log_id}"
 
 attribute_extraction_from_key_name:
   aws.account.id: '{aws_account_id_pattern}'
   aws.region: '{aws_region_pattern}'
-  aws.vpc.flow_log_id: '{vpc_flow_id_pattern}'
+  __aws.vpc.flow_log_id: '{vpc_flow_id_pattern}'
 
 # Standard log format: version account-id interface-id srcaddr dstaddr srcport dstport protocol packets bytes start end action log-status
-attribute_extraction_grok_expression: '^(?:\S+\s+){10}(?P<timestamp_to_transform>\S+).*$'
+attribute_extraction_grok_expression: '^(?:\S+\s+){10}(?P<__timestamp_to_transform>\S+).*$'
 
 skip_header_lines: 1
