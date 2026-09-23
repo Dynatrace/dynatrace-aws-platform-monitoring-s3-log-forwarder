@@ -43,7 +43,6 @@ annotations:
   cloud.provider: aws
   aws.region: global
   aws.resource.type: "AWS::CloudFront::Distribution"
-  # CloudFront ARNs have no region component.
   aws.arn.pattern: "arn:aws:cloudfront::{aws.account.id}:distribution/{__cloudfront.distribution.id}"
 
 attribute_extraction_from_key_name:
