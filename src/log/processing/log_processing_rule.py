@@ -47,7 +47,7 @@ def _is_plausible_datetime(dt: stdlib_datetime.datetime) -> bool:
 
 
 def parse_date_from_string(date_string: str):
-    '''
+    """
     Parses a timestamp string and returns an ISO-format string, or None on failure.
 
     Handles pure-integer strings as Unix epoch (seconds if 10 digits, milliseconds if 13+).
@@ -57,7 +57,10 @@ def parse_date_from_string(date_string: str):
     Returns None (instead of the raw input or a wrong timestamp) when the value cannot be
     parsed, falls outside the plausibility window, or would otherwise crash the invocation.
     A None return means no timestamp attribute is set; Dynatrace then falls back to ingest time.
-    '''
+    """
+    if not isinstance(date_string, str):
+        return None
+
     # Unix epoch seconds (10 digits) or milliseconds (13+ digits)
     if date_string.isdigit():
         try:
