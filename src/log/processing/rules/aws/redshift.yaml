@@ -34,4 +34,4 @@ attribute_extraction_from_key_name:
 
 
 multiline_record_start_pattern: "^'.+"
-attribute_extraction_grok_expression: '%{REDSHIFTTIMESTAMP:timestamp_to_transform}'
+attribute_extraction_grok_expression: '%{REDSHIFTTIMESTAMP:__timestamp_to_transform}'

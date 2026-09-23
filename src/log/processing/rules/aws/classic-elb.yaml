@@ -23,10 +23,10 @@ log_format: text
 annotations:
   cloud.provider: aws
   aws.resource.type: "AWS::ElasticLoadBalancing::LoadBalancer"
-  aws.arn.pattern: "arn:aws:elasticloadbalancing:{aws.region}:{aws.account.id}:loadbalancer/{elb_id}"
+  aws.arn.pattern: "arn:aws:elasticloadbalancing:{aws.region}:{aws.account.id}:loadbalancer/{__elb_id}"
 
 attribute_extraction_from_key_name:
   aws.account.id: '{aws_account_id_pattern}'
   aws.region: '{aws_region_pattern}'
 
-attribute_extraction_grok_expression: "%{TIMESTAMP_ISO8601:timestamp} %{NOTSPACE:elb_id} %{GREEDYDATA}"
+attribute_extraction_grok_expression: "%{TIMESTAMP_ISO8601:timestamp} %{NOTSPACE:__elb_id} %{GREEDYDATA}"
