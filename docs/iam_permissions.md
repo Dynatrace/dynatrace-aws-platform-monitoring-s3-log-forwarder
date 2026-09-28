@@ -136,6 +136,7 @@ iam:PassRole  # condition: iam:PassedToService = lambda.amazonaws.com
 **SSM Parameter Store** — `arn:aws:ssm:<region>:<account-id>:parameter/dynatrace/s3-log-forwarder/<stack-name>/*`
 
 ```text
+ssm:GetParameter
 ssm:PutParameter
 ssm:DeleteParameter
 ```
@@ -144,7 +145,7 @@ ssm:DeleteParameter
 
 | Parameter | Required permissions | Resource |
 |-----------|---------------------|----------|
-| `DynatraceApiKey` | `secretsmanager:CreateSecret` `secretsmanager:DescribeSecret` `secretsmanager:PutSecretValue` `secretsmanager:DeleteSecret` `secretsmanager:TagResource` | `arn:aws:secretsmanager:<region>:<account-id>:secret:dynatrace/s3-log-forwarder/<stack-name>/api-key*` |
+| `DynatraceApiKeySecretsManagerSecret` | `secretsmanager:CreateSecret` `secretsmanager:DescribeSecret` `secretsmanager:PutSecretValue` `secretsmanager:DeleteSecret` `secretsmanager:TagResource` | `arn:aws:secretsmanager:<region>:<account-id>:secret:dynatrace/s3-log-forwarder/<stack-name>/api-key*` |
 | `CreateS3NotificationsSNSTopic=true` | `kms:CreateKey` `kms:DescribeKey` `kms:EnableKeyRotation` `kms:GetKeyPolicy` `kms:GetKeyRotationStatus` `kms:ListResourceTags` `kms:PutKeyPolicy` `kms:ScheduleKeyDeletion` `kms:TagResource` | `*` |
 | `CreateS3NotificationsSNSTopic=true` | `sns:CreateTopic` `sns:GetTopicAttributes` `sns:SetTopicAttributes` `sns:DeleteTopic` `sns:Subscribe` `sns:GetSubscriptionAttributes` `sns:Unsubscribe` `sns:TagResource` `sns:ListTagsForResource` | `arn:aws:sns:<region>:<account-id>:<stack-name>-S3Notifications` |
 | `EnableCrossRegionCrossAccountForwarding=true` | `events:CreateEventBus` `events:DescribeEventBus` `events:DeleteEventBus` `events:PutPermission` `events:RemovePermission` | `arn:aws:events:<region>:<account-id>:event-bus/<stack-name>-cross-region-cross-account-s3-events` |
