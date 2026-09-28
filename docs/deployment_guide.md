@@ -103,7 +103,7 @@ unzip templates.zip
 
 #### Lambda Layer (recommended)
 
-Dynatrace provides Lambda layers with each release of the `dynatrace-aws-platform-monitoring-s3-log-forwarder`, allowing for simple deployment and updates as new versions are released.
+Dynatrace publishes a Lambda Layer with each release of the `dynatrace-aws-platform-monitoring-s3-log-forwarder`. When `DynatraceS3LogForwarderLayerArn` is not set, the template automatically resolves the correct ARN from its built-in region map. You only need to set `DynatraceS3LogForwarderLayerArn` when using a self-hosted or custom-built layer.
 
 1. Deploy the main forwarder stack, passing the `NotificationType` you chose in Step 3:
 
@@ -121,10 +121,10 @@ Dynatrace provides Lambda layers with each release of the `dynatrace-aws-platfor
     ```
 
 > [!NOTE]
- >
- > * Replace `DynatraceApiKeySecretsManagerSecret` with `DynatraceApiKeySSMParameter="/dynatrace/s3-log-forwarder/$STACK_NAME/api-key"` if you chose Option B in Step 2.
- > * When `GrantReadPermissionToBuckets` is set, the Lambda function IAM role is granted read access to all objects in those buckets. For fine-grained access controls, leave `GrantReadPermissionToBuckets` empty and follow the instructions in [Fine-grained access controls](#fine-grained-access-controls).
- > * See [CloudFormation parameter reference](cloudformation_parameters.md) for all available parameters.
+>
+> * Replace `DynatraceApiKeySecretsManagerSecret` with `DynatraceApiKeySSMParameter="/dynatrace/s3-log-forwarder/$STACK_NAME/api-key"` if you chose Option B in Step 2.
+> * When `GrantReadPermissionToBuckets` is set, the Lambda function IAM role is granted read access to all objects in those buckets. For fine-grained access controls, leave `GrantReadPermissionToBuckets` empty and follow the instructions in [Fine-grained access controls](#fine-grained-access-controls).
+> * See [CloudFormation parameter reference](cloudformation_parameters.md) for all available parameters.
 
 ---
 
@@ -162,10 +162,19 @@ Use this option when you cannot use Lambda Layers.
     ```
 
 > [!NOTE]
- >
- > * The Lambda execution role is **not** automatically granted read access to `LambdaCodeS3Bucket`. CloudFormation reads the ZIP at deploy time using its own service role. If your bucket has a restrictive bucket policy, grant `s3:GetObject` to the CloudFormation service principal or to the IAM role you pass via `--role-arn`.
- > * Replace `DynatraceApiKeySecretsManagerSecret` with `DynatraceApiKeySSMParameter="/dynatrace/s3-log-forwarder/$STACK_NAME/api-key"` if you chose Option B in Step 2.
- > * See [CloudFormation parameter reference](cloudformation_parameters.md) for all available parameters.
+>
+> * The Lambda execution role is **not** automatically granted read access to `LambdaCodeS3Bucket`. CloudFormation reads the ZIP at deploy time using its own service role. If your bucket has a restrictive bucket policy, grant `s3:GetObject` to the CloudFormation service principal or to the IAM role you pass via `--role-arn`.
+> * Replace `DynatraceApiKeySecretsManagerSecret` with `DynatraceApiKeySSMParameter="/dynatrace/s3-log-forwarder/$STACK_NAME/api-key"` if you chose Option B in Step 2.
+> * See [CloudFormation parameter reference](cloudformation_parameters.md) for all available parameters.
+
+### Stack outputs
+
+After the stack deploys, two values are written to AWS Systems Manager Parameter Store and exposed as CloudFormation outputs:
+
+| SSM path | CloudFormation output | Description |
+|----------|-----------------------|-------------|
+| `/dynatrace/s3-log-forwarder/<stack-name>/sqs-queue-arn` | `SSMParameterPathSQSQueueArn` | ARN of the SQS queue that receives S3 Object Created notifications. Referenced when subscribing SNS topics or configuring direct S3→SQS notifications. |
+| `/dynatrace/s3-log-forwarder/<stack-name>/lambda-role-arn` | `SSMParameterPathLambdaRoleArn` | ARN of the Lambda execution role. Referenced when granting cross-account bucket access or attaching additional IAM policies. |
 
 ### Step 6. Wire up S3 bucket notifications
 
@@ -175,7 +184,7 @@ Complete the steps for the `NotificationType` you chose in Step 3.
 
 #### Option A: Amazon EventBridge (NotificationType = `EventBridge`)
 
-The main stack creates an EventBridge rule routing `Object Created` events from the buckets listed in `GrantReadPermissionToBuckets` to the SQS queue. You need to enable EventBridge notifications on each S3 bucket.
+The main stack creates an EventBridge rule routing `Object Created` events from the buckets listed in `GrantReadPermissionToBuckets` to the SQS queue. EventBridge notifications must be enabled on each S3 bucket. For prefix-level filtering or for buckets not listed in `GrantReadPermissionToBuckets`, use the per-bucket CloudFormation template — see [Fine-grained access controls](#fine-grained-access-controls).
 
 **Required AWS actions:**
 
