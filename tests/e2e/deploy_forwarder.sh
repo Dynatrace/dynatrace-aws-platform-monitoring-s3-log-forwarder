@@ -1,23 +1,39 @@
 #!/bin/bash
 
 # Deploy the dynatrace-aws-platform-monitoring-s3-log-forwarder for e2e validation.
-# Usage: ./tests/e2e/deploy_forwarder.sh <layer|zip> [x86_64|arm64]
+# Usage: ./tests/e2e/deploy_forwarder.sh <layer|zip> [x86_64|arm64] [--upgrade]
 #
 # The build artifact must exist before running this script:
 #   dist/lambda.zip  for zip deployments  — build with: ./scripts/build_docker.sh zip dist/lambda.zip [arch]
 #   dist/layer.zip   for layer deployments — build with: ./scripts/build_docker.sh layer dist/layer.zip [arch]
 #
+# With --upgrade, the script targets a pre-existing stack: it tolerates an empty changeset and skips
+# the stack-create-complete waiter, which would fail on an update. Parameters that are not overridden
+# here keep the values already set on the stack, so an upgrade changes only the deployed code version.
+#
 # S3 notification configuration is handled separately by configure_notifications.sh.
 
 set -e
 
-DEPLOY_TYPE="${1:?Usage: $0 <layer|zip> [x86_64|arm64]}"
-ARCH="${2:-x86_64}"
+DEPLOY_TYPE="${1:?Usage: $0 <layer|zip> [x86_64|arm64] [--upgrade]}"
+shift
+
+ARCH=x86_64
+if [[ $# -gt 0 && "$1" != --* ]]; then
+    ARCH="$1"
+    shift
+fi
+
+UPGRADE=false
+for arg in "$@"; do
+    case "${arg}" in
+        --upgrade) UPGRADE=true ;;
+        *) echo "ERROR: unknown argument '${arg}'. Usage: $0 <layer|zip> [x86_64|arm64] [--upgrade]" >&2; exit 1 ;;
+    esac
+done
 
 : "${E2E_TESTING_BUCKET_NAME:?E2E_TESTING_BUCKET_NAME must be set}"
 : "${STACK_NAME:?STACK_NAME must be set}"
-: "${E2E_TEST_PREFIX:?E2E_TEST_PREFIX must be set}"
-command -v jq &>/dev/null || { echo "ERROR: jq is required but not installed" >&2; exit 1; }
 
 TIMESTAMP_FORMAT='+%Y-%m-%dT%H:%M:%SZ'
 log() {
@@ -57,6 +73,8 @@ NESTED_DASHBOARD_URL="https://${E2E_TESTING_BUCKET_NAME}.s3.amazonaws.com/test/$
 
 case "${DEPLOY_TYPE}" in
     zip)
+        : "${E2E_TEST_PREFIX:?E2E_TEST_PREFIX must be set}"
+
         log "dist/ contents: $(ls dist/ 2>/dev/null || echo '(empty or missing)')"
         [[ -f "dist/lambda.zip" ]] || { echo "ERROR: dist/lambda.zip not found" >&2; exit 1; }
 
@@ -64,19 +82,11 @@ case "${DEPLOY_TYPE}" in
         log "Uploading lambda.zip to s3://${E2E_TESTING_BUCKET_NAME}/${LAMBDA_ZIP_S3_KEY}"
         aws s3 cp dist/lambda.zip "s3://${E2E_TESTING_BUCKET_NAME}/${LAMBDA_ZIP_S3_KEY}"
 
-        log "Deploying the log forwarder template"
-        aws cloudformation deploy --stack-name ${STACK_NAME} --parameter-overrides \
-                        DynatraceEnvironmentURL=${DT_TENANT_PLATFORM_URL} \
-                        EnableCrossRegionCrossAccountForwarding=true \
-                        DeploymentPackageType=zip \
-                        LambdaCodeS3Bucket="${E2E_TESTING_BUCKET_NAME}" \
-                        LambdaCodeS3Key="${LAMBDA_ZIP_S3_KEY}" \
-                        Architecture="${ARCH}" \
-                        "${EXTRA_CFN_PARAMS[@]}" \
-                        --template-file deploy-template.yaml --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
-                        --role-arn ${CFN_ROLE_ARN}
-
-        aws cloudformation wait stack-create-complete --stack-name ${STACK_NAME}
+        EXTRA_CFN_PARAMS+=(
+            DeploymentPackageType=zip
+            LambdaCodeS3Bucket="${E2E_TESTING_BUCKET_NAME}"
+            LambdaCodeS3Key="${LAMBDA_ZIP_S3_KEY}"
+        )
         ;;
 
     layer)
@@ -110,18 +120,10 @@ case "${DEPLOY_TYPE}" in
 
         log "Layer ARN: ${LAYER_ARN}"
 
-        log "Deploying the log forwarder template (layer mode)"
-        aws cloudformation deploy --stack-name ${STACK_NAME} --parameter-overrides \
-                        DynatraceEnvironmentURL=${DT_TENANT_PLATFORM_URL} \
-                        EnableCrossRegionCrossAccountForwarding=true \
-                        DeploymentPackageType=layer \
-                        DynatraceS3LogForwarderLayerArn="${LAYER_ARN}" \
-                        Architecture="${ARCH}" \
-                        "${EXTRA_CFN_PARAMS[@]}" \
-                        --template-file deploy-template.yaml --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
-                        --role-arn ${CFN_ROLE_ARN}
-
-        aws cloudformation wait stack-create-complete --stack-name ${STACK_NAME}
+        EXTRA_CFN_PARAMS+=(
+            DeploymentPackageType=layer
+            DynatraceS3LogForwarderLayerArn="${LAYER_ARN}"
+        )
         ;;
 
     *)
@@ -129,3 +131,23 @@ case "${DEPLOY_TYPE}" in
         exit 1
         ;;
 esac
+
+FORWARDER_DEPLOY_FLAGS=()
+ACTION="Deploying"
+if [[ "${UPGRADE}" == "true" ]]; then
+    # An upgrade may produce no changes at all, and the stack already exists.
+    FORWARDER_DEPLOY_FLAGS+=(--no-fail-on-empty-changeset)
+    ACTION="Upgrading"
+fi
+
+log "${ACTION} the log forwarder stack (${DEPLOY_TYPE} mode)"
+aws cloudformation deploy --stack-name ${STACK_NAME} --parameter-overrides \
+                DynatraceEnvironmentURL=${DT_TENANT_PLATFORM_URL} \
+                EnableCrossRegionCrossAccountForwarding=true \
+                Architecture="${ARCH}" \
+                "${EXTRA_CFN_PARAMS[@]}" \
+                --template-file deploy-template.yaml --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
+                "${FORWARDER_DEPLOY_FLAGS[@]}" \
+                --role-arn ${CFN_ROLE_ARN}
+
+[[ "${UPGRADE}" == "true" ]] || aws cloudformation wait stack-create-complete --stack-name ${STACK_NAME}
