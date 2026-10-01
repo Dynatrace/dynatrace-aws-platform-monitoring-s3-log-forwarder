@@ -418,7 +418,7 @@ jobs:
             --parameter-overrides \
               DynatraceAwsS3LogForwarderStackName=${STACK_NAME} \
               LogsBucketName=${E2E_TESTING_BUCKET_NAME} \
-              LogsBucketPrefix1=test/ \
+              LogsBucketPrefix1=test/verification/ \
             --capabilities CAPABILITY_IAM \
             --no-fail-on-empty-changeset
       - uses: actions/setup-python@v7
