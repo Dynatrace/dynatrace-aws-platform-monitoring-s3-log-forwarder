@@ -411,6 +411,9 @@ jobs:
         run: ./tests/e2e/deploy_forwarder.sh layer x86_64 --upgrade
       - name: Upgrade per-bucket S3 notification configuration stack
         run: |
+          aws cloudformation describe-stacks \
+            --stack-name "${STACK_NAME}-s3-cfg" \
+            --region ${{ matrix.region }} >/dev/null
           aws cloudformation deploy \
             --template-file dynatrace-aws-s3-log-forwarder-s3-bucket-configuration.yaml \
             --stack-name ${STACK_NAME}-s3-cfg \
