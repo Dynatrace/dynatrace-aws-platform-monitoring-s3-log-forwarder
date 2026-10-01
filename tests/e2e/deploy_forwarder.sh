@@ -135,6 +135,10 @@ esac
 FORWARDER_DEPLOY_FLAGS=()
 ACTION="Deploying"
 if [[ "${UPGRADE}" == "true" ]]; then
+    if ! aws cloudformation describe-stacks --stack-name "${STACK_NAME}" >/dev/null 2>&1; then
+        echo "ERROR: stack '${STACK_NAME}' does not exist; cannot validate an upgrade" >&2
+        exit 1
+    fi
     # An upgrade may produce no changes at all, and the stack already exists.
     FORWARDER_DEPLOY_FLAGS+=(--no-fail-on-empty-changeset)
     ACTION="Upgrading"

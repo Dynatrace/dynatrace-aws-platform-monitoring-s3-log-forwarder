@@ -115,6 +115,7 @@ for REGION in ${REGIONS}; do
             EnableCrossRegionCrossAccountForwarding=true \
             Architecture="${ARCH}" \
             NotificationType=EventBridge \
+            DynatraceS3LogForwarderLayerArn="" \
         ${ROLE_ARGS[@]+"${ROLE_ARGS[@]}"}
 
     log "Enabling EventBridge notifications on bucket ${BUCKET}"
