@@ -66,9 +66,24 @@ if [[ "${SNS_TOPIC_ARN}" =~ ^arn:aws:sns: ]]; then
 fi
 # Delete the layer stack if it exists
 if aws cloudformation describe-stacks --stack-name ${STACK_NAME}-layer >/dev/null 2>&1; then
+    LAYER_VERSION_ARN=$(aws cloudformation describe-stacks --stack-name "${STACK_NAME}-layer" \
+        --query 'Stacks[0].Outputs[?OutputKey==`DynatraceS3LogForwarderLayerVersionArn`].OutputValue' \
+        --output text 2>/dev/null || true)
+
     log "Deleting Cloudformation Stack ${STACK_NAME}-layer"
     aws cloudformation delete-stack --stack-name ${STACK_NAME}-layer
     aws cloudformation wait stack-delete-complete --stack-name ${STACK_NAME}-layer
+
+    # The layer template uses RetentionPolicy: Retain, so deleting the stack leaves the layer version behind.
+    # Delete it explicitly to not accumulate layer versions (and consume Lambda code storage) on every run.
+    # ARN format: arn:aws:lambda:<region>:<account>:layer:<name>:<version>
+    if [[ "${LAYER_VERSION_ARN}" =~ ^arn:aws:lambda:.*:layer:.*:[0-9]+$ ]]; then
+        LAYER_NAME=$(cut -d: -f7 <<< "${LAYER_VERSION_ARN}")
+        LAYER_VERSION=$(cut -d: -f8 <<< "${LAYER_VERSION_ARN}")
+        log "Deleting Lambda layer version ${LAYER_VERSION_ARN}"
+        aws lambda delete-layer-version --layer-name "${LAYER_NAME}" --version-number "${LAYER_VERSION}" || \
+            log "WARNING: Failed to delete Lambda layer version ${LAYER_VERSION_ARN}"
+    fi
 fi
 if aws ssm get-parameter --name "/dynatrace/s3-log-forwarder/${STACK_NAME}/api-key" &>/dev/null; then
     log "Deleting SSM parameter /dynatrace/s3-log-forwarder/${STACK_NAME}/api-key"
