@@ -1,6 +1,11 @@
 # Required GitHub Actions secrets:
 #   AWS_CICD_ROLE_ARN              - IAM role ARN for OIDC authentication
 #   AWS_LAYER_PUBLISHING_ROLE_ARN  - IAM role ARN in the layer publishing account (335651422829) used to publish Lambda layers
+#   CFN_ROLE_ARN                   - IAM role ARN passed to CloudFormation deploy for the released-version upgrade E2E test
+#   DT_TENANT_PLATFORM_URL         - Dynatrace platform URL for log validation queries
+#   DT_SSO_URL                     - Dynatrace SSO URL for OAuth token exchange
+#   DT_OAUTH_CLIENT_ID             - OAuth client ID for log validation
+#   DT_OAUTH_CLIENT_SECRET         - OAuth client secret for log validation
 ---
 name: Release
 
@@ -180,10 +185,93 @@ jobs:
           retention-days: 1
           overwrite: true
 
+  # Upgrade test: upgrades the pre-deployed, long-lived released-version stacks in-place to the artifacts
+  # of this release (template + published layer) and validates EventBridge forwarding. Stacks are kept.
+  e2e-test-upgrade-released:
+    name: End-to-end upgrade test of released version (${{ matrix.region }})
+    runs-on: ubuntu-latest
+    needs: [release-s3]
+    concurrency:
+      group: e2e-upgrade-test-released-${{ matrix.region }}
+      cancel-in-progress: false
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - region: us-east-1
+            bucket: permanent-s3-log-forwarder-released-version-us-east-1
+          - region: eu-central-1
+            bucket: permanent-s3-log-forwarder-released-version-eu-central-1
+    env:
+      E2E_TESTING_BUCKET_NAME: ${{ matrix.bucket }}
+      STACK_NAME: permanent-s3-log-forwarder-released-version
+      E2E_TEST_PREFIX: test/verification/${{ github.run_id }}
+      CFN_ROLE_ARN: ${{ secrets.CFN_ROLE_ARN }}
+      DT_TENANT_PLATFORM_URL: ${{ secrets.DT_TENANT_PLATFORM_URL }}
+      DT_SSO_URL: ${{ secrets.DT_SSO_URL }}
+      DT_OAUTH_CLIENT_ID: ${{ secrets.DT_OAUTH_CLIENT_ID }}
+      DT_OAUTH_CLIENT_SECRET: ${{ secrets.DT_OAUTH_CLIENT_SECRET }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6
+        with:
+          role-to-assume: ${{ secrets.AWS_CICD_ROLE_ARN }}
+          aws-region: ${{ matrix.region }}
+      - name: Download released CloudFormation templates
+        uses: actions/download-artifact@v8
+        with:
+          name: cfn-templates
+          path: release-assets
+      # Parameters that are not overridden keep the values already set on the stack. Clearing
+      # DynatraceS3LogForwarderLayerArn makes the stack use the layer published by this release.
+      - name: Upgrade forwarder
+        run: |
+          if ! aws cloudformation describe-stacks --stack-name "${STACK_NAME}" >/dev/null; then
+            echo "::error::Stack ${STACK_NAME} does not exist in ${{ matrix.region }}; the released-version stack must be pre-deployed"
+            exit 1
+          fi
+          aws cloudformation deploy \
+            --stack-name "${STACK_NAME}" \
+            --template-file release-assets/template.yaml \
+            --parameter-overrides \
+              DeploymentPackageType=layer \
+              DynatraceS3LogForwarderLayerArn= \
+            --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
+            --role-arn "${CFN_ROLE_ARN}" \
+            --no-fail-on-empty-changeset
+      - name: Upgrade per-bucket S3 notification configuration stack
+        run: |
+          if ! aws cloudformation describe-stacks --stack-name "${STACK_NAME}-s3-cfg" >/dev/null; then
+            echo "::error::Stack ${STACK_NAME}-s3-cfg does not exist in ${{ matrix.region }}; the released-version stack must be pre-deployed"
+            exit 1
+          fi
+          aws cloudformation deploy \
+            --template-file release-assets/dynatrace-aws-s3-log-forwarder-s3-bucket-configuration.yaml \
+            --stack-name "${STACK_NAME}-s3-cfg" \
+            --parameter-overrides \
+              DynatraceAwsS3LogForwarderStackName=${STACK_NAME} \
+              LogsBucketName=${E2E_TESTING_BUCKET_NAME} \
+              LogsBucketPrefix1=test/verification/ \
+            --capabilities CAPABILITY_IAM \
+            --role-arn "${CFN_ROLE_ARN}" \
+            --no-fail-on-empty-changeset
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.14'
+      - name: Install dependencies
+        run: pip install requests
+      - name: Test EventBridge notification
+        run: |
+          echo "[$(date -u '+%Y-%m-%dT%H:%M:%SZ')] E2E released version upgrade validation log entry" > test.log
+          aws s3 cp test.log s3://${E2E_TESTING_BUCKET_NAME}/${E2E_TEST_PREFIX}/test.log
+          sleep 180
+          ./tests/e2e/validate_logs_exist.py --bucket ${E2E_TESTING_BUCKET_NAME} --key ${E2E_TEST_PREFIX}/test.log
+
   release-github:
     name: Publish GitHub Release
     runs-on: ubuntu-latest
-    needs: [release-x86_64, release-arm64, release-s3]
+    needs: [release-x86_64, release-arm64, release-s3, e2e-test-upgrade-released]
     permissions:
       contents: write
     steps:
