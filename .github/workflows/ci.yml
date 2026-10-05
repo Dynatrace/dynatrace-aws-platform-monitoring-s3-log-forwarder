@@ -1,7 +1,9 @@
 # Required GitHub Actions secrets:
 #   AWS_CICD_ROLE_ARN            - IAM role ARN for OIDC authentication
 #   CFN_ROLE_ARN                 - IAM role ARN passed to CloudFormation deploy for E2E tests
-#   DT_TOKEN_SECRET_ARN          - ARN of existing Secrets Manager secret storing the Dynatrace platform token (all e2e tests)
+#   DT_TOKEN_SECRET_ARN          - ARN of existing Secrets Manager secret storing the Dynatrace platform token (e2e-test, e2e-test-default)
+#   DT_TOKEN_SECRET_ARN_US_EAST_1    - ARN of the us-east-1 Secrets Manager secret storing the Dynatrace platform token (e2e-test-upgrade)
+#   DT_TOKEN_SECRET_ARN_EU_CENTRAL_1 - ARN of the eu-central-1 Secrets Manager secret storing the Dynatrace platform token (e2e-test-upgrade)
 #   DT_TENANT_PLATFORM_URL       - Dynatrace platform URL for log validation queries
 #   DT_SSO_URL                   - Dynatrace SSO URL for OAuth token exchange
 #   DT_OAUTH_CLIENT_ID           - OAuth client ID for log validation

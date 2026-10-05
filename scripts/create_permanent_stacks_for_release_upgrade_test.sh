@@ -9,7 +9,7 @@
 #
 # Safe to re-run: existing stacks are updated in place. To start from scratch, delete the stacks first.
 #
-# Usage: ./scripts/create_stacks_for_e2e_upgrade_test.sh
+# Usage: ./scripts/create_permanent_stacks_for_release_upgrade_test.sh
 #
 # Requires: aws CLI, curl, unzip, AWS credentials for the account that owns the buckets.
 # The buckets must already exist, in the same region as the forwarder.

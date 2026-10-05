@@ -268,6 +268,87 @@ jobs:
           sleep 180
           ./tests/e2e/validate_logs_exist.py --bucket ${E2E_TESTING_BUCKET_NAME} --key ${E2E_TEST_PREFIX}/test.log
 
+  # Restore: if the upgrade test failed or was cancelled, roll both regional long-lived stacks back to the
+  # latest published release, so retries and the next release upgrade from the published baseline.
+  e2e-restore-released-baseline:
+    name: Restore released version baseline (${{ matrix.region }})
+    runs-on: ubuntu-latest
+    needs: [e2e-test-upgrade-released]
+    # 'skipped' means release-s3 failed and the stacks were never touched
+    if: always() && (needs.e2e-test-upgrade-released.result == 'failure' || needs.e2e-test-upgrade-released.result == 'cancelled')
+    concurrency:
+      group: e2e-upgrade-test-released-${{ matrix.region }}
+      cancel-in-progress: false
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - region: us-east-1
+            bucket: permanent-s3-log-forwarder-released-version-us-east-1
+          - region: eu-central-1
+            bucket: permanent-s3-log-forwarder-released-version-eu-central-1
+    env:
+      E2E_TESTING_BUCKET_NAME: ${{ matrix.bucket }}
+      STACK_NAME: permanent-s3-log-forwarder-rel-ver
+      CFN_ROLE_ARN: ${{ secrets.CFN_ROLE_ARN }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6
+        with:
+          role-to-assume: ${{ secrets.AWS_CICD_ROLE_ARN }}
+          aws-region: ${{ matrix.region }}
+      # The current tag is excluded: its GitHub release may already exist before its assets are published.
+      - name: Find latest published release
+        run: |
+          BASELINE_TAG=$(gh release list --repo "${{ github.repository }}" \
+            --exclude-drafts --exclude-pre-releases --limit 50 \
+            --json tagName,publishedAt \
+            --jq '[.[] | select(.tagName != "${{ github.ref_name }}")] | sort_by(.publishedAt) | last | .tagName // empty')
+          if [[ -z "${BASELINE_TAG}" ]]; then
+            echo "::error::No published release found to restore ${STACK_NAME} in ${{ matrix.region }} to"
+            exit 1
+          fi
+          echo "Restoring to ${BASELINE_TAG}"
+          echo "BASELINE_TAG=${BASELINE_TAG}" >> $GITHUB_ENV
+      - name: Download baseline release templates
+        run: |
+          gh release download "${BASELINE_TAG}" \
+            --repo "${{ github.repository }}" \
+            --dir baseline-release \
+            -p template.yaml \
+            -p dynatrace-aws-s3-log-forwarder-s3-bucket-configuration.yaml
+      # Reverse of the upgrade order: the bucket configuration stack imports outputs of the forwarder stack.
+      - name: Restore per-bucket S3 notification configuration stack
+        run: |
+          aws cloudformation deploy \
+            --template-file baseline-release/dynatrace-aws-s3-log-forwarder-s3-bucket-configuration.yaml \
+            --stack-name "${STACK_NAME}-s3-cfg" \
+            --parameter-overrides \
+              DynatraceAwsS3LogForwarderStackName=${STACK_NAME} \
+              LogsBucketName=${E2E_TESTING_BUCKET_NAME} \
+              LogsBucketPrefix1=test/verification/ \
+            --capabilities CAPABILITY_IAM \
+            --role-arn "${CFN_ROLE_ARN}" \
+            --no-fail-on-empty-changeset
+      # Clearing DynatraceS3LogForwarderLayerArn makes the stack use the layer published with the baseline release.
+      - name: Restore forwarder
+        run: |
+          aws cloudformation deploy \
+            --stack-name "${STACK_NAME}" \
+            --template-file baseline-release/template.yaml \
+            --parameter-overrides \
+              DeploymentPackageType=layer \
+              DynatraceS3LogForwarderLayerArn= \
+            --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
+            --role-arn "${CFN_ROLE_ARN}" \
+            --no-fail-on-empty-changeset
+      - name: Report failed restore
+        if: failure()
+        run: |
+          echo "::error::Restoring ${STACK_NAME} in ${{ matrix.region }} to ${BASELINE_TAG:-the latest published release} failed. Restore manually with: VERSION_TAG=${BASELINE_TAG:-<tag>} REGIONS=${{ matrix.region }} ./scripts/create_permanent_stacks_for_release_upgrade_test.sh"
+
   release-github:
     name: Publish GitHub Release
     runs-on: ubuntu-latest
