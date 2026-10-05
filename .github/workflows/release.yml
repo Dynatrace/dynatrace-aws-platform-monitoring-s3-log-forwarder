@@ -1,7 +1,7 @@
 # Required GitHub Actions secrets:
 #   AWS_CICD_ROLE_ARN              - IAM role ARN for OIDC authentication
 #   AWS_LAYER_PUBLISHING_ROLE_ARN  - IAM role ARN in the layer publishing account (335651422829) used to publish Lambda layers
-#   CFN_ROLE_ARN                   - IAM role ARN passed to CloudFormation deploy for the released-version upgrade E2E test
+#   CFN_ROLE_ARN                   - IAM role ARN passed to CloudFormation deploy for the released version stack upgrade E2E test
 #   DT_TENANT_PLATFORM_URL         - Dynatrace platform URL for log validation queries
 #   DT_SSO_URL                     - Dynatrace SSO URL for OAuth token exchange
 #   DT_OAUTH_CLIENT_ID             - OAuth client ID for log validation
@@ -185,7 +185,7 @@ jobs:
           retention-days: 1
           overwrite: true
 
-  # Upgrade test: upgrades the pre-deployed, long-lived released-version stacks in-place to the artifacts
+  # Upgrade test: upgrades the pre-deployed, long-lived stacks in-place to the artifacts
   # of this release (template + published layer) and validates EventBridge forwarding. Stacks are kept.
   e2e-test-upgrade-released:
     name: End-to-end upgrade test of released version (${{ matrix.region }})
@@ -204,7 +204,7 @@ jobs:
             bucket: permanent-s3-log-forwarder-released-version-eu-central-1
     env:
       E2E_TESTING_BUCKET_NAME: ${{ matrix.bucket }}
-      STACK_NAME: permanent-s3-log-forwarder-released-version
+      STACK_NAME: permanent-s3-log-forwarder-rel-ver
       E2E_TEST_PREFIX: test/verification/${{ github.run_id }}
       CFN_ROLE_ARN: ${{ secrets.CFN_ROLE_ARN }}
       DT_TENANT_PLATFORM_URL: ${{ secrets.DT_TENANT_PLATFORM_URL }}
@@ -228,7 +228,7 @@ jobs:
       - name: Upgrade forwarder
         run: |
           if ! aws cloudformation describe-stacks --stack-name "${STACK_NAME}" >/dev/null; then
-            echo "::error::Stack ${STACK_NAME} does not exist in ${{ matrix.region }}; the released-version stack must be pre-deployed"
+            echo "::error::Stack ${STACK_NAME} does not exist in ${{ matrix.region }}; the previous release stack must be pre-deployed"
             exit 1
           fi
           aws cloudformation deploy \
@@ -243,7 +243,7 @@ jobs:
       - name: Upgrade per-bucket S3 notification configuration stack
         run: |
           if ! aws cloudformation describe-stacks --stack-name "${STACK_NAME}-s3-cfg" >/dev/null; then
-            echo "::error::Stack ${STACK_NAME}-s3-cfg does not exist in ${{ matrix.region }}; the released-version stack must be pre-deployed"
+            echo "::error::Stack ${STACK_NAME}-s3-cfg does not exist in ${{ matrix.region }}; the previous release stack must be pre-deployed"
             exit 1
           fi
           aws cloudformation deploy \
