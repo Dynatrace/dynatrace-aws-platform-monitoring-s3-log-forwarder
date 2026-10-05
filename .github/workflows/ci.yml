@@ -357,14 +357,15 @@ jobs:
         if: always()
         run: ./tests/e2e/clean_up_resources.sh
 
-  # Upgrade test: upgrades permanent long-lived stacks in-place and validates EventBridge forwarding
+  # Upgrade test: deploys the official base release (BASE_VERSION) from GitHub, upgrades it in-place to the
+  # current build, validates EventBridge forwarding and always deletes the stacks afterwards
   e2e-test-upgrade:
     name: End-to-end upgrade test (${{ matrix.region }})
     runs-on: ubuntu-latest
     #needs: [build-x86_64, e2e-test-default]
     needs: [build-x86_64]
     concurrency:
-      group: e2e-test-upgrade
+      group: e2e-upgrade-test-${{ matrix.region }}
       cancel-in-progress: false
     if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
     strategy:
@@ -373,13 +374,13 @@ jobs:
         include:
           - region: us-east-1
             bucket: permanent-s3-log-forwarder-main-branch-version-us-east-1
-            stack: permanent-s3-log-forwarder-main-branch
           - region: eu-central-1
             bucket: permanent-s3-log-forwarder-main-branch-version-eu-central-1
-            stack: permanent-s3-log-forwarder-main-branch
     env:
       E2E_TESTING_BUCKET_NAME: ${{ matrix.bucket }}
-      STACK_NAME: ${{ matrix.stack }}
+      STACK_NAME: e2e-dt-aws-s3-log-forwarder-upg-${{ github.run_id }}
+      BASE_VERSION: v1.0.0
+      CI_RUN_ID: ${{ github.run_id }}
       E2E_TEST_PREFIX: test/verification/${{ github.run_id }}
       DT_TOKEN_SECRET_ARN_US_EAST_1: ${{ secrets.DT_TOKEN_SECRET_ARN_US_EAST_1 }}
       DT_TOKEN_SECRET_ARN_EU_CENTRAL_1: ${{ secrets.DT_TOKEN_SECRET_ARN_EU_CENTRAL_1 }}
@@ -402,6 +403,38 @@ jobs:
         with:
           role-to-assume: ${{ secrets.AWS_CICD_ROLE_ARN }}
           aws-region: ${{ matrix.region }}
+      - name: Download base release templates
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download "${BASE_VERSION}" \
+            --repo "${{ github.repository }}" \
+            --dir base-release \
+            -p template.yaml \
+            -p dynatrace-aws-s3-log-forwarder-s3-bucket-configuration.yaml
+      - name: Deploy base forwarder (${{ env.BASE_VERSION }} release)
+        run: |
+          aws cloudformation deploy \
+            --stack-name "${STACK_NAME}" \
+            --template-file base-release/template.yaml \
+            --parameter-overrides \
+              DynatraceEnvironmentURL=${DT_TENANT_PLATFORM_URL} \
+              DynatraceApiKeySecretsManagerSecret=${DT_TOKEN_SECRET_ARN} \
+              EnableCrossRegionCrossAccountForwarding=true \
+              Architecture=x86_64 \
+            --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
+            --role-arn "${CFN_ROLE_ARN}"
+      - name: Deploy base S3 bucket configuration stack (${{ env.BASE_VERSION }} release)
+        run: |
+          aws cloudformation deploy \
+            --template-file base-release/dynatrace-aws-s3-log-forwarder-s3-bucket-configuration.yaml \
+            --stack-name ${STACK_NAME}-s3-cfg \
+            --parameter-overrides \
+              DynatraceAwsS3LogForwarderStackName=${STACK_NAME} \
+              LogsBucketName=${E2E_TESTING_BUCKET_NAME} \
+              LogsBucketPrefix1=test/verification/ \
+            --capabilities CAPABILITY_IAM \
+            --role-arn "${CFN_ROLE_ARN}"
       - name: Download build artifacts
         uses: actions/download-artifact@v8
         with:
@@ -423,6 +456,7 @@ jobs:
               LogsBucketName=${E2E_TESTING_BUCKET_NAME} \
               LogsBucketPrefix1=test/verification/ \
             --capabilities CAPABILITY_IAM \
+            --role-arn "${CFN_ROLE_ARN}" \
             --no-fail-on-empty-changeset
       - uses: actions/setup-python@v7
         with:
@@ -435,3 +469,11 @@ jobs:
           aws s3 cp test.log s3://${E2E_TESTING_BUCKET_NAME}/${E2E_TEST_PREFIX}/test.log
           sleep 180
           ./tests/e2e/validate_logs_exist.py --bucket ${E2E_TESTING_BUCKET_NAME} --key ${E2E_TEST_PREFIX}/test.log
+      - name: Delete S3 bucket configuration stack
+        if: always()
+        run: |
+          aws cloudformation delete-stack --stack-name ${STACK_NAME}-s3-cfg || true
+          aws cloudformation wait stack-delete-complete --stack-name ${STACK_NAME}-s3-cfg || true
+      - name: Clean up resources
+        if: always()
+        run: ./tests/e2e/clean_up_resources.sh
