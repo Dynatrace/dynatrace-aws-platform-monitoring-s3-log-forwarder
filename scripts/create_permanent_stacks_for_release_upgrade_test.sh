@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # (Re)create the permanent stacks used by the e2e-test-upgrade CI job, from the LATEST GitHub RELEASE
-# (the version a customer would be upgrading from; CI then upgrades them to the code under test).
+# (the version a customer would be upgrading from; CI then upgrades them to the new release being published).
 #
 # Per region (us-east-1, eu-central-1) this deploys, as in docs/deployment_guide.md:
 #   1. <STACK_NAME>         - forwarder (template.yaml, Lambda Layer, NotificationType=EventBridge)
@@ -33,7 +33,7 @@ set -euo pipefail
 : "${DT_TOKEN_SECRET_ARN_EU_CENTRAL_1:?DT_TOKEN_SECRET_ARN_EU_CENTRAL_1 must be set}"
 
 REPO="dynatrace/dynatrace-aws-platform-monitoring-s3-log-forwarder"
-STACK_NAME="permanent-s3-log-forwarder-main-branch"
+STACK_NAME="permanent-s3-log-forwarder-rel-ver"
 ARCH="x86_64"
 LOGS_PREFIX="test/verification/"
 : "${REGIONS:=us-east-1 eu-central-1}"
@@ -49,7 +49,7 @@ run() {
 }
 
 # Per-region config (case statements: macOS ships bash 3.2, which has no associative arrays)
-bucket_for_region() { echo "permanent-s3-log-forwarder-main-branch-version-$1"; }
+bucket_for_region() { echo "permanent-s3-log-forwarder-released-version-$1"; }
 secret_for_region() {
     case "$1" in
         us-east-1)    echo "${DT_TOKEN_SECRET_ARN_US_EAST_1}" ;;
