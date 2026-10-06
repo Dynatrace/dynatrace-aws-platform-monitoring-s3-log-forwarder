@@ -116,15 +116,6 @@ Resources:
                     ],
                     [
                       ".",
-                      "DynatraceHTTP503SpaceLimitReached",
-                      ".",
-                      ".",
-                      {
-                        "yAxis": "right"
-                      }
-                    ],
-                    [
-                      ".",
                       "DynatraceHTTP429Throttled",
                       ".",
                       ".",

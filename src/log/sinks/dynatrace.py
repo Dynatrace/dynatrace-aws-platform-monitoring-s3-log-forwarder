@@ -250,11 +250,6 @@ class DynatraceSink():
             metrics.add_metric(name='DynatraceHTTP429Throttled',unit=MetricUnit.Count, value=1)
             metrics.add_metric(name='DynatraceHTTPErrors', unit=MetricUnit.Count, value=1)
             raise DynatraceThrottlingException
-        elif resp.status_code == 503:
-            logger.error("%s: Usable space limit reached. Exhausted retry attempts... Source file: %s", tenant_id, self._s3_source)
-            metrics.add_metric(name='DynatraceHTTP503SpaceLimitReached',unit=MetricUnit.Count, value=1)
-            metrics.add_metric(name='DynatraceHTTPErrors', unit=MetricUnit.Count, value=1)
-            raise DynatraceThrottlingException
         else:
             logger.error(
                 "%s: There was a HTTP %d error posting batch %d to Dynatrace. %s. Source file: %s",

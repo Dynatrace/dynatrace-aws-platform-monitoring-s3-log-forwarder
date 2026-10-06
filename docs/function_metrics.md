@@ -11,7 +11,6 @@ The function publishes the following metrics to CloudWatch under a metric namesp
 * `DynatraceHTTP204Success` (Sum): Number of succesful POST requests to Dynatrace.
 * `DynatraceHTTP200PartialSuccess` (Sum): Number of partially successful POST requests to Dynatrace.
 * `DynatraceHTTP429Throttled` (Sum): Number of throttled POST requests to Dynatrace.
-* `DynatraceHTTP503SpaceLimitReached` (Sum): Number of failed post requests due to space limit size.
 * `DynatraceHTTPErrors` (Sum): Number of HTTP errors received from Dynatrace (includding throttles).
 * `UncompressedLogDTPayloadSize` (Avg / Min / Max): Size of the uncompressed Payload successfully posted to Dynatrace.
 * `LogProcessingTime`(Avg / Min / Max): Time taken in seconds to process logs (iterate to generate attributes and trim, doesn't include batching and posting to Dynatrace).
