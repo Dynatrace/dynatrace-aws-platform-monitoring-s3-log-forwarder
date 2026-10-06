@@ -18,6 +18,7 @@ nav:
   - Operations:
       - Function Metrics: docs/function_metrics.md
       - Resiliency: docs/resiliency.md
+      - Troubleshooting: docs/troubleshooting.md
   - Development:
       - Local Testing: docs/development/local_testing.md
       - Build: docs/build.md
