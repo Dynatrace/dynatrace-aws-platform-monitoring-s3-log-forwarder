@@ -38,6 +38,7 @@ If you deploy with the `IamRolePath` parameter, include the path in the role ARN
 **Cause:** The queues have fixed names derived from the stack name. A queue with that name left over from an earlier deployment blocks stack creation, and AWS does not allow re-using a deleted queue name for about a minute. A manually created event source mapping for the forwarder's queue and function causes the same kind of error.
 
 **Fix:**
+
 1. **AWS Console → SQS** — look for `<STACK_NAME>-S3NotificationsQueue` and `<STACK_NAME>-S3NotificationsDLQ`. If they belong to a deleted or failed deployment and you no longer need them, delete them. If you deleted them just now, wait about 60 seconds
 2. **AWS Console → Lambda → Additional Resources → Event Source Mappings** — delete mappings that point to the `<STACK_NAME>-S3NotificationsQueue` queue and were not created by the stack
 3. Wait until the resources are fully deleted, then re-run the CloudFormation deployment
@@ -51,6 +52,7 @@ If you deploy with the `IamRolePath` parameter, include the path in the role ARN
 **Fix:** The failure reason is in the stack events. Check it before raising a support ticket.
 
 **AWS Console:**
+
 1. **CloudFormation → Stacks → your stack → Events**
 2. Look for the event labeled **Likely root cause** (the label is shown in the console only) and read its **Status reason**. See [Determine the root cause for CloudFormation stack failures](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/determine-root-cause-for-stack-failures.html)
 3. The forwarder deploys several stacks — check the failed stack itself and any nested stack it reports
@@ -100,6 +102,7 @@ The notification flow is: S3 object created → EventBridge rule, SNS topic or d
 ### 2a. Messages are dropped: unsupported message format or extra triggers
 
 **Symptom:** The [Lambda logs](#lambda-logs) show one of:
+
 - `Dropping message <id>, unsupported notification type`
 - `Dropping message, body is not valid JSON`
 - `Dropping message <id>, no S3 object creation notifications found`
@@ -108,6 +111,7 @@ The notification flow is: S3 object created → EventBridge rule, SNS topic or d
 **Cause:** The Lambda must be fed only by its SQS queue, with messages in one of the three supported formats: S3 → EventBridge → SQS, S3 → SNS → SQS, or S3 → SQS directly. Typical causes are an extra trigger added to the Lambda function (for example a direct S3 trigger — its events carry no SQS message body), non-S3 messages sent to the queue, or an EventBridge rule/target that rewrites the event (for example with an input transformer).
 
 **Fix:**
+
 1. **AWS Console → Lambda → your function → Configuration → Triggers** — only the SQS trigger for `<STACK_NAME>-S3NotificationsQueue` should be present. Remove any other trigger
 2. Make sure nothing else sends messages to the queue, and that the notification setup follows [deployment_guide.md](deployment_guide.md#step-6-wire-up-s3-bucket-notifications) without modified event payloads
 
@@ -137,6 +141,7 @@ The queue ARN is in the stack outputs and in SSM Parameter Store at `/dynatrace/
 **Cause:** A standard deployment handles buckets in the forwarder's own region and account. `Direct SQS` supports same-region buckets only, and the standard EventBridge setup does not support cross-account buckets.
 
 **Fix:** Set up cross-region/cross-account forwarding — [advanced_deployments.md](advanced_deployments.md). Checklist:
+
 1. Main stack: `EnableCrossRegionCrossAccountForwarding=true`; for other accounts also `AwsAccountsToReceiveLogsFrom` — the list **replaces** the previous value, so include all accounts
 2. Deploy `eventbridge-cross-region-or-account-forward-rules.yaml` in the bucket's region/account and enable EventBridge notifications on the bucket
 3. Deploy `dynatrace-aws-s3-log-forwarder-s3-bucket-configuration.yaml` in the forwarder's region with `S3BucketIsCrossRegionOrCrossAccount=true`
@@ -150,6 +155,7 @@ The queue ARN is in the stack outputs and in SSM Parameter Store at `/dynatrace/
 **Symptom:** The [Lambda logs](#lambda-logs) show `Error processing message <id>` with `AccessDenied` for S3 `GetObject`, or a KMS access denied / decryption error. The message is retried and eventually lands in the DLQ (section 5).
 
 **Fix:**
+
 1. The bucket must be listed in `GrantReadPermissionToBuckets`, or have a per-bucket configuration stack deployed — both grant the Lambda role `s3:GetObject`. Cross-account buckets also need the bucket policy from 2c
 2. If objects are encrypted with a customer-managed KMS key (SSE-KMS), add the key ARN to the `GrantDecryptToKmsKeyArns` stack parameter (grants the Lambda role `kms:Decrypt`), and make sure the key policy allows the Lambda role to use the key. Update the stack — see [update_guide.md](update_guide.md) and [cloudformation_parameters.md](cloudformation_parameters.md)
 
@@ -199,10 +205,12 @@ Check which one your stack uses: **CloudFormation → your stack → Parameters*
 ### 3a. Wrong secret ARN / parameter path, wrong format, or no access
 
 **Symptom:** The [Lambda logs](#lambda-logs) show one of:
+
 - Secrets Manager: `AccessDeniedException ... secretsmanager:GetSecretValue`, `ResourceNotFoundException`, or `KeyError: 'dt.platform_token'`
 - SSM: `AccessDeniedException ... ssm:GetParameter` or `ParameterNotFound`
 
 **Cause:** Common mistakes:
+
 - **Secrets Manager:** the stack parameter is the secret *name* or the token itself instead of the full **ARN**; the secret is plain text instead of JSON; or the JSON key is not exactly `dt.platform_token`.
 - **SSM:** the parameter path is missing the leading `/`, the stack parameter holds the raw token instead of the path, or the parameter is `String` instead of `SecureString`.
 - The Lambda role can read only the one secret/parameter given in the stack parameter. If you moved or recreated the token elsewhere, the stack parameter must be updated to match.
@@ -238,6 +246,7 @@ If the ARN or path itself was wrong, update the stack with the correct value of 
 **Symptom:** The [Lambda logs](#lambda-logs) show `There was a HTTP 401 error posting batch ...` or `HTTP 403 ...` (the response text from Dynatrace follows), and logs stop arriving in Dynatrace.
 
 **Fix:**
+
 1. In Dynatrace, check that the platform token is still valid (not expired or revoked) and has the **`data-acquisition:logs:ingest`** scope — see [platform tokens](https://docs.dynatrace.com/docs/manage/identity-access-management/access-tokens-and-oauth-clients/platform-tokens)
 2. If not, create a new platform token with that scope
 3. Store the new token in the place your stack uses (no redeploy needed):
@@ -260,6 +269,7 @@ If the ARN or path itself was wrong, update the stack with the correct value of 
 **Symptom:** The [Lambda logs](#lambda-logs) show connection timeouts or SSL/TLS errors when posting to Dynatrace, or timeouts when reading the token from Secrets Manager/SSM.
 
 **Fix:**
+
 1. Verify `DynatraceEnvironmentURL` (format in 1d)
 2. If the Lambda runs in a VPC (`LambdaSubnetIds` / `LambdaSecurityGroupId` are set), the security group must allow outbound access to the Dynatrace ingest endpoint, and the subnets need a route to it (for example a NAT gateway). The Lambda also needs to reach AWS APIs (S3, SQS, SSM or Secrets Manager), for example through NAT or VPC endpoints
 3. If a TLS-inspecting proxy with a custom CA sits in the path, see `VerifyLogEndpointSSLCerts` in [cloudformation_parameters.md](cloudformation_parameters.md) (only for this case)
@@ -273,20 +283,22 @@ If the ARN or path itself was wrong, update the stack with the correct value of 
 **Symptom:** Logs arrive without the expected parsing/enrichment. The [Lambda logs](#lambda-logs) show `Log processing rule N is invalid` (N is the position of the rule in the configuration, counting from 0), or `No matching log processing rule for custom.<name>. Defaulting to 'generic' log ingestion.`
 
 **Cause:**
+
 - An invalid rule (for example a missing required field or an invalid `source`) is skipped and logged; the other rules still load. Malformed YAML syntax aborts loading of the whole custom rule set.
 - AppConfig-hosted processing rules require `LogForwarderConfigurationLocation=aws-appconfig`; bundled local custom rules also load when it is `local`. A processing rule with `source: custom` is selected by a forwarding rule with `source: custom` whose `source_name` equals the processing rule `name`. Custom configuration can also supplement or override `aws` and `generic` processing rules — see [log_processing.md](log_processing.md) for the supported sources.
 
 **Fix:**
+
 1. Edit the rules in `LogProcessingRulesHostedConfiguration` in `dynatrace-aws-s3-log-forwarder-appconfig.yaml`, then redeploy the AppConfig stack (not in the AppConfig console — direct edits are overwritten). The change applies within about a minute
 2. Start with a minimal valid rule and add fields incrementally. Required fields are `name`, `source`, `known_key_path_pattern` and `log_format`:
 
-```yaml
----
-name: my-rule
-source: custom
-known_key_path_pattern: "^.*$"
-log_format: text
-```
+   ```yaml
+   ---
+   name: my-rule
+   source: custom
+   known_key_path_pattern: "^.*$"
+   log_format: text
+   ```
 
 3. Reference it from a forwarding rule with `source: custom` and `source_name: my-rule`
 
@@ -301,6 +313,7 @@ See [log_processing.md](log_processing.md) for the full rule reference and [log_
 **Cause:** The forwarder recognizes AWS services from service-specific S3 key patterns. Many use `AWSLogs/...`, while AppFabric uses `AWSAppFabric/...` and S3 server access logs use date-prefixed filenames. Many built-in rules, including CloudTrail and ALB, support custom prefixes. Keys that match no built-in rule fall back to generic ingestion; unsupported output formats may instead match a rule but fail processing or attribute extraction. For example, CloudFront v2 JSON/Parquet fall back to generic handling, while `Raw` still matches the v2 rule and produces unreliable parsing. Some attributes cannot be extracted by design (for example `aws.arn` for CloudTrail and AppFabric, `aws.account.id` and `aws.arn` for legacy CloudFront logs, `aws.account.id` for S3 server access logs). CloudFront standard logging (v2) requires the **W3C / Plain** output format, no custom bucket prefix, and the default `recordFields` with `date` and `time` first.
 
 **Fix:**
+
 1. Deliver logs with a key layout and output format supported by the service's built-in rule. For CloudFront v2 specifically, do not configure a custom bucket prefix — see [log_processing.md](log_processing.md#cloudfront-standard-logging-v2-requirements)
 2. Check the list of supported AWS services in the [README](../README.md#supported-aws-services); support for additional services and formats arrives with new releases, so update to the latest release ([update_guide.md](update_guide.md))
 3. For layouts the built-in rules do not cover, ingest as `generic` and parse in Dynatrace, or add a custom processing rule with `attribute_extraction_from_key_name` (see 4a and [log_processing.md](log_processing.md))
@@ -328,6 +341,7 @@ If it persists after these steps, raise a support ticket with the log excerpt.
 **Symptom:** The [Lambda logs](#lambda-logs) show `Unable to process log file s3://... with remaining Lambda execution time`; the metric `NotEnoughExecutionTimeRemainingErrors` is above 0.
 
 **Fix:** Update the stack parameters ([cloudformation_parameters.md](cloudformation_parameters.md), [log_forwarding.md](log_forwarding.md#forwarding-large-log-files-to-dynatrace)):
+
 - Increase `LambdaMaximumExecutionTime` (default 300 s, maximum 900 s) and `LambdaFunctionMemorySize` (more memory also means more CPU and network bandwidth)
 - Decrease `LambdaSQSMessageBatchSize` (default 4) for very large files
 - Keep `SQSVisibilityTimeout` (default 420 s) greater than `LambdaMaximumExecutionTime`
@@ -337,6 +351,7 @@ If it persists after these steps, raise a support ticket with the log excerpt.
 **Symptom:** You receive an e-mail from the CloudWatch alarm `<STACK_NAME>-MessagesInDLQ` (sent only if `NotificationsEmail` is set), or the DLQ shows messages.
 
 **Fix:**
+
 1. Find the cause in the [Lambda logs](#lambda-logs) — search for `Error processing message` — and fix it (sections 2–5)
 2. **AWS Console → SQS → `<STACK_NAME>-S3NotificationsDLQ` → Start DLQ redrive** to the source queue, so the forwarder re-processes the messages — see [Configuring a dead-letter queue redrive](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-configure-dead-letter-queue-redrive.html)
 
@@ -347,6 +362,7 @@ The DLQ keeps messages for **1 day**, and the main queue keeps unprocessed notif
 ## 6. Security Vulnerabilities (CVEs)
 
 Before raising a support ticket:
+
 1. Check [security.dynatrace.com](https://security.dynatrace.com) — the CVE may already be documented
 2. Check [GitHub releases](https://github.com/dynatrace/dynatrace-aws-platform-monitoring-s3-log-forwarder/releases) for a patched version
 3. Update to the latest release by following [update_guide.md](update_guide.md)
@@ -355,6 +371,7 @@ Before raising a support ticket:
 
 ## 7. General Debugging Tips
 
+<!-- markdownlint-disable-next-line MD033 -->
 **<a id="lambda-logs"></a>Where to find the Lambda logs:**
 
 The forwarder's Lambda function (`QueueProcessingFunction` in the stack) writes its logs to **Amazon CloudWatch Logs**, in the log group `/aws/lambda/<function-name>` in the same AWS account and region as the stack. The function name is generated by CloudFormation (it looks like `<STACK_NAME>-QueueProcessingFunction-<random suffix>`).
@@ -382,6 +399,7 @@ aws logs tail "/aws/lambda/${FUNCTION_NAME}" --since 24h --filter-pattern "?ERRO
 If the log group does not exist, the function has not run yet (no messages reached the SQS queue — see section 2) or the Lambda execution role cannot write to CloudWatch Logs.
 
 **Enable debug logging:**
+
 1. **AWS Console → Lambda → your function → Configuration → Environment variables**
 2. Set `LOGGING_LEVEL` to `DEBUG` (or set the `LambdaLoggingLevel` CloudFormation parameter, so a redeploy doesn't reset it)
 3. Reproduce the problem and read the new entries in the [Lambda log group](#lambda-logs); reset to `INFO` afterwards to avoid extra CloudWatch Logs costs
@@ -419,6 +437,7 @@ aws cloudformation describe-stacks \
 For the SQS queue `<STACK_NAME>-S3NotificationsQueue` and the DLQ, look at `NumberOfMessagesSent` and `ApproximateNumberOfMessagesVisible`.
 
 **Verify end-to-end flow:**
+
 1. Upload a test file to a source S3 bucket that is configured for forwarding
 2. Check SQS queue metrics — message count should rise then drop (processed)
 3. Check the [Lambda log group](#lambda-logs) in CloudWatch Logs (`/aws/lambda/<function-name>`) for the invocation
