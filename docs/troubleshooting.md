@@ -67,7 +67,7 @@ aws cloudformation describe-events \
   --output table
 ```
 
-Alternatively, list failed events with `describe-stack-events` (the CLI has no root cause label, so read from the oldest failure — later failures are usually side effects of the rollback):
+Alternatively, list failed events with `describe-stack-events`. This includes failures from earlier operations: identify the time window of the failed create/update in the stack events and consider only failures in that window. Within that operation, read from the oldest failure (the CLI has no root cause label; later failures are usually rollback side effects).
 
 ```bash
 aws cloudformation describe-stack-events \
@@ -159,17 +159,17 @@ The queue ARN is in the stack outputs and in SSM Parameter Store at `/dynatrace/
 
 **Symptom:** The [Lambda logs](#lambda-logs) show `Dropping object. s3://<bucket>/<key> doesn't match any forwarding rule`; the metric `DroppedObjectsNotMatchingFwdRules` is above 0.
 
-**Cause:** By default a catch-all `default` rule forwards every object. If you switched to AppConfig-managed rules (`LogForwarderConfigurationLocation=aws-appconfig`) and there is no `default` rule, objects from buckets without an explicit rule — or whose key matches none of the rules — are discarded. The rule `prefix` is a **regular expression** matched against the whole S3 key, and rules are evaluated in order (the first match wins).
+**Cause:** By default a catch-all `default` rule forwards every object. With custom forwarding rules, objects are discarded if their bucket has no explicit rule set and no matching `default` rule, or if their key matches none of their bucket's explicit rules. The `default` rule set is considered only for buckets without explicit rules. The rule `prefix` is a **regular expression** matched from the start of the S3 key (it need not match the entire key), and rules are evaluated in order (the first match wins).
 
-**Fix:** Add or correct the rule in `LogForwardingRulesHostedConfiguration` in `dynatrace-aws-s3-log-forwarder-appconfig.yaml` and redeploy the AppConfig stack. Use `.*` as `prefix` for a catch-all. Do not edit the rules in the AppConfig console (the next CloudFormation deployment overwrites them). The change applies within about a minute. See [log_forwarding.md](log_forwarding.md) and [advanced_deployments.md](advanced_deployments.md#custom-log-forwarding-and-processing-rules-via-appconfig).
+**Fix:** For AppConfig-managed rules, add or correct the rule in `LogForwardingRulesHostedConfiguration` in `dynatrace-aws-s3-log-forwarder-appconfig.yaml` and redeploy the AppConfig stack. If the bucket has explicit rules, correct those rules or add a catch-all with `prefix: .*` to that bucket's rule set; a `default` catch-all only covers buckets without explicit rules. Do not edit the rules in the AppConfig console (the next CloudFormation deployment overwrites them). The change applies within about a minute. See [log_forwarding.md](log_forwarding.md) and [advanced_deployments.md](advanced_deployments.md#custom-log-forwarding-and-processing-rules-via-appconfig).
 
 ---
 
 ### 2f. Logs are ingested twice
 
-**Cause:** A bucket is listed in `GrantReadPermissionToBuckets` (the main stack's EventBridge rule forwards all its objects) **and** also has a per-bucket configuration stack, so both rules send the same notification to the queue. More than one notification path configured on the same bucket has the same effect.
+**Cause:** When `NotificationType=EventBridge`, a bucket listed in `GrantReadPermissionToBuckets` is matched by the main stack's EventBridge rule. If that bucket also has a per-bucket configuration stack, both rules can send the same notification to the queue. More than one notification path configured on the same bucket has the same effect.
 
-**Fix:** Use one method per bucket. For prefix filtering, leave the bucket out of `GrantReadPermissionToBuckets` and use the per-bucket stack — see [advanced_deployments.md](advanced_deployments.md#configuring-s3-buckets-with-prefix-filtering).
+**Fix:** Use one notification path per bucket. For `EventBridge` prefix filtering, leave the bucket out of `GrantReadPermissionToBuckets` and use the per-bucket stack. For `Direct SQS` or `SNS`, use native prefix/suffix filters on the bucket notifications and retain the required read permissions (and, for `Direct SQS`, the bucket's entry in `GrantReadPermissionToBuckets` for the queue policy). See [advanced_deployments.md](advanced_deployments.md#configuring-s3-buckets-with-prefix-filtering).
 
 ---
 
@@ -274,7 +274,7 @@ If the ARN or path itself was wrong, update the stack with the correct value of 
 
 **Cause:**
 - An invalid rule (for example a missing required field or an invalid `source`) is skipped and logged; the other rules still load. Malformed YAML syntax aborts loading of the whole custom rule set.
-- Custom processing rules are used only when the stack parameter `LogForwarderConfigurationLocation` is `aws-appconfig`, and only by log forwarding rules with `source: custom` whose `source_name` equals the processing rule `name`.
+- AppConfig-hosted processing rules require `LogForwarderConfigurationLocation=aws-appconfig`; bundled local custom rules also load when it is `local`. A processing rule with `source: custom` is selected by a forwarding rule with `source: custom` whose `source_name` equals the processing rule `name`. Custom configuration can also supplement or override `aws` and `generic` processing rules — see [log_processing.md](log_processing.md) for the supported sources.
 
 **Fix:**
 1. Edit the rules in `LogProcessingRulesHostedConfiguration` in `dynatrace-aws-s3-log-forwarder-appconfig.yaml`, then redeploy the AppConfig stack (not in the AppConfig console — direct edits are overwritten). The change applies within about a minute
@@ -298,10 +298,10 @@ See [log_processing.md](log_processing.md) for the full rule reference and [log_
 
 **Symptom:** Logs arrive in Dynatrace but without parsed fields or attributes such as `aws.account.id` or `aws.arn`. The [Lambda logs](#lambda-logs) show `Couldn't find a matching aws processing rule for <key>. Defaulting to generic ingestion.`
 
-**Cause:** The forwarder recognizes the AWS service from the S3 key layout AWS uses when delivering logs (`AWSLogs/...`). Custom bucket prefixes, a changed key layout, an unsupported output format or an unsupported service are ingested as plain generic logs. Some attributes cannot be extracted by design (for example `aws.arn` for CloudTrail and AppFabric, `aws.account.id` and `aws.arn` for legacy CloudFront logs, `aws.account.id` for S3 server access logs). CloudFront standard logging (v2) additionally requires the **W3C / Plain** output format, no custom bucket prefix, and the default `recordFields` with `date` and `time` first.
+**Cause:** The forwarder recognizes AWS services from service-specific S3 key patterns. Many use `AWSLogs/...`, while AppFabric uses `AWSAppFabric/...` and S3 server access logs use date-prefixed filenames. Many built-in rules, including CloudTrail and ALB, support custom prefixes. Keys that match no built-in rule fall back to generic ingestion; unsupported output formats may instead match a rule but fail processing or attribute extraction. For example, CloudFront v2 JSON/Parquet fall back to generic handling, while `Raw` still matches the v2 rule and produces unreliable parsing. Some attributes cannot be extracted by design (for example `aws.arn` for CloudTrail and AppFabric, `aws.account.id` and `aws.arn` for legacy CloudFront logs, `aws.account.id` for S3 server access logs). CloudFront standard logging (v2) requires the **W3C / Plain** output format, no custom bucket prefix, and the default `recordFields` with `date` and `time` first.
 
 **Fix:**
-1. Deliver the logs with the default AWS key layout (no custom bucket prefix) and a supported output format — see [log_processing.md](log_processing.md#cloudfront-standard-logging-v2-requirements)
+1. Deliver logs with a key layout and output format supported by the service's built-in rule. For CloudFront v2 specifically, do not configure a custom bucket prefix — see [log_processing.md](log_processing.md#cloudfront-standard-logging-v2-requirements)
 2. Check the list of supported AWS services in the [README](../README.md#supported-aws-services); support for additional services and formats arrives with new releases, so update to the latest release ([update_guide.md](update_guide.md))
 3. For layouts the built-in rules do not cover, ingest as `generic` and parse in Dynatrace, or add a custom processing rule with `attribute_extraction_from_key_name` (see 4a and [log_processing.md](log_processing.md))
 
