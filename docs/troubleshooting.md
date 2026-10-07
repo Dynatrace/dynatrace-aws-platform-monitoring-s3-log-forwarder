@@ -63,22 +63,22 @@ Preserve any IAM path from the actual ARN. For example, `IamRolePath=/engineerin
 
 List only the failed events of the latest operation (requires a recent AWS CLI v2):
 
-```bash
+~~~bash
 aws cloudformation describe-events \
   --stack-name <STACK_NAME> \
   --filters FailedEvents=true \
   --query 'OperationEvents[].{Time:Timestamp,Resource:LogicalResourceId,Type:ResourceType,Status:ResourceStatus,Reason:ResourceStatusReason}' \
   --output table
-```
+~~~
 
 Alternatively, list failed events with `describe-stack-events`. This includes failures from earlier operations: identify the time window of the failed create/update in the stack events and consider only failures in that window. Within that operation, read from the oldest failure (the CLI has no root cause label; later failures are usually rollback side effects).
 
-```bash
+~~~bash
 aws cloudformation describe-stack-events \
   --stack-name <STACK_NAME> \
   --query 'reverse(StackEvents[?contains(ResourceStatus, `FAILED`)].{Time:Timestamp,Resource:LogicalResourceId,Status:ResourceStatus,Reason:ResourceStatusReason})' \
   --output table
-```
+~~~
 
 If a stack was already deleted, use its stack ID (`arn:aws:cloudformation:...`) instead of the name. Include the failed event's resource, status and reason when you raise a support ticket.
 
@@ -219,7 +219,7 @@ Check which one your stack uses: **CloudFormation → your stack → Parameters*
 
 **Fix — Secrets Manager:**
 
-```bash
+~~~bash
 # Verify the secret exists and the JSON has the key dt.platform_token (prints key names only, not the token)
 aws secretsmanager get-secret-value --secret-id "<SECRET_ARN>" \
   --query SecretString --output text | jq 'keys'
@@ -227,18 +227,19 @@ aws secretsmanager get-secret-value --secret-id "<SECRET_ARN>" \
 # Create or correct the secret value
 aws secretsmanager put-secret-value --secret-id "<SECRET_ARN>" \
   --secret-string '{"dt.platform_token":"<your-dynatrace-platform-token>"}'
-```
+~~~
 
 **Fix — SSM Parameter Store:**
 
 An existing `String` cannot be converted to `SecureString` with `--overwrite`. Create a new parameter at an unused `<PARAMETER_PATH>` starting with `/`, then update `DynatraceApiKeySSMParameter` as described below. To rotate an existing `SecureString` instead, use the path already configured in `DynatraceApiKeySSMParameter` and add `--overwrite` to this command.
 
-```bash
+~~~bash
 aws ssm put-parameter \
   --name "<PARAMETER_PATH>" \
   --type SecureString \
-  --value "<your-dynatrace-platform-token>"
-```
+  --value "<your-dynatrace-platform-token>" \
+  --overwrite
+~~~
 
 If the ARN or path itself was wrong, update the stack with the correct value of the parameter you use, keeping all other parameters unchanged and the other token parameter empty (the two are mutually exclusive) — see [update_guide.md](update_guide.md).
 
@@ -295,13 +296,13 @@ If the ARN or path itself was wrong, update the stack with the correct value of 
 1. Edit the rules in `LogProcessingRulesHostedConfiguration` in `dynatrace-aws-s3-log-forwarder-appconfig.yaml`, then redeploy the AppConfig stack (not in the AppConfig console — direct edits are overwritten). The change applies within about a minute
 2. Start with a minimal valid rule and add fields incrementally. Required fields are `name`, `source`, `known_key_path_pattern` and `log_format`:
 
-   ```yaml
+   ~~~yaml
    ---
    name: my-rule
    source: custom
    known_key_path_pattern: "^.*$"
    log_format: text
-   ```
+   ~~~
 
 3. Reference it from a forwarding rule with `source: custom` and `source_name: my-rule`
 
@@ -385,7 +386,7 @@ The forwarder's Lambda function (`QueueProcessingFunction` in the stack) writes 
 
 From the CLI:
 
-```bash
+~~~bash
 # Get the function name
 FUNCTION_NAME=$(aws cloudformation describe-stack-resource \
   --stack-name <STACK_NAME> \
@@ -397,7 +398,7 @@ aws logs tail "/aws/lambda/${FUNCTION_NAME}" --since 1h --follow
 
 # Show only errors from the last 24 hours
 aws logs tail "/aws/lambda/${FUNCTION_NAME}" --since 24h --filter-pattern "?ERROR ?Exception"
-```
+~~~
 
 If the log group does not exist, the function has not run yet (no messages reached the SQS queue — see section 2) or the Lambda execution role cannot write to CloudWatch Logs.
 
@@ -414,12 +415,12 @@ The forwarder can deploy a CloudWatch dashboard named `<STACK_NAME>-monitoring-d
 1. Find the dashboard link in the **Outputs** tab of the main stack (`CloudWatchDashboardURL`), or open **AWS Console → CloudWatch → Dashboards**
 2. Or get the link from the CLI:
 
-```bash
+~~~bash
 aws cloudformation describe-stacks \
   --stack-name <STACK_NAME> \
   --query 'Stacks[0].Outputs[?OutputKey==`CloudWatchDashboardURL`].OutputValue' \
   --output text
-```
+~~~
 
 **The dashboard may be disabled.** It is deployed only when the `DeployCloudWatchMonitoringDashboard` CloudFormation parameter is `true` (the default). If it is `false`, the `CloudWatchDashboardURL` output is missing and no dashboard exists.
 
@@ -446,10 +447,10 @@ For the SQS queue `<STACK_NAME>-S3NotificationsQueue` and the DLQ, look at `Numb
 3. Check the [Lambda log group](#lambda-logs) in CloudWatch Logs (`/aws/lambda/<function-name>`) for the invocation
 4. Search Dynatrace for logs from that file, for example in a Notebook:
 
-```text
+~~~text
 fetch logs
 | filter dt.da.aws.s3.bucket.name == "<BUCKET_NAME>"
 | filter dt.da.aws.s3.key.name == "<OBJECT_KEY>"
-```
+~~~
 
 ---
