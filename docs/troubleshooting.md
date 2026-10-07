@@ -14,20 +14,22 @@ Throughout this runbook, `<STACK_NAME>` is the name of your main forwarder Cloud
 
 **Cause:** The IAM role used to run the deployment does not have `iam:PassRole` permission, required to pass an execution role to the Lambda function.
 
-**Fix:** Add to the IAM role/user running the deployment, scoped to the forwarder's Lambda execution role:
+**Fix:** Add permission to the IAM role/user running the deployment, scoped to the forwarder's Lambda execution role. Use the role ARN reported in the `iam:PassRole` error (or retrieve it from IAM); CloudFormation can shorten generated role names, so do not reconstruct the name from `<STACK_NAME>`.
 
-```json
+In this example, `<generated-role-name-prefix>` is the actual role name with its final `-<random suffix>` removed. Only that suffix is wildcarded to allow the role to be recreated:
+
+~~~json
 {
   "Effect": "Allow",
   "Action": "iam:PassRole",
-  "Resource": "arn:aws:iam::<account-id>:role/<stack-name>-QueueProcessingFunctionRole-*",
+  "Resource": "arn:aws:iam::<account-id>:role/<generated-role-name-prefix>-*",
   "Condition": {
     "StringEquals": { "iam:PassedToService": "lambda.amazonaws.com" }
   }
 }
-```
+~~~
 
-If you deploy with the `IamRolePath` parameter, include the path in the role ARN (`role/<iam-role-path>/<stack-name>-QueueProcessingFunctionRole-*`). The deploying identity needs the other IAM, Lambda, SQS, SSM and related permissions too — see [iam_permissions.md](iam_permissions.md) for the complete list.
+Preserve any IAM path from the actual ARN. For example, `IamRolePath=/engineering/platform/` gives `role/engineering/platform/<generated-role-name-prefix>-*`, without extra slashes. The deploying identity needs the other IAM, Lambda, SQS, SSM and related permissions too — see [iam_permissions.md](iam_permissions.md) for the complete list.
 
 ---
 
@@ -142,7 +144,7 @@ The queue ARN is in the stack outputs and in SSM Parameter Store at `/dynatrace/
 
 **Fix:** Set up cross-region/cross-account forwarding — [advanced_deployments.md](advanced_deployments.md). Checklist:
 
-1. Main stack: `EnableCrossRegionCrossAccountForwarding=true`; for other accounts also `AwsAccountsToReceiveLogsFrom` — the list **replaces** the previous value, so include all accounts
+1. Main stack: `NotificationType=EventBridge` and `EnableCrossRegionCrossAccountForwarding=true`; for other accounts also `AwsAccountsToReceiveLogsFrom` — the list **replaces** the previous value, so include all accounts. If switching from `SNS` or `Direct SQS`, migrate existing source buckets to EventBridge notifications too (section 2b), because the stack replaces the queue's notification permissions
 2. Deploy `eventbridge-cross-region-or-account-forward-rules.yaml` in the bucket's region/account and enable EventBridge notifications on the bucket
 3. Deploy `dynatrace-aws-s3-log-forwarder-s3-bucket-configuration.yaml` in the forwarder's region with `S3BucketIsCrossRegionOrCrossAccount=true`
 4. Cross-account only: the bucket policy allows the forwarder's Lambda role `s3:GetObject`, and the bucket has ACLs disabled
@@ -229,12 +231,13 @@ aws secretsmanager put-secret-value --secret-id "<SECRET_ARN>" \
 
 **Fix — SSM Parameter Store:**
 
+An existing `String` cannot be converted to `SecureString` with `--overwrite`. Create a new parameter at an unused `<PARAMETER_PATH>` starting with `/`, then update `DynatraceApiKeySSMParameter` as described below. To rotate an existing `SecureString` instead, use the path already configured in `DynatraceApiKeySSMParameter` and add `--overwrite` to this command.
+
 ```bash
 aws ssm put-parameter \
-  --name "/dynatrace/s3-log-forwarder/<STACK_NAME>/api-key" \
+  --name "<PARAMETER_PATH>" \
   --type SecureString \
-  --value "<your-dynatrace-platform-token>" \
-  --overwrite
+  --value "<your-dynatrace-platform-token>"
 ```
 
 If the ARN or path itself was wrong, update the stack with the correct value of the parameter you use, keeping all other parameters unchanged and the other token parameter empty (the two are mutually exclusive) — see [update_guide.md](update_guide.md).
