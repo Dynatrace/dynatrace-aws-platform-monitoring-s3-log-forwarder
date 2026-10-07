@@ -11,7 +11,9 @@ The function publishes the following metrics to CloudWatch under a metric namesp
 * `DynatraceHTTP204Success` (Sum): Number of succesful POST requests to Dynatrace.
 * `DynatraceHTTP200PartialSuccess` (Sum): Number of partially successful POST requests to Dynatrace.
 * `DynatraceHTTP429Throttled` (Sum): Number of throttled POST requests to Dynatrace.
-* `DynatraceHTTPErrors` (Sum): Number of HTTP errors received from Dynatrace (includding throttles).
+* `DynatraceHTTPErrors` (Sum): Number of HTTP errors received from Dynatrace (including throttles).
+
+  **Upgrade note:** `DynatraceHTTP503SpaceLimitReached` is no longer emitted. HTTP 503 responses are now reported only in the broader `DynatraceHTTPErrors` metric. Migrate alarms and queries that use the removed metric to this aggregate and review their thresholds, since it includes other HTTP errors too. For HTTP 503-specific monitoring, use a CloudWatch Logs metric filter matching `There was a HTTP 503 error posting batch`.
 * `UncompressedLogDTPayloadSize` (Avg / Min / Max): Size of the uncompressed Payload successfully posted to Dynatrace.
 * `LogProcessingTime`(Avg / Min / Max): Time taken in seconds to process logs (iterate to generate attributes and trim, doesn't include batching and posting to Dynatrace).
 * `DTIngestionTime` (Avg / Min / Max): Time taken to ingest the log file into Dynatrace (includes batching, compressing and POST'ing).
