@@ -3,6 +3,7 @@ max-log-file-size-mb: 75
 upload-threads: 5               # number of concurrent S3 upload threads (all respecting log-interval-sec property)
 log-interval-sec: 60            # time window length in seconds
 files-per-interval: 10          # number of files to upload per log-interval-sec window
+large-records: false            # true = use large (9900 kB) log records in jsonl/json_array files (requires max-log-file-size-mb >= 10); CLI --large-records/--no-large-records overrides
 file-types:                     # which file types to send (jsonl, json_array, alb)
   - jsonl
   - json_array

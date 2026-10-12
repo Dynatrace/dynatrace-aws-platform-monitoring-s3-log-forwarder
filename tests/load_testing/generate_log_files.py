@@ -19,17 +19,37 @@ LOREM_IPSUM_WORDS = [
 ]
 
 
-def generate_random_log_record(min_length: int = 40, max_length: int = 2048) -> dict:
+LARGE_RECORD_SIZE_BYTES = 9900 * 1024  # 9900 kB
+LARGE_RECORD_MIN_FILE_SIZE_MB = 10  # a file holding large records must fit at least one of them
+
+
+def _generate_large_log_record() -> dict:
+    """Generate a single log record of LARGE_RECORD_SIZE_BYTES (serialized with json.dumps defaults)."""
+    record = {"content": "[s3-log-fwd perf test]", "large_payload": ""}
+    filler_length = LARGE_RECORD_SIZE_BYTES - len(json.dumps(record))
+
+    # Build one random chunk and repeat it, as picking millions of random words would be slow.
+    chunk = " ".join(secrets.choice(LOREM_IPSUM_WORDS) for _ in range(1000))
+    record["large_payload"] = (chunk * (filler_length // len(chunk) + 1))[:filler_length]
+    return record
+
+
+def generate_random_log_record(min_length: int = 40, max_length: int = 2048, large: bool = False) -> dict:
     """
     Generate a single log record with random attributes and content.
 
     Args:
         min_length: Minimum record length in bytes (default: 40)
         max_length: Maximum record length in bytes (default: 2048 = 2KB)
+        large: If True, ignore min_length/max_length and generate a record of 9900 kB (default: False)
 
     Returns:
-        A dictionary with "content" field set to "[s3-log-fwd perf test]" and up to 10 additional random attributes.
+        A dictionary with "content" field set to "[s3-log-fwd perf test]" and up to 10 additional random attributes
+        (or a single large "large_payload" attribute when large is True).
     """
+    if large:
+        return _generate_large_log_record()
+
     record = {"content": "[s3-log-fwd perf test]"}
     target_length = secrets.randbelow(max_length - min_length + 1) + min_length
     attribute_names = ["message", "data", "log_message", "details", "event_data", "context", "metadata", "info", "request", "response"]
@@ -53,13 +73,14 @@ def generate_random_log_record(min_length: int = 40, max_length: int = 2048) -> 
     return record
 
 
-def generate_jsonl_file(output_path: str, target_size_bytes: int) -> int:
+def generate_jsonl_file(output_path: str, target_size_bytes: int, large_records: bool = False) -> int:
     """
     Generate a JSONL format log file.
 
     Args:
         output_path: Path where the log file will be created.
         target_size_bytes: Target file size in bytes.
+        large_records: Use large (9900 kB) log records instead of small ones.
 
     Returns:
         Final size in bytes.
@@ -71,7 +92,7 @@ def generate_jsonl_file(output_path: str, target_size_bytes: int) -> int:
 
     with open(output_path, 'w', encoding='utf-8') as f:
         while current_size < target_size_bytes:
-            log_record = generate_random_log_record()
+            log_record = generate_random_log_record(large=large_records)
             json_line = json.dumps(log_record) + "\n"
 
             buffer.append(json_line)
@@ -90,13 +111,14 @@ def generate_jsonl_file(output_path: str, target_size_bytes: int) -> int:
     return current_size
 
 
-def generate_json_array_file(output_path: str, target_size_bytes: int) -> int:
+def generate_json_array_file(output_path: str, target_size_bytes: int, large_records: bool = False) -> int:
     """
     Generate a JSON array format log file.
 
     Args:
         output_path: Path where the log file will be created.
         target_size_bytes: Target file size in bytes.
+        large_records: Use large (9900 kB) log records instead of small ones.
 
     Returns:
         Final size in bytes.
@@ -107,7 +129,7 @@ def generate_json_array_file(output_path: str, target_size_bytes: int) -> int:
     records = []
 
     while current_size < target_size_bytes:
-        log_record = generate_random_log_record()
+        log_record = generate_random_log_record(large=large_records)
         record_json = json.dumps(log_record)
         record_size = len(record_json.encode('utf-8'))
 
@@ -126,7 +148,7 @@ def generate_json_array_file(output_path: str, target_size_bytes: int) -> int:
     return current_size
 
 
-def generate_log_file(output_path: str, size_mb: int = 1, format_type: str = 'jsonl') -> None:
+def generate_log_file(output_path: str, size_mb: int = 1, format_type: str = 'jsonl', large_records: bool = False) -> None:
     """
     Generate a log file of specified size with JSON records.
 
@@ -134,10 +156,11 @@ def generate_log_file(output_path: str, size_mb: int = 1, format_type: str = 'js
         output_path: Path where the log file will be created.
         size_mb: Size of the log file in megabytes (default: 1 MB).
         format_type: Output format - 'jsonl' or 'json_array' (default: 'jsonl').
+        large_records: Use large (9900 kB) log records instead of small ones (default: False).
     """
     target_size_bytes = size_mb * 1024 * 1024
 
     if format_type == 'json_array':
-        generate_json_array_file(output_path, target_size_bytes)
+        generate_json_array_file(output_path, target_size_bytes, large_records)
     else:
-        generate_jsonl_file(output_path, target_size_bytes)
+        generate_jsonl_file(output_path, target_size_bytes, large_records)

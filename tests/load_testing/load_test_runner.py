@@ -16,6 +16,7 @@ from datetime import datetime
 import boto3
 import yaml
 
+from generate_log_files import LARGE_RECORD_MIN_FILE_SIZE_MB
 from generate_log_files import generate_log_file as _generate_log_file
 from simulate_alb_logs import generate_alb_log_file
 
@@ -91,6 +92,7 @@ def parse_args():
     parser.add_argument("--dry-run-output-dir", default=None, help="Directory to save files in dry-run mode (default: a new temp directory)")
     parser.add_argument("--reuse-templates", action="store_true", help="Reuse existing template files from log_templates/ if present, generating only missing ones. By default, templates are always regenerated.")
     parser.add_argument("--files-per-interval", type=int, default=None, help="Number of files to upload per log-interval-sec window (default: from config)")
+    parser.add_argument("--large-records", action=argparse.BooleanOptionalAction, default=None, help="Use large (9900 kB) log records in JSONL and JSON array files instead of small ones (ALB files are unaffected). Requires max-log-file-size-mb >= 10 in the config. Overrides 'large-records' from config (default: from config)")
     return parser.parse_args()
 
 
@@ -139,30 +141,32 @@ def _output_dir_context(dry_run: bool, dry_run_output_dir: str):
 _ALL_FILE_TYPES = ["jsonl", "json_array", "alb"]
 
 
-def _generate_template(tier: int, tier_count: int, size_mb: float, reuse: bool, file_types: list) -> dict:
+def _generate_template(tier: int, tier_count: int, size_mb: float, reuse: bool, file_types: list, large_records: bool = False) -> dict:
     """Generate or reuse template files for the requested file types for a single tier.
 
     Returns a dict mapping file_type -> path for each type in file_types.
     """
     paths = {}
+    # Separate file names so that --reuse-templates never mixes small- and large-record templates.
+    suffix = "_large" if large_records else ""
 
     if "jsonl" in file_types:
-        path = os.path.join(LOG_TEMPLATES_DIR, f"template_jsonl_tier{tier}.log")
+        path = os.path.join(LOG_TEMPLATES_DIR, f"template_jsonl{suffix}_tier{tier}.log")
         if reuse and os.path.exists(path):
             print(f"  [{tier}/{tier_count}] JSONL       {size_mb:.1f} MB — reusing existing template")
         else:
             print(f"  [{tier}/{tier_count}] JSONL       {size_mb:.1f} MB — generating...")
-            _generate_log_file(path, size_mb=int(max(1, round(size_mb))), format_type="jsonl")
+            _generate_log_file(path, size_mb=int(max(1, round(size_mb))), format_type="jsonl", large_records=large_records)
         paths["jsonl"] = path
 
     if "json_array" in file_types:
-        path = os.path.join(LOG_TEMPLATES_DIR, f"template_json_array_tier{tier}.json.gz")
+        path = os.path.join(LOG_TEMPLATES_DIR, f"template_json_array{suffix}_tier{tier}.json.gz")
         if reuse and os.path.exists(path):
             print(f"  [{tier}/{tier_count}] JSON Array  {size_mb:.1f} MB — reusing existing template")
         else:
             print(f"  [{tier}/{tier_count}] JSON Array  {size_mb:.1f} MB — generating...")
             tmp = path + ".tmp"
-            _generate_log_file(tmp, size_mb=int(max(1, round(size_mb))), format_type="json_array")
+            _generate_log_file(tmp, size_mb=int(max(1, round(size_mb))), format_type="json_array", large_records=large_records)
             _gzip_file(tmp, path)
         paths["json_array"] = path
 
@@ -178,13 +182,13 @@ def _generate_template(tier: int, tier_count: int, size_mb: float, reuse: bool, 
     return paths
 
 
-def _pregen_templates(max_file_size_mb: float, reuse_templates: bool, file_types: list, tier_count: int) -> dict:
+def _pregen_templates(max_file_size_mb: float, reuse_templates: bool, file_types: list, tier_count: int, large_records: bool = False) -> dict:
     """Build a dict mapping (tier, type) → path for the requested file types."""
     os.makedirs(LOG_TEMPLATES_DIR, exist_ok=True)
     print("Loading/generating template files...")
     templates = {}
     for tier in range(1, tier_count + 1):
-        tier_paths = _generate_template(tier, tier_count, max_file_size_mb / (2 ** (tier - 1)), reuse_templates, file_types)
+        tier_paths = _generate_template(tier, tier_count, max_file_size_mb / (2 ** (tier - 1)), reuse_templates, file_types, large_records)
         for ft, path in tier_paths.items():
             templates[(tier, ft)] = path
     print("Templates ready.\n")
@@ -221,9 +225,10 @@ def _upload_or_save(actual_path: str, file_type: str, dry_run: bool, bucket: str
         upload_to_s3(actual_path, bucket, prefix, file_type)
 
 
-def _print_config(max_file_size_mb, duration_seconds, log_interval_sec, dry_run, num_threads, file_types, tier_count, tier_weights, files_per_interval):
+def _print_config(max_file_size_mb, duration_seconds, log_interval_sec, dry_run, num_threads, file_types, tier_count, tier_weights, files_per_interval, large_records=False):
     print("Load test configuration:")
     print(f"  Max file size    : {max_file_size_mb} MB")
+    print(f"  Record size      : {'large (9900 kB)' if large_records else 'small'}")
     print(f"  Duration         : {duration_seconds}s")
     print(f"  Log interval     : {log_interval_sec}s ({files_per_interval} file(s) every {log_interval_sec}s)")
     print(f"  Upload threads   : {num_threads}")
@@ -313,8 +318,15 @@ def _run_loop(duration_seconds, log_interval_sec, workdir, templates, dry_run, b
     return total_mb, uploaded, total_elapsed, type_stats
 
 
-def run_load_test(bucket: str, prefix: str, config: dict, dry_run: bool = False, dry_run_output_dir: str = None, reuse_templates: bool = False, num_threads: int = None, files_per_interval: int = None):
+def run_load_test(bucket: str, prefix: str, config: dict, dry_run: bool = False, dry_run_output_dir: str = None, reuse_templates: bool = False, num_threads: int = None, files_per_interval: int = None, large_records: bool = None):
     max_file_size_mb = config.get("max-log-file-size-mb", 10)
+    if large_records is None:
+        large_records = config.get("large-records", False)
+    if large_records and max_file_size_mb < LARGE_RECORD_MIN_FILE_SIZE_MB:
+        raise ValueError(
+            f"max-log-file-size-mb is {max_file_size_mb} but must be at least {LARGE_RECORD_MIN_FILE_SIZE_MB} "
+            f"when --large-records is used (a single large record is 9900 kB)"
+        )
     duration_seconds = config.get("duration-sec", 60)
     log_interval_sec = config.get("log-interval-sec", 1.0)
     if num_threads is None:
@@ -331,11 +343,11 @@ def run_load_test(bucket: str, prefix: str, config: dict, dry_run: bool = False,
     tier_weights = config.get("tier-weights", [1] * tier_count)
     if len(tier_weights) != tier_count:
         raise ValueError(f"tier-weights has {len(tier_weights)} entries but tier-count is {tier_count}; they must match")
-    _print_config(max_file_size_mb, duration_seconds, log_interval_sec, dry_run, num_threads, file_types, tier_count, tier_weights, files_per_interval)
+    _print_config(max_file_size_mb, duration_seconds, log_interval_sec, dry_run, num_threads, file_types, tier_count, tier_weights, files_per_interval, large_records)
 
     workdir, cleanup = _output_dir_context(dry_run, dry_run_output_dir)
     try:
-        templates = _pregen_templates(max_file_size_mb, reuse_templates, file_types, tier_count)
+        templates = _pregen_templates(max_file_size_mb, reuse_templates, file_types, tier_count, large_records)
         total_mb, uploaded, total_elapsed, type_stats = _run_loop(duration_seconds, log_interval_sec, workdir, templates, dry_run, bucket, prefix, num_threads, file_types, tier_count, tier_weights, files_per_interval)
     finally:
         cleanup()
@@ -355,6 +367,7 @@ def main():
         reuse_templates=args.reuse_templates,
         num_threads=args.threads,
         files_per_interval=args.files_per_interval,
+        large_records=args.large_records,
     )
 
 
