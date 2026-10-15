@@ -20,6 +20,6 @@ metadata:
     backstage.io/techdocs-ref: dir:.
 spec:
   type: service
-  owner: team-piranhas
+  owner: rd-sg-team-piranhas
   lifecycle: production
   system: aws-platform-monitoring
