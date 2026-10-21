@@ -10,6 +10,7 @@ The function publishes the following metrics to CloudWatch under a metric namesp
 * `ReceivedUncompressedLogFileSize`(Avg): Size in bytes of the uncompressed log file that's being processed.
 * `DynatraceHTTP204Success` (Sum): Number of succesful POST requests to Dynatrace.
 * `DynatraceHTTP200PartialSuccess` (Sum): Number of partially successful POST requests to Dynatrace.
+* `DynatraceHTTP400InvalidLogEntries` (Sum): Number of POST requests to Dynatrace that were rejected because of invalid log entries.
 * `DynatraceHTTP429Throttled` (Sum): Number of throttled POST requests to Dynatrace.
 * `DynatraceHTTPErrors` (Sum): Number of HTTP errors received from Dynatrace (including throttles).
 
