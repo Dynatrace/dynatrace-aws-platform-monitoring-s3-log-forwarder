@@ -336,6 +336,8 @@ Each S3 notification is attempted up to `MaximumSQSMessageRetries` times (defaul
 |-------------|--------|------------|
 | `Throttled by Dynatrace. Exhausted retry attempts...` (`DynatraceThrottlingException`) | `DynatraceHTTP429Throttled` | Lower `MaximumLambdaConcurrency` (default 30) and reduce the volume forwarded (forwarding rules / prefix filtering, sections 2e and 2f). Transient throttling clears on its own — the messages are retried or redriven (5c) |
 | `Batch ... rejected by Dynatrace (payload too large)` | `DynatraceHTTP413PayloadTooLarge` | Payload limits are set by `DynatraceLogIngestPayloadMaxLength` and `DynatraceLogIngestContentMaxLength` ([cloudformation_parameters.md](cloudformation_parameters.md)) |
+| `Parts of batch <n> were rejected or trimmed - check details in response message: ...` (HTTP 200) | `DynatraceHTTP200PartialSuccess` | Dynatrace accepted the batch, but rejected or corrected some entries. This does not always mean entries were lost: the Dynatrace response, logged after the warning, says what happened — for example `{"details":{"code":200,"message":"Trimmed and accepted 2 record(s): 2 record(s) with 'timestamp' corrected."}}`. Read the message to see whether anything was actually dropped |
+| `Parts of batch <n> were not successfully posted: ...` (HTTP 400) | `DynatraceHTTP400InvalidLogEntries` | Dynatrace rejected invalid log entries. The text after the message is the Dynatrace response and describes what was rejected |
 | `There was a HTTP 401/403 error posting batch...` | `DynatraceHTTPErrors` | Token problem — section 3 |
 
 If it persists after these steps, raise a support ticket with the log excerpt.
@@ -436,6 +438,8 @@ aws cloudformation describe-stacks \
 | `DroppedObjectsNotMatchingFwdRules` | Objects with no matching forwarding rule | 2e |
 | `DroppedObjectsDecodingErrors` | Objects that are not valid UTF-8 text | 2g |
 | `NotEnoughExecutionTimeRemainingErrors` | Lambda timed out on a file | 5b |
+| `DynatraceHTTP200PartialSuccess` | Dynatrace accepted the batch but rejected or corrected some entries | 5a |
+| `DynatraceHTTP400InvalidLogEntries` | Dynatrace rejected invalid log entries | 5a |
 | `DynatraceHTTP429Throttled`, `DynatraceHTTPErrors` | Dynatrace rejected requests | 5a, 3b |
 
 For the SQS queue `<STACK_NAME>-S3NotificationsQueue` and the DLQ, look at `NumberOfMessagesSent` and `ApproximateNumberOfMessagesVisible`.
