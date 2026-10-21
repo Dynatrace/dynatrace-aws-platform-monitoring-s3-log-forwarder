@@ -159,6 +159,39 @@ class TestDynatraceSink(unittest.TestCase):
         self.assertRaises(dynatrace.DynatraceIngestionException,
                           dynatrace_sink.ingest_logs, [{'content': 'hello'}])
 
+    @responses.activate
+    @patch('log.sinks.dynatrace.parameters.get_parameter', return_value='dt0s01.faketoken')
+    def test_http_200_partial_success_warning_does_not_suggest_failure(self, _mock_get_parameter):
+        dynatrace_sink = dynatrace.DynatraceSink(mock_dt_url, mock_dt_key_parameter, token_source='ssm')
+        response_body = json.dumps({'details': {
+            'code': 200,
+            'message': "Trimmed and accepted 2 record(s): 2 record(s) with 'timestamp' corrected."}})
+        responses.add(responses.POST, dynatrace_sink.get_environment_url() + dynatrace.GENERIC_LOGS_INGEST_API_URL_SUFFIX,
+                      body=response_body, content_type="application/json", status=200)
+
+        with self.assertLogs(level=logging.WARNING) as captured:
+            dynatrace_sink.ingest_logs([{'content': 'hello'}])
+
+        warning = captured.output[0]
+        self.assertIn('Parts of batch', warning)
+        self.assertIn('were rejected or trimmed - check details in response message', warning)
+        self.assertNotIn('not successfully posted', warning)
+        self.assertIn(response_body, warning)
+
+    @responses.activate
+    @patch('log.sinks.dynatrace.parameters.get_parameter', return_value='dt0s01.faketoken')
+    def test_http_400_warning_keeps_not_successfully_posted_message(self, _mock_get_parameter):
+        dynatrace_sink = dynatrace.DynatraceSink(mock_dt_url, mock_dt_key_parameter, token_source='ssm')
+        response_body = json.dumps({'error': {'code': 400, 'message': 'Invalid log entries'}})
+        responses.add(responses.POST, dynatrace_sink.get_environment_url() + dynatrace.GENERIC_LOGS_INGEST_API_URL_SUFFIX,
+                      body=response_body, content_type="application/json", status=400)
+
+        with self.assertLogs(level=logging.WARNING) as captured:
+            dynatrace_sink.ingest_logs([{'content': 'hello'}])
+
+        self.assertIn('Parts of batch', captured.output[0])
+        self.assertIn('were not successfully posted', captured.output[0])
+
 
 class TestDynatraceSinkConstants(unittest.TestCase):
 
