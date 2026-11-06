@@ -18,6 +18,7 @@ metadata:
     - data-acquisition
   annotations:
     backstage.io/techdocs-ref: dir:.
+    dynatrace.com/service-tier: "1"
 spec:
   type: service
   owner: rd-sg-team-piranhas
